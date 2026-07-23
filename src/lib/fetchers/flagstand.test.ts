@@ -42,6 +42,7 @@ describe("fetchFlagstand", () => {
           scheduledAt: "2026-07-20T00:00:00.000Z",
           track_name: "Charlotte",
           season_name: "2026 S1",
+          series_name: "UMP Modifieds",
           league_name: "SSR Oval",
         },
       ])
@@ -53,6 +54,7 @@ describe("fetchFlagstand", () => {
           status: "SCHEDULED",
           track_name: "Bristol",
           season_name: "2026 S1",
+          series_name: "UMP Modifieds",
           league_name: "SSR Oval",
         },
       ]);
@@ -68,6 +70,7 @@ describe("fetchFlagstand", () => {
       trackName: "Charlotte",
       leagueName: "SSR Oval",
       seasonName: "2026 S1",
+      seriesName: "UMP Modifieds",
     });
     expect(result.nextRace).toEqual({
       id: "race-next",
@@ -77,6 +80,7 @@ describe("fetchFlagstand", () => {
       trackName: "Bristol",
       leagueName: "SSR Oval",
       seasonName: "2026 S1",
+      seriesName: "UMP Modifieds",
     });
 
     expect(mockSql).toHaveBeenCalledTimes(3);

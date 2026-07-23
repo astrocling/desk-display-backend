@@ -120,7 +120,8 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
       "scheduledAt": "2026-07-20T00:00:00.000Z",
       "trackName": "Main Track",
       "leagueName": "League A",
-      "seasonName": "2026 Season"
+      "seasonName": "2026 Season",
+      "seriesName": "UMP Modifieds"
     },
     "nextRace": {
       "id": "uuid",
@@ -129,6 +130,7 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
       "trackName": "Main Track",
       "leagueName": "League A",
       "seasonName": "2026 Season",
+      "seriesName": "UMP Modifieds",
       "status": "SCHEDULED"
     }
   },
@@ -156,7 +158,8 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `flagstand.*.scheduledAt` | string | ISO timestamp |
 | `flagstand.*.trackName` | string \| null | Track name |
 | `flagstand.*.leagueName` | string | League name |
-| `flagstand.*.seasonName` | string | Season name |
+| `flagstand.*.seasonName` | string | Season label (`Season.name`) |
+| `flagstand.*.seriesName` | string \| null | Series name (`Series.name`); null when season has no series |
 | `flagstand.nextRace.status` | string | e.g. `SCHEDULED`, `ACTIVE` |
 | `updatedAt` | string | ISO timestamp when cache was written |
 

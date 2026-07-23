@@ -30,6 +30,7 @@ interface RaceRow {
   status?: string;
   track_name: string | null;
   season_name: string;
+  series_name: string | null;
   league_name: string;
 }
 
@@ -41,6 +42,7 @@ function mapRaceSummary(row: RaceRow): FlagstandRaceSummary {
     trackName: row.track_name,
     leagueName: row.league_name,
     seasonName: row.season_name,
+    seriesName: row.series_name,
   };
 }
 
@@ -76,11 +78,13 @@ async function fetchNextRace(
           rn.status,
           t.name AS track_name,
           s.name AS season_name,
+          se.name AS series_name,
           l.name AS league_name
         FROM "RaceNight" rn
         JOIN "Season" s ON s.id = rn."seasonId"
         JOIN "League" l ON l.id = s."leagueId"
         LEFT JOIN "Track" t ON t.id = rn."trackId"
+        LEFT JOIN "Series" se ON se.id = s."seriesId"
         WHERE l."organizationId" = ${orgId}
           AND rn.status IN ('SCHEDULED', 'ACTIVE')
           AND rn."scheduledAt" > NOW()
@@ -97,11 +101,13 @@ async function fetchNextRace(
           rn.status,
           t.name AS track_name,
           s.name AS season_name,
+          se.name AS series_name,
           l.name AS league_name
         FROM "RaceNight" rn
         JOIN "Season" s ON s.id = rn."seasonId"
         JOIN "League" l ON l.id = s."leagueId"
         LEFT JOIN "Track" t ON t.id = rn."trackId"
+        LEFT JOIN "Series" se ON se.id = s."seriesId"
         WHERE l."organizationId" = ${orgId}
           AND rn.status IN ('SCHEDULED', 'ACTIVE')
           AND rn."scheduledAt" > NOW()
@@ -127,11 +133,13 @@ async function fetchLastResult(
           rn."scheduledAt",
           t.name AS track_name,
           s.name AS season_name,
+          se.name AS series_name,
           l.name AS league_name
         FROM "RaceNight" rn
         JOIN "Season" s ON s.id = rn."seasonId"
         JOIN "League" l ON l.id = s."leagueId"
         LEFT JOIN "Track" t ON t.id = rn."trackId"
+        LEFT JOIN "Series" se ON se.id = s."seriesId"
         WHERE l."organizationId" = ${orgId}
           AND rn.status = 'COMPLETE'
           AND s."isActive" = true
@@ -146,11 +154,13 @@ async function fetchLastResult(
           rn."scheduledAt",
           t.name AS track_name,
           s.name AS season_name,
+          se.name AS series_name,
           l.name AS league_name
         FROM "RaceNight" rn
         JOIN "Season" s ON s.id = rn."seasonId"
         JOIN "League" l ON l.id = s."leagueId"
         LEFT JOIN "Track" t ON t.id = rn."trackId"
+        LEFT JOIN "Series" se ON se.id = s."seriesId"
         WHERE l."organizationId" = ${orgId}
           AND rn.status = 'COMPLETE'
           AND s."isActive" = true

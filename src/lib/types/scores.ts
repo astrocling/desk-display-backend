@@ -49,7 +49,10 @@ export interface FlagstandRaceSummary {
   scheduledAt: string;
   trackName: string | null;
   leagueName: string;
+  /** iRacing / hub season label (Season.name). */
   seasonName: string;
+  /** Linked Series.name for card display; null when season has no series. */
+  seriesName: string | null;
 }
 
 export interface FlagstandNextRace extends FlagstandRaceSummary {
