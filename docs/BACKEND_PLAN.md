@@ -108,7 +108,10 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
     "matchup": "Astros @ Mariners",
     "whenEt": "Fri 7/24 7:40 PM",
     "record": "50-54",
-    "standingLine": "3rd AL West · 2 GB"
+    "standingLine": "3rd AL West · 2 GB",
+    "teamAbbr": "HOU",
+    "opponentAbbr": "SEA",
+    "homeAway": "away"
   },
   "flagstand": {
     "lastResult": {
@@ -143,6 +146,9 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `mlb.whenEt` | string \| null | Next tip-off in `America/New_York`, e.g. `"Fri 7/24 7:40 PM"`; null when no `nextGame` |
 | `mlb.record` | string \| null | Overall W-L for `MLB_TEAM`, e.g. `"50-54"`; null if standings unavailable |
 | `mlb.standingLine` | string \| null | Division place + GB/GU, e.g. `"3rd AL West · 2 GB"` or `"1st AL West · 1.5 GU"` |
+| `mlb.teamAbbr` | string \| null | Configured `MLB_TEAM` abbreviation, e.g. `"HOU"` |
+| `mlb.opponentAbbr` | string \| null | Opponent abbreviation for the described non-live game; null when live or no game |
+| `mlb.homeAway` | `"home"` \| `"away"` \| null | Configured team's home/away for that game; null when live or no game |
 | `flagstand.lastResult` | object \| null | Most recent completed race |
 | `flagstand.nextRace` | object \| null | Next scheduled/active race |
 | `flagstand.*.id` | string | Race night UUID |

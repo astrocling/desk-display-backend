@@ -125,6 +125,22 @@ function formatMatchup(
   return `${usNick} @ ${oppNick}`;
 }
 
+function matchupParticipants(
+  teamAbbr: string,
+  competition: EspnCompetition,
+): { teamAbbr: string; opponentAbbr: string; homeAway: "home" | "away" } | null {
+  const teamCompetitor = competition.competitors?.find(
+    (c) => c.team.abbreviation.toUpperCase() === teamAbbr,
+  );
+  const opponent = competition.competitors?.find((c) => c !== teamCompetitor);
+  if (!teamCompetitor || !opponent) return null;
+  return {
+    teamAbbr: teamCompetitor.team.abbreviation.toUpperCase(),
+    opponentAbbr: opponent.team.abbreviation.toUpperCase(),
+    homeAway: teamCompetitor.homeAway,
+  };
+}
+
 /** Format an ISO instant as Eastern wall time, e.g. "Fri 7/24 7:40 PM". */
 export function formatWhenEt(iso: string): string {
   const formatted = new Intl.DateTimeFormat("en-US", {
@@ -474,12 +490,29 @@ function withDisplayFields(
       ? formatWhenEt(scoreFields.nextGame)
       : null;
 
+  if (!scoreFields.live && matchupCompetition) {
+    const parts = matchupParticipants(teamAbbr, matchupCompetition);
+    return {
+      ...scoreFields,
+      matchup,
+      whenEt,
+      record: standing?.record ?? null,
+      standingLine: standing?.standingLine ?? null,
+      teamAbbr: teamAbbr.toUpperCase(),
+      opponentAbbr: parts?.opponentAbbr ?? null,
+      homeAway: parts?.homeAway ?? null,
+    };
+  }
+
   return {
     ...scoreFields,
     matchup,
     whenEt,
     record: standing?.record ?? null,
     standingLine: standing?.standingLine ?? null,
+    teamAbbr: teamAbbr.toUpperCase(),
+    opponentAbbr: null,
+    homeAway: null,
   };
 }
 
