@@ -233,7 +233,13 @@ describe("fetchMlb", () => {
       whenEt: null,
       record: "50-54",
       standingLine: "3rd AL West · 2 GB",
+      teamAbbr: "HOU",
+      opponentAbbr: null,
+      homeAway: null,
     });
+    expect(result.teamAbbr).toBe("HOU");
+    expect(result.opponentAbbr).toBeNull();
+    expect(result.homeAway).toBeNull();
   });
 
   it("returns final score and searches for the next scheduled game", async () => {
@@ -269,7 +275,13 @@ describe("fetchMlb", () => {
       whenEt: "Fri 7/24 7:40 PM",
       record: "50-54",
       standingLine: "3rd AL West · 2 GB",
+      teamAbbr: "HOU",
+      opponentAbbr: "SEA",
+      homeAway: "away",
     });
+    expect(result.teamAbbr).toBe("HOU");
+    expect(result.opponentAbbr).toBe("SEA");
+    expect(result.homeAway).toBe("away");
   });
 
   it("formats an away matchup as Astros @ Rangers", async () => {
@@ -291,6 +303,9 @@ describe("fetchMlb", () => {
     expect(result.matchup).toBe("Astros @ Rangers");
     expect(result.live).toBe(false);
     expect(result.nextGame).toBe("2026-07-24T23:00:00Z");
+    expect(result.teamAbbr).toBe("HOU");
+    expect(result.opponentAbbr).toBe("TEX");
+    expect(result.homeAway).toBe("away");
   });
 
   it("formats a home matchup as Astros vs. Rangers", async () => {
@@ -310,6 +325,9 @@ describe("fetchMlb", () => {
     const result = await fetchMlb("HOU");
 
     expect(result.matchup).toBe("Astros vs. Rangers");
+    expect(result.homeAway).toBe("home");
+    expect(result.teamAbbr).toBe("HOU");
+    expect(result.opponentAbbr).toBe("TEX");
   });
 
   it("uses GU for a division leader based on second place games behind", async () => {
@@ -359,6 +377,9 @@ describe("fetchMlb", () => {
       whenEt: "Fri 7/24 7:40 PM",
       record: null,
       standingLine: null,
+      teamAbbr: "HOU",
+      opponentAbbr: "SEA",
+      homeAway: "away",
     });
   });
 

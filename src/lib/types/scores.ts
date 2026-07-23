@@ -34,6 +34,13 @@ export interface MlbScores {
    * Null if standings unavailable.
    */
   standingLine: string | null;
+
+  /** Configured MLB_TEAM abbreviation, e.g. "HOU". */
+  teamAbbr: string | null;
+  /** Opponent abbreviation for the described non-live game; null when live / no game. */
+  opponentAbbr: string | null;
+  /** Configured team's home/away for that game; null when live / no game. */
+  homeAway: "home" | "away" | null;
 }
 
 export interface FlagstandRaceSummary {
