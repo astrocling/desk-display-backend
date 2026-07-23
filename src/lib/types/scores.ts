@@ -10,6 +10,30 @@ export interface MlbScores {
   inning: string | null;
   /** ISO start time for the next upcoming game when not live. */
   nextGame: string | null;
+
+  /**
+   * Baseball-style matchup using nicknames for MLB_TEAM vs opponent.
+   * Home: "Astros vs. Rangers"
+   * Away: "Astros @ Rangers"
+   * Null when no upcoming/current non-live game context.
+   */
+  matchup: string | null;
+
+  /**
+   * Next/upcoming tip-off in America/New_York.
+   * Format: "Fri 7/24 7:40 PM" (abbrev weekday, no leading zero on month/day/hour).
+   * Null when no nextGame.
+   */
+  whenEt: string | null;
+
+  /** Overall W-L for MLB_TEAM, e.g. "50-54". Null if standings unavailable. */
+  record: string | null;
+
+  /**
+   * Division line for MLB_TEAM, e.g. "3rd AL West · 2 GB" or "1st AL West · 1.5 GU".
+   * Null if standings unavailable.
+   */
+  standingLine: string | null;
 }
 
 export interface FlagstandRaceSummary {

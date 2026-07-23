@@ -101,10 +101,14 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 ```json
 {
   "mlb": {
-    "live": true,
-    "score": "4-2",
-    "inning": "Top 7",
-    "nextGame": null
+    "live": false,
+    "score": null,
+    "inning": null,
+    "nextGame": "2026-07-24T23:40:00Z",
+    "matchup": "Astros @ Mariners",
+    "whenEt": "Fri 7/24 7:40 PM",
+    "record": "50-54",
+    "standingLine": "3rd AL West · 2 GB"
   },
   "flagstand": {
     "lastResult": {
@@ -135,6 +139,10 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `mlb.score` | string \| null | `{teamScore}-{opponentScore}` for `MLB_TEAM` |
 | `mlb.inning` | string \| null | e.g. `"Top 7"` while live |
 | `mlb.nextGame` | string \| null | ISO start of next game when not live |
+| `mlb.matchup` | string \| null | Nickname matchup; home `"Astros vs. Rangers"`, away `"Astros @ Rangers"`; null when live or no next game |
+| `mlb.whenEt` | string \| null | Next tip-off in `America/New_York`, e.g. `"Fri 7/24 7:40 PM"`; null when no `nextGame` |
+| `mlb.record` | string \| null | Overall W-L for `MLB_TEAM`, e.g. `"50-54"`; null if standings unavailable |
+| `mlb.standingLine` | string \| null | Division place + GB/GU, e.g. `"3rd AL West · 2 GB"` or `"1st AL West · 1.5 GU"` |
 | `flagstand.lastResult` | object \| null | Most recent completed race |
 | `flagstand.nextRace` | object \| null | Next scheduled/active race |
 | `flagstand.*.id` | string | Race night UUID |
