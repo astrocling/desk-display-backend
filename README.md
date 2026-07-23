@@ -45,8 +45,8 @@ npm run seed:airports
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `UPSTASH_REDIS_REST_URL` | yes | Upstash Redis REST endpoint |
-| `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash Redis token |
+| `UPSTASH_REDIS_REST_URL` or `KV_REST_API_URL` | yes | Upstash Redis REST endpoint (Vercel Marketplace sets `KV_*`) |
+| `UPSTASH_REDIS_REST_TOKEN` or `KV_REST_API_TOKEN` | yes | Upstash Redis token |
 | `CRON_SECRET` | yes | Bearer token for cron routes (Vercel injects this when set) |
 | `HOME_LAT` / `HOME_LON` | yes | Home weather coordinates |
 | `MLB_TEAM` | yes | MLB team abbreviation (e.g. `HOU`) |

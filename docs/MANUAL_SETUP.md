@@ -12,7 +12,7 @@ Agents implement code only. Complete these before production works.
 
 ## 3. Upstash Redis (Vercel Marketplace)
 - Add Upstash Redis integration to the project
-- Confirm `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` appear in env
+- Confirm Redis env appears (Marketplace usually sets `KV_REST_API_URL` + `KV_REST_API_TOKEN`; either those or `UPSTASH_REDIS_*` work)
 
 ## 4. Neon read-only role (SSR Hub project)
 In Neon SQL Editor on the **ssr-web** database:
