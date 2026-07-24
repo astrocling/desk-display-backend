@@ -40,10 +40,10 @@ Seed airports into Redis (needs Upstash credentials):
 
 ```bash
 npm run seed:airports
-npm run build:map-context   # refresh data/map JSON (OurAirports + fixtures)
+npm run build:map-context   # refresh data/map JSON (OurAirports + NASR airspace + interstates)
 ```
 
-`GET /api/map/context` reads committed `data/map/*.json` (or Redis after seed). It does **not** download or simplify GIS per request.
+`GET /api/map/context` reads committed `data/map/*.json` (or Redis after seed). It does **not** download or simplify GIS per request. Airspace comes from `@squawk/airspace-data` (FAA NASR-derived Class B/C/D shelves); interstates from the National Transportation Atlas.
 ## Environment variables
 
 | Variable | Required | Purpose |
@@ -71,7 +71,7 @@ Missing required vars throw at request time: `Missing required environment varia
 | `GET /api/timezones` | Cached sunrise/sunset by IANA zone |
 | `GET /api/scores` | Cached MLB + Flagstand |
 | `GET /api/airport?code=` | Airport lat/lon by ICAO (e.g. `KDAY`) |
-| `GET /api/map/context?lat=&lon=&radiusMi=` | Nearby towered airports + Class B/C/D rings (long CDN cache) |
+| `GET /api/map/context?lat=&lon=&radiusMi=` | Nearby towered airports + Class B/C/D shelves + interstates (long CDN cache) |
 
 ### Cron (Bearer auth)
 
@@ -81,7 +81,7 @@ Missing required vars throw at request time: `Missing required environment varia
 | `GET /api/cron/timezones` | `0 6 * * *` | Refresh sunrise/sunset |
 | `GET /api/cron/scores` | `*/15 * * * *` | Refresh scores |
 | `GET /api/cron/seed-airports` | manual | Re-seed airport hash |
-| `GET /api/cron/seed-map-context` | manual | Re-seed map towered/airspace blobs from `data/map` |
+| `GET /api/cron/seed-map-context` | manual | Re-seed map towered/airspace/highway blobs from `data/map` |
 
 Cron routes require:
 

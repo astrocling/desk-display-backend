@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "ROUTE_NUM": "I75" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-84.19, 40.05],
+          [-84.20, 39.95],
+          [-84.21, 39.85],
+          [-84.20, 39.75]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "ROUTE_NUM": "I70" },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [-84.45, 39.92],
+            [-84.30, 39.91],
+            [-84.15, 39.90]
+          ],
+          [
+            [-84.15, 39.90],
+            [-84.00, 39.89]
+          ]
+        ]
+      }
+    }
+  ]
+}
