@@ -620,5 +620,68 @@ export async function seedMapContextToRedis(): Promise<{
     redis.set(REDIS_KEYS.mapAirspace, rings),
   ]);
 
+  // Warm in-process cache for this isolate.
+  cachedMapData = { towered, rings };
+
   return { toweredCount: towered.length, ringCount: rings.length };
+}
+
+type MapDataBlobs = {
+  towered: ToweredAirport[];
+  rings: AirspaceRing[];
+};
+
+let cachedMapData: MapDataBlobs | null = null;
+
+async function readMapDataFromDisk(): Promise<MapDataBlobs> {
+  const [toweredText, ringsText] = await Promise.all([
+    readFile(TOWERED_AIRPORTS_PATH, "utf8"),
+    readFile(AIRSPACE_RINGS_PATH, "utf8"),
+  ]);
+  return {
+    towered: JSON.parse(toweredText) as ToweredAirport[],
+    rings: JSON.parse(ringsText) as AirspaceRing[],
+  };
+}
+
+async function readMapDataFromRedis(): Promise<MapDataBlobs | null> {
+  try {
+    const redis = getRedis();
+    const [towered, rings] = await Promise.all([
+      redis.get<ToweredAirport[]>(REDIS_KEYS.mapTowered),
+      redis.get<AirspaceRing[]>(REDIS_KEYS.mapAirspace),
+    ]);
+    if (!Array.isArray(towered) || !Array.isArray(rings)) {
+      return null;
+    }
+    return { towered, rings };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load towered + airspace blobs once per warm isolate.
+ * Prefer Redis (after seed); fall back to committed `data/map/*.json`
+ * so the route stays cheap and works without a prior seed cron.
+ */
+export async function loadMapContextData(): Promise<MapDataBlobs> {
+  if (cachedMapData) {
+    return cachedMapData;
+  }
+
+  const fromRedis = await readMapDataFromRedis();
+  if (fromRedis) {
+    cachedMapData = fromRedis;
+    return fromRedis;
+  }
+
+  const fromDisk = await readMapDataFromDisk();
+  cachedMapData = fromDisk;
+  return fromDisk;
+}
+
+/** Test helper — clears the in-process cache. */
+export function clearMapContextCacheForTests(): void {
+  cachedMapData = null;
 }

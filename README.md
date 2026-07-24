@@ -25,6 +25,7 @@ Read endpoints return whatever is in cache. Until a cron has run successfully, t
 | Sunrise / sunset by city | sunrise-sunset.org | daily at 06:00 UTC |
 | MLB + Flagstand scores | MLB Stats API, Neon (Flagstand) | every 15 minutes |
 | Airport lat/lon by ICAO | OurAirports (seeded once) | manual / seed cron |
+| Radar map context (towered + B/C/D rings) | Committed `data/map/*.json` (+ optional Redis seed) | build script / manual seed |
 
 ## Quick start
 
@@ -39,8 +40,10 @@ Seed airports into Redis (needs Upstash credentials):
 
 ```bash
 npm run seed:airports
+npm run build:map-context   # refresh data/map JSON (OurAirports + fixtures)
 ```
 
+`GET /api/map/context` reads committed `data/map/*.json` (or Redis after seed). It does **not** download or simplify GIS per request.
 ## Environment variables
 
 | Variable | Required | Purpose |
@@ -68,6 +71,7 @@ Missing required vars throw at request time: `Missing required environment varia
 | `GET /api/timezones` | Cached sunrise/sunset by IANA zone |
 | `GET /api/scores` | Cached MLB + Flagstand |
 | `GET /api/airport?code=` | Airport lat/lon by ICAO (e.g. `KDAY`) |
+| `GET /api/map/context?lat=&lon=&radiusMi=` | Nearby towered airports + Class B/C/D rings (long CDN cache) |
 
 ### Cron (Bearer auth)
 
@@ -77,6 +81,7 @@ Missing required vars throw at request time: `Missing required environment varia
 | `GET /api/cron/timezones` | `0 6 * * *` | Refresh sunrise/sunset |
 | `GET /api/cron/scores` | `*/15 * * * *` | Refresh scores |
 | `GET /api/cron/seed-airports` | manual | Re-seed airport hash |
+| `GET /api/cron/seed-map-context` | manual | Re-seed map towered/airspace blobs from `data/map` |
 
 Cron routes require:
 

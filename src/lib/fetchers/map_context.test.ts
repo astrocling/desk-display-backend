@@ -127,3 +127,18 @@ describe("douglasPeucker", () => {
     expect(douglasPeucker(dense, 1).length).toBeLessThan(dense.length);
   });
 });
+
+describe("loadMapContextData", () => {
+  it("loads committed data/map JSON after cache clear", async () => {
+    const {
+      clearMapContextCacheForTests,
+      loadMapContextData,
+    } = await import("./map_context");
+
+    clearMapContextCacheForTests();
+    const data = await loadMapContextData();
+    expect(data.towered.length).toBeGreaterThan(0);
+    expect(data.rings.length).toBeGreaterThan(0);
+    expect(data.towered.some((a) => a.icao === "KDAY")).toBe(true);
+  });
+});
