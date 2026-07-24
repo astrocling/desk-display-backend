@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "seed:airports": "tsx scripts/seed-airports.ts"
+    "seed:airports": "tsx scripts/seed-airports.ts",
+    "build:map-context": "tsx scripts/build-map-context-data.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

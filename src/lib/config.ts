@@ -3,6 +3,8 @@ export const REDIS_KEYS = {
   timezones: "timezones",
   scores: "scores",
   airports: "airports",
+  mapTowered: "map:towered",
+  mapAirspace: "map:airspace",
 } as const;
 
 export const TIMEZONE_CITIES = [

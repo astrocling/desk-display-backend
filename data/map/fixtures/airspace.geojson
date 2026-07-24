@@ -1,0 +1,76 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "CLASS_D",
+        "identifier": "KDAY",
+        "name": "DAYTON CLASS D"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25, 39.92],
+          [-84.20, 39.93],
+          [-84.18, 39.90],
+          [-84.22, 39.87],
+          [-84.25, 39.92]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "CLASS_C",
+        "identifier": "KCMH",
+        "name": "COLUMBUS CLASS C"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-83.10, 40.05],
+          [-82.80, 40.05],
+          [-82.80, 39.85],
+          [-83.10, 39.85],
+          [-83.10, 40.05]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "CLASS_B",
+        "identifier": "KCVG",
+        "name": "CINCINNATI CLASS B"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.90, 39.25],
+          [-84.40, 39.25],
+          [-84.40, 38.90],
+          [-84.90, 38.90],
+          [-84.90, 39.25]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "type": "CLASS_E2",
+        "identifier": "SKIP",
+        "name": "CLASS E ONLY"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-100.0, 40.0],
+          [-99.9, 40.1],
+          [-99.8, 40.0],
+          [-100.0, 40.0]
+        ]]
+      }
+    }
+  ]
+}
