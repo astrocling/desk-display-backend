@@ -3,5 +3,12 @@
     { "path": "/api/cron/weather", "schedule": "*/20 * * * *" },
     { "path": "/api/cron/timezones", "schedule": "0 6 * * *" },
     { "path": "/api/cron/scores", "schedule": "*/15 * * * *" }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "radar.theclingans.com" }],
+      "destination": "/radar"
+    }
   ]
 }
