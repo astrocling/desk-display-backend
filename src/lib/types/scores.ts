@@ -37,10 +37,29 @@ export interface MlbScores {
 
   /** Configured MLB_TEAM abbreviation, e.g. "HOU". */
   teamAbbr: string | null;
-  /** Opponent abbreviation for the described non-live game; null when live / no game. */
+  /**
+   * Opponent abbreviation for the current (live) or next (not-live) game.
+   * Null when no game context.
+   */
   opponentAbbr: string | null;
-  /** Configured team's home/away for that game; null when live / no game. */
+  /** Configured team's home/away for that game; null when no game. */
   homeAway: "home" | "away" | null;
+
+  /** Configured team runs while live (or final); null when not applicable. */
+  teamRuns: number | null;
+  /** Opponent runs while live (or final); null when not applicable. */
+  opponentRuns: number | null;
+
+  /** Live count / situation — null when not live or unavailable. */
+  balls: number | null;
+  strikes: number | null;
+  outs: number | null;
+  onFirst: boolean | null;
+  onSecond: boolean | null;
+  onThird: boolean | null;
+  /** Prefer ESPN shortName, e.g. "M. Murakami". */
+  batterName: string | null;
+  pitcherName: string | null;
 }
 
 export interface FlagstandRaceSummary {

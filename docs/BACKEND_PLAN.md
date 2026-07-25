@@ -96,7 +96,7 @@ Sunrise and sunset for fixed timezone cities (see `TIMEZONE_CITIES` in `src/lib/
 
 Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAGUE_IDS`).
 
-**Response** `200` — Redis key `scores`:
+**Response** `200` — Redis key `scores`. While a game may be live (cached `live` or `nextGame` ≤ now), the handler may refresh ESPN if `updatedAt` is older than ~45s, then rewrite Redis. On ESPN failure it returns the last good blob.
 
 ```json
 {
@@ -149,8 +149,13 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `mlb.record` | string \| null | Overall W-L for `MLB_TEAM`, e.g. `"50-54"`; null if standings unavailable |
 | `mlb.standingLine` | string \| null | Division place + GB/GU, e.g. `"3rd AL West · 2 GB"` or `"1st AL West · 1.5 GU"` |
 | `mlb.teamAbbr` | string \| null | Configured `MLB_TEAM` abbreviation, e.g. `"HOU"` |
-| `mlb.opponentAbbr` | string \| null | Opponent abbreviation for the described non-live game; null when live or no game |
-| `mlb.homeAway` | `"home"` \| `"away"` \| null | Configured team's home/away for that game; null when live or no game |
+| `mlb.opponentAbbr` | string \| null | Opponent abbreviation for live or next game; null when no game |
+| `mlb.homeAway` | `"home"` \| `"away"` \| null | Configured team's home/away; null when no game |
+| `mlb.teamRuns` | number \| null | Configured team runs (live/final) |
+| `mlb.opponentRuns` | number \| null | Opponent runs (live/final) |
+| `mlb.balls` / `strikes` / `outs` | number \| null | Live count; null when not live |
+| `mlb.onFirst` / `onSecond` / `onThird` | boolean \| null | Live base occupancy |
+| `mlb.batterName` / `pitcherName` | string \| null | ESPN short names while live |
 | `flagstand.lastResult` | object \| null | Most recent completed race |
 | `flagstand.nextRace` | object \| null | Next scheduled/active race |
 | `flagstand.*.id` | string | Race night UUID |

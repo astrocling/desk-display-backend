@@ -19,6 +19,26 @@ interface EspnCompetitor {
   };
 }
 
+interface EspnSituationAthlete {
+  shortName?: string;
+  displayName?: string;
+}
+
+interface EspnSituationPlayer {
+  athlete?: EspnSituationAthlete;
+}
+
+interface EspnSituation {
+  balls?: number;
+  strikes?: number;
+  outs?: number;
+  onFirst?: boolean;
+  onSecond?: boolean;
+  onThird?: boolean;
+  batter?: EspnSituationPlayer;
+  pitcher?: EspnSituationPlayer;
+}
+
 interface EspnCompetition {
   date: string;
   competitors: EspnCompetitor[];
@@ -30,6 +50,7 @@ interface EspnCompetition {
       shortDetail?: string;
     };
   };
+  situation?: EspnSituation;
 }
 
 interface EspnEvent {
@@ -257,11 +278,67 @@ function pickTodayTeamGame(
   return matches[0];
 }
 
+function parseRunCount(score: string | undefined): number | null {
+  if (score === undefined || score === "") {
+    return null;
+  }
+  const n = Number(score);
+  return Number.isFinite(n) ? n : null;
+}
+
+function situationPlayerName(player: EspnSituationPlayer | undefined): string | null {
+  const name = player?.athlete?.shortName || player?.athlete?.displayName;
+  return name?.trim() ? name.trim() : null;
+}
+
+function emptyLiveSituation(): Pick<
+  MlbScores,
+  | "teamRuns"
+  | "opponentRuns"
+  | "balls"
+  | "strikes"
+  | "outs"
+  | "onFirst"
+  | "onSecond"
+  | "onThird"
+  | "batterName"
+  | "pitcherName"
+> {
+  return {
+    teamRuns: null,
+    opponentRuns: null,
+    balls: null,
+    strikes: null,
+    outs: null,
+    onFirst: null,
+    onSecond: null,
+    onThird: null,
+    batterName: null,
+    pitcherName: null,
+  };
+}
+
 function buildScoreFields(
   teamAbbr: string,
   competition: EspnCompetition,
   nextGameIso: string | null,
-): Pick<MlbScores, "live" | "score" | "inning" | "nextGame"> {
+): Pick<
+  MlbScores,
+  | "live"
+  | "score"
+  | "inning"
+  | "nextGame"
+  | "teamRuns"
+  | "opponentRuns"
+  | "balls"
+  | "strikes"
+  | "outs"
+  | "onFirst"
+  | "onSecond"
+  | "onThird"
+  | "batterName"
+  | "pitcherName"
+> {
   const teamCompetitor = competition.competitors.find(
     (competitor) => competitor.team.abbreviation.toUpperCase() === teamAbbr,
   );
@@ -275,17 +352,31 @@ function buildScoreFields(
       score: null,
       inning: null,
       nextGame: nextGameIso,
+      ...emptyLiveSituation(),
     };
   }
 
   const state = competition.status.type.state;
+  const teamRuns = parseRunCount(teamCompetitor.score);
+  const opponentRuns = parseRunCount(opponentCompetitor.score);
 
   if (state === "in") {
+    const sit = competition.situation;
     return {
       live: true,
       score: formatTeamOpponentScore(teamCompetitor, opponentCompetitor),
       inning: formatInning(competition.status.type.detail),
       nextGame: null,
+      teamRuns,
+      opponentRuns,
+      balls: typeof sit?.balls === "number" ? sit.balls : null,
+      strikes: typeof sit?.strikes === "number" ? sit.strikes : null,
+      outs: typeof sit?.outs === "number" ? sit.outs : null,
+      onFirst: typeof sit?.onFirst === "boolean" ? sit.onFirst : null,
+      onSecond: typeof sit?.onSecond === "boolean" ? sit.onSecond : null,
+      onThird: typeof sit?.onThird === "boolean" ? sit.onThird : null,
+      batterName: situationPlayerName(sit?.batter),
+      pitcherName: situationPlayerName(sit?.pitcher),
     };
   }
 
@@ -295,6 +386,16 @@ function buildScoreFields(
       score: formatTeamOpponentScore(teamCompetitor, opponentCompetitor),
       inning: null,
       nextGame: nextGameIso,
+      teamRuns,
+      opponentRuns,
+      balls: null,
+      strikes: null,
+      outs: null,
+      onFirst: null,
+      onSecond: null,
+      onThird: null,
+      batterName: null,
+      pitcherName: null,
     };
   }
 
@@ -303,6 +404,7 @@ function buildScoreFields(
     score: null,
     inning: null,
     nextGame: competition.date ?? nextGameIso,
+    ...emptyLiveSituation(),
   };
 }
 
@@ -476,7 +578,7 @@ async function fetchDivisionStanding(
 }
 
 function withDisplayFields(
-  scoreFields: Pick<MlbScores, "live" | "score" | "inning" | "nextGame">,
+  scoreFields: ReturnType<typeof buildScoreFields>,
   matchupCompetition: EspnCompetition | null,
   teamAbbr: string,
   standing: DivisionStanding | null,
@@ -490,19 +592,11 @@ function withDisplayFields(
       ? formatWhenEt(scoreFields.nextGame)
       : null;
 
-  if (!scoreFields.live && matchupCompetition) {
-    const parts = matchupParticipants(teamAbbr, matchupCompetition);
-    return {
-      ...scoreFields,
-      matchup,
-      whenEt,
-      record: standing?.record ?? null,
-      standingLine: standing?.standingLine ?? null,
-      teamAbbr: teamAbbr.toUpperCase(),
-      opponentAbbr: parts?.opponentAbbr ?? null,
-      homeAway: parts?.homeAway ?? null,
-    };
-  }
+  // Live and not-live: prefer participants from the competition that owns the
+  // score/matchup context (today's game while live/pre/post, else next game).
+  const parts = matchupCompetition
+    ? matchupParticipants(teamAbbr, matchupCompetition)
+    : null;
 
   return {
     ...scoreFields,
@@ -511,16 +605,33 @@ function withDisplayFields(
     record: standing?.record ?? null,
     standingLine: standing?.standingLine ?? null,
     teamAbbr: teamAbbr.toUpperCase(),
-    opponentAbbr: null,
-    homeAway: null,
+    opponentAbbr: parts?.opponentAbbr ?? null,
+    homeAway: parts?.homeAway ?? null,
   };
 }
 
-export async function fetchMlb(teamAbbr: string): Promise<MlbScores> {
+export interface FetchMlbOptions {
+  /** Reuse standings from a prior blob; skips ESPN standings fetch. */
+  preserveStanding?: Pick<MlbScores, "record" | "standingLine"> | null;
+}
+
+export async function fetchMlb(
+  teamAbbr: string,
+  options?: FetchMlbOptions,
+): Promise<MlbScores> {
   const team = teamAbbr.toUpperCase();
   const todayScoreboard = await fetchScoreboard();
   const todayGame = pickTodayTeamGame(todayScoreboard.events, team);
-  const standingPromise = fetchDivisionStanding(team);
+  const standingPromise = options?.preserveStanding
+    ? Promise.resolve(
+        options.preserveStanding.record || options.preserveStanding.standingLine
+          ? {
+              record: options.preserveStanding.record ?? "",
+              standingLine: options.preserveStanding.standingLine ?? "",
+            }
+          : null,
+      )
+    : fetchDivisionStanding(team);
 
   if (todayGame) {
     const state = todayGame.competition.status.type.state;
@@ -528,7 +639,12 @@ export async function fetchMlb(teamAbbr: string): Promise<MlbScores> {
     if (state === "in") {
       const scoreFields = buildScoreFields(team, todayGame.competition, null);
       const standing = await standingPromise;
-      return withDisplayFields(scoreFields, null, team, standing);
+      return withDisplayFields(
+        scoreFields,
+        todayGame.competition,
+        team,
+        standing,
+      );
     }
 
     if (state === "pre") {
@@ -577,6 +693,7 @@ export async function fetchMlb(teamAbbr: string): Promise<MlbScores> {
       score: null,
       inning: null,
       nextGame: nextGame?.iso ?? null,
+      ...emptyLiveSituation(),
     },
     nextGame?.competition ?? null,
     team,

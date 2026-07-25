@@ -9,6 +9,16 @@ function buildEspnPayload(
     away: { abbr: string; nick?: string; score?: string };
     state: "pre" | "in" | "post";
     detail?: string;
+    situation?: {
+      balls?: number;
+      strikes?: number;
+      outs?: number;
+      onFirst?: boolean;
+      onSecond?: boolean;
+      onThird?: boolean;
+      batterShort?: string;
+      pitcherShort?: string;
+    };
   }>,
 ) {
   return {
@@ -42,6 +52,24 @@ function buildEspnPayload(
               detail: event.detail,
             },
           },
+          ...(event.situation
+            ? {
+                situation: {
+                  balls: event.situation.balls,
+                  strikes: event.situation.strikes,
+                  outs: event.situation.outs,
+                  onFirst: event.situation.onFirst,
+                  onSecond: event.situation.onSecond,
+                  onThird: event.situation.onThird,
+                  batter: event.situation.batterShort
+                    ? { athlete: { shortName: event.situation.batterShort } }
+                    : undefined,
+                  pitcher: event.situation.pitcherShort
+                    ? { athlete: { shortName: event.situation.pitcherShort } }
+                    : undefined,
+                },
+              }
+            : {}),
         },
       ],
     })),
@@ -215,6 +243,16 @@ describe("fetchMlb", () => {
         home: { abbr: "NYY", nick: "Yankees", score: "2" },
         state: "in",
         detail: "Top 7th",
+        situation: {
+          balls: 2,
+          strikes: 1,
+          outs: 1,
+          onFirst: true,
+          onSecond: false,
+          onThird: false,
+          batterShort: "A. Judge",
+          pitcherShort: "F. Valdez",
+        },
       },
     ]);
 
@@ -234,12 +272,19 @@ describe("fetchMlb", () => {
       record: "50-54",
       standingLine: "3rd AL West · 2 GB",
       teamAbbr: "HOU",
-      opponentAbbr: null,
-      homeAway: null,
+      opponentAbbr: "NYY",
+      homeAway: "away",
+      teamRuns: 4,
+      opponentRuns: 2,
+      balls: 2,
+      strikes: 1,
+      outs: 1,
+      onFirst: true,
+      onSecond: false,
+      onThird: false,
+      batterName: "A. Judge",
+      pitcherName: "F. Valdez",
     });
-    expect(result.teamAbbr).toBe("HOU");
-    expect(result.opponentAbbr).toBeNull();
-    expect(result.homeAway).toBeNull();
   });
 
   it("returns final score and searches for the next scheduled game", async () => {
@@ -278,6 +323,16 @@ describe("fetchMlb", () => {
       teamAbbr: "HOU",
       opponentAbbr: "SEA",
       homeAway: "away",
+      teamRuns: 5,
+      opponentRuns: 3,
+      balls: null,
+      strikes: null,
+      outs: null,
+      onFirst: null,
+      onSecond: null,
+      onThird: null,
+      batterName: null,
+      pitcherName: null,
     });
     expect(result.teamAbbr).toBe("HOU");
     expect(result.opponentAbbr).toBe("SEA");
@@ -380,6 +435,16 @@ describe("fetchMlb", () => {
       teamAbbr: "HOU",
       opponentAbbr: "SEA",
       homeAway: "away",
+      teamRuns: null,
+      opponentRuns: null,
+      balls: null,
+      strikes: null,
+      outs: null,
+      onFirst: null,
+      onSecond: null,
+      onThird: null,
+      batterName: null,
+      pitcherName: null,
     });
   });
 
