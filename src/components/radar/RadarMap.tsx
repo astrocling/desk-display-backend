@@ -6,7 +6,6 @@ import {
   Marker,
   NavigationControl,
   ScaleControl,
-  type GeoJSONSource,
   type MapMouseEvent,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -17,7 +16,6 @@ import {
   ADSB_VIEWPORT_MAX_NM,
   MAP_CONTEXT_MAX_MI,
   MAP_CONTEXT_MIN_MI,
-  OVERLAY_VIEWPORT_MAX_MI,
   clamp,
   haversineMiles,
   milesToNm,
@@ -34,6 +32,7 @@ import {
   type AircraftNotable,
 } from "./radarFormat";
 import type {
+  AirspaceRing,
   AircraftFeatureProps,
   HomeResponse,
   MapContextResponse,
@@ -73,20 +72,10 @@ const ADSB_POLL_MS = 10_000;
 const OVERLAY_DEBOUNCE_MS = 400;
 const RAIN_REFRESH_MS = 5 * 60_000;
 
-const SOURCE_RINGS = "radar-rings";
 const SOURCE_RAIN = "radar-rain";
 const LAYER_RAIN = "radar-rain-layer";
 
-const EMPTY_FC: GeoJSON.FeatureCollection = {
-  type: "FeatureCollection",
-  features: [],
-};
-
 type AircraftPoint = AircraftFeatureProps & { lat: number; lon: number };
-
-function emptyFeatureCollection(): GeoJSON.FeatureCollection {
-  return { type: "FeatureCollection", features: [] };
-}
 
 function labelForAircraft(ac: Record<string, unknown>): string {
   const flight = typeof ac.flight === "string" ? ac.flight.trim() : "";
@@ -276,116 +265,57 @@ function makeAirportEl(airport: ToweredAirport): HTMLDivElement {
   return el;
 }
 
-function ringsToGeoJSON(
-  rings: MapContextResponse["rings"],
-): GeoJSON.FeatureCollection {
-  return {
-    type: "FeatureCollection",
-    features: rings.map((ring) => {
-      const coords = ring.points.map(
-        ([lat, lon]) => [lon, lat] as [number, number],
-      );
-      if (coords.length > 0) {
-        const [firstLon, firstLat] = coords[0];
-        const last = coords[coords.length - 1];
-        if (last[0] !== firstLon || last[1] !== firstLat) {
-          coords.push([firstLon, firstLat]);
-        }
-      }
-      return {
-        type: "Feature" as const,
-        geometry: { type: "Polygon" as const, coordinates: [coords] },
-        properties: { class: ring.class, id: ring.id },
-      };
-    }),
-  };
+function ringStrokeColor(airspaceClass: AirspaceRing["class"]): string {
+  if (airspaceClass === "C") return COLORS.airspaceC;
+  return COLORS.airspaceB; // B and D share blue on the device palette
 }
 
-const RING_LAYER_IDS = [
-  "radar-rings-fill",
-  "radar-rings-line-bc",
-  "radar-rings-line-d",
-] as const;
-
-function removeRingLayers(map: MapLibreMap) {
-  for (const id of RING_LAYER_IDS) {
-    if (map.getLayer(id)) {
-      map.removeLayer(id);
-    }
-  }
-  if (map.getSource(SOURCE_RINGS)) {
-    map.removeSource(SOURCE_RINGS);
-  }
-}
-
-/** Install/replace B/C/D airspace polygon layers (MapLibre 6-safe). */
-function setRingFeatures(
+/** Project airspace rings into an SVG overlay (avoids MapLibre GeoJSON tile quirks). */
+function paintRingSvg(
   map: MapLibreMap,
-  rings: MapContextResponse["rings"],
+  svg: SVGSVGElement,
+  rings: AirspaceRing[],
 ) {
-  if (!map.isStyleLoaded()) return;
+  while (svg.firstChild) {
+    svg.removeChild(svg.firstChild);
+  }
 
-  const data = ringsToGeoJSON(rings);
-  removeRingLayers(map);
+  const size = map.getCanvas().getBoundingClientRect();
+  svg.setAttribute("viewBox", `0 0 ${size.width} ${size.height}`);
+  svg.setAttribute("width", String(size.width));
+  svg.setAttribute("height", String(size.height));
 
-  map.addSource(SOURCE_RINGS, { type: "geojson", data });
-  map.addLayer({
-    id: "radar-rings-fill",
-    type: "fill",
-    source: SOURCE_RINGS,
-    paint: {
-      "fill-color": [
-        "match",
-        ["get", "class"],
-        "B",
-        COLORS.airspaceB,
-        "C",
-        COLORS.airspaceC,
-        "D",
-        COLORS.airspaceD,
-        "#64748b",
-      ],
-      "fill-opacity": 0.18,
-    },
-  });
-  map.addLayer({
-    id: "radar-rings-line-bc",
-    type: "line",
-    source: SOURCE_RINGS,
-    filter: [
-      "any",
-      ["==", ["get", "class"], "B"],
-      ["==", ["get", "class"], "C"],
-    ],
-    paint: {
-      "line-color": [
-        "match",
-        ["get", "class"],
-        "B",
-        COLORS.airspaceB,
-        "C",
-        COLORS.airspaceC,
-        "#64748b",
-      ],
-      "line-width": 2,
-    },
-  });
-  map.addLayer({
-    id: "radar-rings-line-d",
-    type: "line",
-    source: SOURCE_RINGS,
-    filter: ["==", ["get", "class"], "D"],
-    paint: {
-      "line-color": COLORS.airspaceD,
-      "line-width": 1.75,
-      "line-dasharray": [2, 2],
-    },
-  });
+  for (const ring of rings) {
+    if (ring.points.length < 3) continue;
+    const poly = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "polygon",
+    );
+    const pts = ring.points
+      .map(([lat, lon]) => {
+        const p = map.project([lon, lat]);
+        return `${p.x},${p.y}`;
+      })
+      .join(" ");
+    const color = ringStrokeColor(ring.class);
+    poly.setAttribute("points", pts);
+    poly.setAttribute("fill", color);
+    poly.setAttribute("fill-opacity", "0.22");
+    poly.setAttribute("stroke", color);
+    poly.setAttribute("stroke-width", ring.class === "D" ? "2" : "2.5");
+    poly.setAttribute("stroke-opacity", "1");
+    if (ring.class === "D") {
+      poly.setAttribute("stroke-dasharray", "5 4");
+    }
+    svg.appendChild(poly);
+  }
 }
 
 export function RadarMap() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const ringSvgRef = useRef<SVGSVGElement | null>(null);
+  const ringsRef = useRef<AirspaceRing[]>([]);
   const homeRef = useRef<{ lat: number; lon: number }>({
     lat: 40.03353,
     lon: -84.19588,
@@ -606,18 +536,21 @@ export function RadarMap() {
     syncAircraftMarkers,
   ]);
 
+  const redrawRings = useCallback(() => {
+    const map = mapRef.current;
+    const svg = ringSvgRef.current;
+    if (!map || !svg) return;
+    paintRingSvg(map, svg, ringsRef.current);
+  }, []);
+
   const fetchOverlays = useCallback(async () => {
     const map = mapRef.current;
     const vp = readViewport();
     if (!map || !vp) return;
 
-    if (vp.radiusMi > OVERLAY_VIEWPORT_MAX_MI) {
-      setOverlaysActive(false);
-      clearAirportMarkers();
-      setSourceData(map, SOURCE_RINGS, emptyFeatureCollection());
-      return;
-    }
-
+    // Always request up to the API max around center. Large monitors often have a
+    // viewport radius > 50 mi at normal local zooms; blanking overlays there hid
+    // airspace rings even though airports/rings data was available.
     setOverlaysActive(true);
     const radiusMi = clamp(vp.radiusMi, MAP_CONTEXT_MIN_MI, MAP_CONTEXT_MAX_MI);
     try {
@@ -629,11 +562,12 @@ export function RadarMap() {
       }
       const ctx = (await res.json()) as MapContextResponse;
       syncAirportMarkers(map, ctx.airports ?? []);
-      setSourceData(map, SOURCE_RINGS, ringsToGeoJSON(ctx.rings ?? []));
+      ringsRef.current = ctx.rings ?? [];
+      redrawRings();
     } catch {
       // keep last-good overlays
     }
-  }, [clearAirportMarkers, readViewport, syncAirportMarkers]);
+  }, [readViewport, redrawRings, syncAirportMarkers]);
 
   const scheduleOverlays = useCallback(() => {
     if (overlayTimerRef.current) {
@@ -788,10 +722,18 @@ export function RadarMap() {
       container: containerRef.current,
       style: BASEMAP_STYLE,
       center: [homeRef.current.lon, homeRef.current.lat],
-      zoom: 9,
+      // Zoom 10 keeps viewport radius ≤50 mi so airspace overlays load immediately.
+      zoom: 10,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+
+    const ringSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ringSvg.setAttribute("aria-hidden", "true");
+    ringSvg.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible";
+    map.getCanvasContainer().appendChild(ringSvg);
+    ringSvgRef.current = ringSvg;
 
     map.addControl(
       new NavigationControl({ visualizePitch: false }),
@@ -816,64 +758,7 @@ export function RadarMap() {
     map.on("load", () => {
       if (cancelled) return;
       map.resize();
-
-      try {
-        map.addSource(SOURCE_RINGS, { type: "geojson", data: EMPTY_FC });
-        map.addLayer({
-          id: "radar-rings-fill",
-          type: "fill",
-          source: SOURCE_RINGS,
-          paint: {
-            "fill-color": [
-              "match",
-              ["get", "class"],
-              "B",
-              COLORS.airspaceB,
-              "C",
-              COLORS.airspaceC,
-              "D",
-              COLORS.airspaceD,
-              "#64748b",
-            ],
-            "fill-opacity": 0.14,
-          },
-        });
-        map.addLayer({
-          id: "radar-rings-line-bc",
-          type: "line",
-          source: SOURCE_RINGS,
-          filter: [
-            "any",
-            ["==", ["get", "class"], "B"],
-            ["==", ["get", "class"], "C"],
-          ],
-          paint: {
-            "line-color": [
-              "match",
-              ["get", "class"],
-              "B",
-              COLORS.airspaceB,
-              "C",
-              COLORS.airspaceC,
-              "#64748b",
-            ],
-            "line-width": 1.75,
-          },
-        });
-        map.addLayer({
-          id: "radar-rings-line-d",
-          type: "line",
-          source: SOURCE_RINGS,
-          filter: ["==", ["get", "class"], "D"],
-          paint: {
-            "line-color": COLORS.airspaceD,
-            "line-width": 1.5,
-            "line-dasharray": [2, 2],
-          },
-        });
-      } catch (err) {
-        console.warn("Airspace ring layers unavailable", err);
-      }
+      redrawRings();
 
       map.on("click", (e: MapMouseEvent) => {
         const target = e.originalEvent.target;
@@ -940,6 +825,8 @@ export function RadarMap() {
       void fetchAdsb();
     };
     map.on("moveend", onMoveEnd);
+    map.on("move", redrawRings);
+    map.on("resize", redrawRings);
 
     return () => {
       cancelled = true;
@@ -948,6 +835,10 @@ export function RadarMap() {
       clearAircraftMarkers();
       clearAirportMarkers();
       map.off("moveend", onMoveEnd);
+      map.off("move", redrawRings);
+      map.off("resize", redrawRings);
+      ringSvg.remove();
+      ringSvgRef.current = null;
       map.remove();
       mapRef.current = null;
     };
