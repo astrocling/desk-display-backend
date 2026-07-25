@@ -2,6 +2,8 @@ import type { MlbScores } from "@/lib/types/scores";
 
 const ESPN_SCOREBOARD_URL =
   "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard";
+const ESPN_SUMMARY_URL =
+  "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary";
 const ESPN_TEAM_URL =
   "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams";
 const ESPN_STANDINGS_URL =
@@ -56,8 +58,21 @@ interface EspnCompetition {
 }
 
 interface EspnEvent {
+  id?: string;
   date: string;
   competitions: EspnCompetition[];
+}
+
+interface EspnGameSummary {
+  boxscore?: {
+    players?: Array<{
+      statistics?: Array<{
+        type?: string;
+        labels?: string[];
+        athletes?: Array<{ athlete?: { id?: string }; stats?: string[] }>;
+      }>;
+    }>;
+  };
 }
 
 interface EspnScoreboard {
@@ -296,6 +311,44 @@ function situationPlayerName(player: EspnSituationPlayer | undefined): string | 
 function situationSummary(player: EspnSituationPlayer | undefined): string | null {
   const s = player?.summary?.trim();
   return s ? s : null;
+}
+
+function situationPlayerId(player: EspnSituationPlayer | undefined): string | null {
+  if (player?.playerId === undefined || player.playerId === null) return null;
+  return String(player.playerId);
+}
+
+function boxscoreStat(
+  summary: EspnGameSummary,
+  playerId: string,
+  statType: "batting" | "pitching",
+  label: string,
+): string | null {
+  for (const group of summary.boxscore?.players ?? []) {
+    for (const block of group.statistics ?? []) {
+      if (block.type !== statType) continue;
+      const idx = (block.labels ?? []).indexOf(label);
+      if (idx < 0) continue;
+      for (const row of block.athletes ?? []) {
+        if (String(row.athlete?.id ?? "") !== playerId) continue;
+        const v = row.stats?.[idx]?.trim();
+        if (v) return v;
+      }
+    }
+  }
+  return null;
+}
+
+async function fetchGameSummary(eventId: string): Promise<EspnGameSummary | null> {
+  try {
+    const response = await fetch(
+      `${ESPN_SUMMARY_URL}?event=${encodeURIComponent(eventId)}`,
+    );
+    if (!response.ok) return null;
+    return (await response.json()) as EspnGameSummary;
+  } catch {
+    return null;
+  }
 }
 
 function emptyLiveSituation(): Pick<
@@ -665,9 +718,26 @@ export async function fetchMlb(
 
     if (state === "in") {
       const scoreFields = buildScoreFields(team, todayGame.competition, null);
+      const eventId = todayGame.event.id;
+      const sit = todayGame.competition.situation;
+      let batterAvg: string | null = null;
+      let pitcherEra: string | null = null;
+      if (eventId) {
+        const summary = await fetchGameSummary(String(eventId));
+        if (summary) {
+          const batterId = situationPlayerId(sit?.batter);
+          const pitcherId = situationPlayerId(sit?.pitcher);
+          if (batterId) {
+            batterAvg = boxscoreStat(summary, batterId, "batting", "AVG");
+          }
+          if (pitcherId) {
+            pitcherEra = boxscoreStat(summary, pitcherId, "pitching", "ERA");
+          }
+        }
+      }
       const standing = await standingPromise;
       return withDisplayFields(
-        scoreFields,
+        { ...scoreFields, batterAvg, pitcherEra },
         todayGame.competition,
         team,
         standing,

@@ -186,13 +186,26 @@ const houLeadingStandings = buildStandingsPayload("AL West", [
 
 function mockEspnFetch(handlers: {
   scoreboard?: (url: string) => unknown;
+  summary?: (url: string) => unknown;
   team?: unknown;
   standings?: unknown | (() => unknown);
   teamOk?: boolean;
   standingsOk?: boolean;
+  summaryOk?: boolean;
 }) {
   vi.mocked(fetch).mockImplementation(async (input) => {
     const url = String(input);
+
+    if (url.includes("/summary") && url.includes("event=")) {
+      if (handlers.summaryOk === false) {
+        return { ok: false, status: 500 } as Response;
+      }
+      const body = handlers.summary?.(url);
+      if (body === undefined) {
+        return { ok: false, status: 404 } as Response;
+      }
+      return { ok: true, json: async () => body } as Response;
+    }
 
     if (url.includes("/standings")) {
       if (handlers.standingsOk === false) {
@@ -483,5 +496,96 @@ describe("fetchMlb", () => {
     await expect(fetchMlb("HOU")).rejects.toThrow(
       "ESPN scoreboard request failed: 503",
     );
+  });
+
+  it("enriches live batter AVG and pitcher ERA from game summary boxscore", async () => {
+    const payload = buildEspnPayload([
+      {
+        date: "2026-07-23T23:00:00Z",
+        away: { abbr: "HOU", nick: "Astros", score: "4" },
+        home: { abbr: "NYY", nick: "Yankees", score: "2" },
+        state: "in",
+        detail: "Top 7th",
+        situation: {
+          batterShort: "A. Judge",
+          batterId: 33192,
+          batterSummary: "1-3, BB",
+          pitcherShort: "F. Valdez",
+          pitcherId: 42501,
+          pitcherSummary: "5.0 IP, 2 ER",
+        },
+      },
+    ]);
+
+    mockEspnFetch({
+      scoreboard: () => payload,
+      summary: () => ({
+        boxscore: {
+          players: [
+            {
+              statistics: [
+                {
+                  type: "batting",
+                  labels: ["H-AB", "AVG"],
+                  athletes: [
+                    { athlete: { id: "33192" }, stats: ["1-3", ".311"] },
+                  ],
+                },
+              ],
+            },
+            {
+              statistics: [
+                {
+                  type: "pitching",
+                  labels: ["IP", "ERA"],
+                  athletes: [
+                    { athlete: { id: "42501" }, stats: ["5.0", "2.85"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+
+    const result = await fetchMlb("HOU");
+    expect(result.batterAvg).toBe(".311");
+    expect(result.pitcherEra).toBe("2.85");
+    expect(result.batterSummary).toBe("1-3, BB");
+    expect(result.pitcherSummary).toBe("5.0 IP, 2 ER");
+  });
+
+  it("keeps names and summaries when game summary fetch fails", async () => {
+    const payload = buildEspnPayload([
+      {
+        date: "2026-07-23T23:00:00Z",
+        away: { abbr: "HOU", nick: "Astros", score: "4" },
+        home: { abbr: "NYY", nick: "Yankees", score: "2" },
+        state: "in",
+        detail: "Top 7th",
+        situation: {
+          batterShort: "A. Judge",
+          batterId: 33192,
+          batterSummary: "1-3, BB",
+          pitcherShort: "F. Valdez",
+          pitcherId: 42501,
+          pitcherSummary: "5.0 IP, 2 ER",
+        },
+      },
+    ]);
+
+    mockEspnFetch({
+      scoreboard: () => payload,
+      summaryOk: false,
+    });
+
+    const result = await fetchMlb("HOU");
+    expect(result.batterName).toBe("A. Judge");
+    expect(result.pitcherName).toBe("F. Valdez");
+    expect(result.batterSummary).toBe("1-3, BB");
+    expect(result.pitcherSummary).toBe("5.0 IP, 2 ER");
+    expect(result.batterAvg).toBeNull();
+    expect(result.pitcherEra).toBeNull();
   });
 });
