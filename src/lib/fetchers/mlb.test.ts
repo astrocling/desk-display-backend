@@ -17,7 +17,11 @@ function buildEspnPayload(
       onSecond?: boolean;
       onThird?: boolean;
       batterShort?: string;
+      batterSummary?: string;
+      batterId?: number;
       pitcherShort?: string;
+      pitcherSummary?: string;
+      pitcherId?: number;
     };
   }>,
 ) {
@@ -62,10 +66,18 @@ function buildEspnPayload(
                   onSecond: event.situation.onSecond,
                   onThird: event.situation.onThird,
                   batter: event.situation.batterShort
-                    ? { athlete: { shortName: event.situation.batterShort } }
+                    ? {
+                        playerId: event.situation.batterId ?? 1,
+                        summary: event.situation.batterSummary,
+                        athlete: { shortName: event.situation.batterShort },
+                      }
                     : undefined,
                   pitcher: event.situation.pitcherShort
-                    ? { athlete: { shortName: event.situation.pitcherShort } }
+                    ? {
+                        playerId: event.situation.pitcherId ?? 1,
+                        summary: event.situation.pitcherSummary,
+                        athlete: { shortName: event.situation.pitcherShort },
+                      }
                     : undefined,
                 },
               }
@@ -251,7 +263,9 @@ describe("fetchMlb", () => {
           onSecond: false,
           onThird: false,
           batterShort: "A. Judge",
+          batterSummary: "1-3, BB",
           pitcherShort: "F. Valdez",
+          pitcherSummary: "5.0 IP, 2 ER, 4 H, 6 K",
         },
       },
     ]);
@@ -283,7 +297,11 @@ describe("fetchMlb", () => {
       onSecond: false,
       onThird: false,
       batterName: "A. Judge",
+      batterAvg: null,
+      batterSummary: "1-3, BB",
       pitcherName: "F. Valdez",
+      pitcherEra: null,
+      pitcherSummary: "5.0 IP, 2 ER, 4 H, 6 K",
     });
   });
 
@@ -332,7 +350,11 @@ describe("fetchMlb", () => {
       onSecond: null,
       onThird: null,
       batterName: null,
+      batterAvg: null,
+      batterSummary: null,
       pitcherName: null,
+      pitcherEra: null,
+      pitcherSummary: null,
     });
     expect(result.teamAbbr).toBe("HOU");
     expect(result.opponentAbbr).toBe("SEA");
@@ -444,7 +466,11 @@ describe("fetchMlb", () => {
       onSecond: null,
       onThird: null,
       batterName: null,
+      batterAvg: null,
+      batterSummary: null,
       pitcherName: null,
+      pitcherEra: null,
+      pitcherSummary: null,
     });
   });
 

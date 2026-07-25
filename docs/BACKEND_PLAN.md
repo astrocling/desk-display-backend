@@ -156,6 +156,8 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `mlb.balls` / `strikes` / `outs` | number \| null | Live count; null when not live |
 | `mlb.onFirst` / `onSecond` / `onThird` | boolean \| null | Live base occupancy |
 | `mlb.batterName` / `pitcherName` | string \| null | ESPN short names while live |
+| `mlb.batterAvg` / `pitcherEra` | string \| null | Season AVG/ERA while live; null until ESPN summary fetch (Task 2) |
+| `mlb.batterSummary` / `pitcherSummary` | string \| null | Game line from ESPN situation while live (e.g. `"1-3, BB"`, `"5.0 IP, 2 ER, 4 H, 6 K"`) |
 | `flagstand.lastResult` | object \| null | Most recent completed race |
 | `flagstand.nextRace` | object \| null | Next scheduled/active race |
 | `flagstand.*.id` | string | Race night UUID |

@@ -27,7 +27,11 @@ const emptyMlb: MlbScores = {
   onSecond: null,
   onThird: null,
   batterName: null,
+  batterAvg: null,
+  batterSummary: null,
   pitcherName: null,
+  pitcherEra: null,
+  pitcherSummary: null,
 };
 
 function makeBlob(

@@ -59,7 +59,15 @@ export interface MlbScores {
   onThird: boolean | null;
   /** Prefer ESPN shortName, e.g. "M. Murakami". */
   batterName: string | null;
+  /** Season AVG display while live, e.g. ".222". */
+  batterAvg: string | null;
+  /** Game line from ESPN situation, e.g. "1-3, BB". */
+  batterSummary: string | null;
   pitcherName: string | null;
+  /** Season ERA display while live, e.g. "1.93". */
+  pitcherEra: string | null;
+  /** Game line from ESPN situation, e.g. "0.2 IP, 0 ER, 0 H, K, BB". */
+  pitcherSummary: string | null;
 }
 
 export interface FlagstandRaceSummary {

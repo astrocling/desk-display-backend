@@ -25,6 +25,8 @@ interface EspnSituationAthlete {
 }
 
 interface EspnSituationPlayer {
+  playerId?: number | string;
+  summary?: string;
   athlete?: EspnSituationAthlete;
 }
 
@@ -291,6 +293,11 @@ function situationPlayerName(player: EspnSituationPlayer | undefined): string | 
   return name?.trim() ? name.trim() : null;
 }
 
+function situationSummary(player: EspnSituationPlayer | undefined): string | null {
+  const s = player?.summary?.trim();
+  return s ? s : null;
+}
+
 function emptyLiveSituation(): Pick<
   MlbScores,
   | "teamRuns"
@@ -302,7 +309,11 @@ function emptyLiveSituation(): Pick<
   | "onSecond"
   | "onThird"
   | "batterName"
+  | "batterAvg"
+  | "batterSummary"
   | "pitcherName"
+  | "pitcherEra"
+  | "pitcherSummary"
 > {
   return {
     teamRuns: null,
@@ -314,7 +325,11 @@ function emptyLiveSituation(): Pick<
     onSecond: null,
     onThird: null,
     batterName: null,
+    batterAvg: null,
+    batterSummary: null,
     pitcherName: null,
+    pitcherEra: null,
+    pitcherSummary: null,
   };
 }
 
@@ -337,7 +352,11 @@ function buildScoreFields(
   | "onSecond"
   | "onThird"
   | "batterName"
+  | "batterAvg"
+  | "batterSummary"
   | "pitcherName"
+  | "pitcherEra"
+  | "pitcherSummary"
 > {
   const teamCompetitor = competition.competitors.find(
     (competitor) => competitor.team.abbreviation.toUpperCase() === teamAbbr,
@@ -376,7 +395,11 @@ function buildScoreFields(
       onSecond: typeof sit?.onSecond === "boolean" ? sit.onSecond : null,
       onThird: typeof sit?.onThird === "boolean" ? sit.onThird : null,
       batterName: situationPlayerName(sit?.batter),
+      batterAvg: null,
+      batterSummary: situationSummary(sit?.batter),
       pitcherName: situationPlayerName(sit?.pitcher),
+      pitcherEra: null,
+      pitcherSummary: situationSummary(sit?.pitcher),
     };
   }
 
@@ -395,7 +418,11 @@ function buildScoreFields(
       onSecond: null,
       onThird: null,
       batterName: null,
+      batterAvg: null,
+      batterSummary: null,
       pitcherName: null,
+      pitcherEra: null,
+      pitcherSummary: null,
     };
   }
 
