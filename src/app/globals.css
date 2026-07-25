@@ -26,6 +26,12 @@ body {
 }
 
 /* Radar fixture — device ATC-lite theming (radar_lvgl / radar_format). */
+
+/* Airspace SVG is a canvas-container sibling; keep markers above it. */
+.maplibregl-canvas-container > .maplibregl-marker {
+  z-index: 2;
+}
+
 .radar-ac {
   /* Non-zero hit target so targets can be selected (line 3 on select). */
   position: relative;
@@ -92,6 +98,11 @@ body {
   text-shadow:
     0 0 3px #0b0f14,
     0 1px 2px #0b0f14;
+}
+
+/* Selected tags include line 3 (type / squawk) — shift up for clearance. */
+.radar-ac.is-selected .radar-ac-tag {
+  top: calc(50% - 40px);
 }
 
 .radar-ac-line1,

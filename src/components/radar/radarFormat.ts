@@ -99,10 +99,28 @@ export function formatRadarTagLine3(opts: {
 const DB_FLAG_MILITARY = 1;
 const DB_FLAG_INTERESTING = 2;
 
+function matchesInterestingReg(
+  registration: string,
+  callsign: string,
+  interestingRegs: readonly string[] | undefined,
+): boolean {
+  if (!interestingRegs || interestingRegs.length === 0) return false;
+  const reg = registration.trim().toUpperCase();
+  const cs = callsign.trim().toUpperCase();
+  for (const id of interestingRegs) {
+    if (reg && reg === id) return true;
+    if (cs && cs === id) return true;
+  }
+  return false;
+}
+
 export function classifyNotable(opts: {
   squawk: string;
   emergency: string;
   dbFlags: number;
+  registration?: string;
+  callsign?: string;
+  interestingRegs?: readonly string[];
 }): AircraftNotable {
   if (
     opts.squawk === "7500" ||
@@ -115,7 +133,14 @@ export function classifyNotable(opts: {
   if ((opts.dbFlags & DB_FLAG_MILITARY) !== 0) {
     return "military";
   }
-  if ((opts.dbFlags & DB_FLAG_INTERESTING) !== 0) {
+  if (
+    (opts.dbFlags & DB_FLAG_INTERESTING) !== 0 ||
+    matchesInterestingReg(
+      opts.registration ?? "",
+      opts.callsign ?? "",
+      opts.interestingRegs,
+    )
+  ) {
     return "interesting";
   }
   return "none";

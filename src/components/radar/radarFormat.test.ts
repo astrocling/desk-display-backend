@@ -62,6 +62,29 @@ describe("radarFormat", () => {
     ).toBe("military");
   });
 
+  it("classifies watchlist registration as interesting", () => {
+    expect(
+      classifyNotable({
+        squawk: "1200",
+        emergency: "none",
+        dbFlags: 0,
+        registration: "N730CF",
+        callsign: "N730CF",
+        interestingRegs: ["N730CF", "N130HB"],
+      }),
+    ).toBe("interesting");
+    expect(
+      classifyNotable({
+        squawk: "1200",
+        emergency: "none",
+        dbFlags: 0,
+        registration: "N999XX",
+        callsign: "N999XX",
+        interestingRegs: ["N730CF"],
+      }),
+    ).toBe("none");
+  });
+
   it("maps mark colors", () => {
     expect(markColorFor("none", false)).toBe("#00FF00");
     expect(markColorFor("none", true)).toBe("#FFFFFF");

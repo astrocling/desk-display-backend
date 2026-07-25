@@ -123,8 +123,8 @@ function parseAdsbAircraft(data: unknown): AircraftPoint[] {
     out.push({
       hex,
       callsign: labelForAircraft(item) || "?",
-      type: typeof item.t === "string" ? item.t : "",
-      registration: typeof item.r === "string" ? item.r : "",
+      type: typeof item.t === "string" ? item.t.trim() : "",
+      registration: typeof item.r === "string" ? item.r.trim() : "",
       squawk: parseSquawk(item.squawk),
       emergency: typeof item.emergency === "string" ? item.emergency : "",
       dbFlags,
@@ -139,11 +139,17 @@ function parseAdsbAircraft(data: unknown): AircraftPoint[] {
   return out;
 }
 
-function notableFor(ac: AircraftPoint): AircraftNotable {
+function notableFor(
+  ac: AircraftPoint,
+  interestingRegs: readonly string[],
+): AircraftNotable {
   return classifyNotable({
     squawk: ac.squawk,
     emergency: ac.emergency,
     dbFlags: ac.dbFlags,
+    registration: ac.registration,
+    callsign: ac.callsign,
+    interestingRegs,
   });
 }
 
@@ -152,8 +158,9 @@ function updateAircraftEl(
   ac: AircraftPoint,
   selected: boolean,
   showTags: boolean,
+  interestingRegs: readonly string[],
 ) {
-  const notable = notableFor(ac);
+  const notable = notableFor(ac, interestingRegs);
   const color = markColorFor(notable, selected);
   // Selected always gets ATC-lite tag even when zoomed out to dots.
   const tagged = showTags || selected;
@@ -233,6 +240,7 @@ function updateAircraftEl(
 function makeAircraftEl(
   ac: AircraftPoint,
   onSelect: (ac: AircraftPoint) => void,
+  interestingRegs: readonly string[],
 ): HTMLButtonElement {
   const el = document.createElement("button");
   el.type = "button";
@@ -250,7 +258,7 @@ function makeAircraftEl(
     e.stopPropagation();
     onSelect(ac);
   });
-  updateAircraftEl(el, ac, false, true);
+  updateAircraftEl(el, ac, false, true, interestingRegs);
   return el;
 }
 
@@ -300,10 +308,11 @@ function paintRingSvg(
     const color = ringStrokeColor(ring.class);
     poly.setAttribute("points", pts);
     poly.setAttribute("fill", color);
-    poly.setAttribute("fill-opacity", "0.22");
+    // Keep rings readable but subordinate to traffic / tags.
+    poly.setAttribute("fill-opacity", "0.07");
     poly.setAttribute("stroke", color);
-    poly.setAttribute("stroke-width", ring.class === "D" ? "2" : "2.5");
-    poly.setAttribute("stroke-opacity", "1");
+    poly.setAttribute("stroke-width", ring.class === "D" ? "1.5" : "2");
+    poly.setAttribute("stroke-opacity", "0.45");
     if (ring.class === "D") {
       poly.setAttribute("stroke-dasharray", "5 4");
     }
@@ -336,6 +345,7 @@ export function RadarMap() {
 
   const selectedHexRef = useRef<string | null>(null);
   const showTagsRef = useRef(true);
+  const interestingRegsRef = useRef<string[]>([]);
 
   const [status, setStatus] = useState("Loading map…");
   const [aircraftCount, setAircraftCount] = useState(0);
@@ -348,6 +358,12 @@ export function RadarMap() {
   const [frameCount, setFrameCount] = useState(0);
   const [adsbActive, setAdsbActive] = useState(false);
   const [overlaysActive, setOverlaysActive] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
+  const [watchlistDraft, setWatchlistDraft] = useState<string[]>([]);
+  const [watchlistAdd, setWatchlistAdd] = useState("");
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [watchlistSaving, setWatchlistSaving] = useState(false);
 
   selectAircraftRef.current = (ac: AircraftPoint) => {
     selectedHexRef.current = ac.hex;
@@ -364,12 +380,14 @@ export function RadarMap() {
       trackDeg: ac.trackDeg,
       baroRateFpm: ac.baroRateFpm,
     });
+    const regs = interestingRegsRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
         entry.ac,
         hex === ac.hex,
         showTagsRef.current,
+        regs,
       );
     }
   };
@@ -392,6 +410,7 @@ export function RadarMap() {
     (map: MapLibreMap, aircraft: AircraftPoint[], showTags: boolean) => {
       showTagsRef.current = showTags;
       const selectedHex = selectedHexRef.current;
+      const regs = interestingRegsRef.current;
       const seen = new Set<string>();
       for (const ac of aircraft) {
         seen.add(ac.hex);
@@ -405,12 +424,14 @@ export function RadarMap() {
             e.stopPropagation();
             selectAircraftRef.current(ac);
           };
-          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags);
+          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags, regs);
         } else {
-          const el = makeAircraftEl(ac, (picked) =>
-            selectAircraftRef.current(picked),
+          const el = makeAircraftEl(
+            ac,
+            (picked) => selectAircraftRef.current(picked),
+            regs,
           );
-          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags);
+          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags, regs);
           const marker = new Marker({ element: el, anchor: "center" })
             .setLngLat([ac.lon, ac.lat])
             .addTo(map);
@@ -730,8 +751,10 @@ export function RadarMap() {
 
     const ringSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     ringSvg.setAttribute("aria-hidden", "true");
+    ringSvg.classList.add("radar-airspace-svg");
+    // z-index 0 keeps rings under MapLibre markers (targets/airports).
     ringSvg.style.cssText =
-      "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible";
+      "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible";
     map.getCanvasContainer().appendChild(ringSvg);
     ringSvgRef.current = ringSvg;
 
@@ -770,12 +793,14 @@ export function RadarMap() {
         }
         selectedHexRef.current = null;
         setSelected(null);
+        const regs = interestingRegsRef.current;
         for (const entry of aircraftMarkersRef.current.values()) {
           updateAircraftEl(
             entry.marker.getElement(),
             entry.ac,
             false,
             showTagsRef.current,
+            regs,
           );
         }
       });
@@ -790,6 +815,22 @@ export function RadarMap() {
           }
         } catch {
           // keep defaults
+        }
+
+        try {
+          const wlRes = await fetch("/api/radar/watchlist", {
+            cache: "no-store",
+          });
+          if (wlRes.ok) {
+            const data = (await wlRes.json()) as { regs?: string[] };
+            if (!cancelled && Array.isArray(data.regs)) {
+              interestingRegsRef.current = data.regs;
+              setWatchlistRegs(data.regs);
+              setWatchlistDraft(data.regs);
+            }
+          }
+        } catch {
+          // watchlist optional until Redis is up
         }
 
         if (cancelled) return;
@@ -862,6 +903,71 @@ export function RadarMap() {
   useEffect(() => {
     applyRainFrame(frameIndex, weatherOpacity, weatherOn);
   }, [applyRainFrame, frameIndex, weatherOn, weatherOpacity]);
+
+  const applyWatchlistRegs = useCallback((regs: string[]) => {
+    interestingRegsRef.current = regs;
+    setWatchlistRegs(regs);
+    setWatchlistDraft(regs);
+    const selectedHex = selectedHexRef.current;
+    for (const [hex, entry] of aircraftMarkersRef.current) {
+      updateAircraftEl(
+        entry.marker.getElement(),
+        entry.ac,
+        hex === selectedHex,
+        showTagsRef.current,
+        regs,
+      );
+    }
+  }, []);
+
+  const openWatchlist = useCallback(() => {
+    setWatchlistDraft(watchlistRegs);
+    setWatchlistAdd("");
+    setWatchlistError(null);
+    setWatchlistOpen((open) => !open);
+  }, [watchlistRegs]);
+
+  const addWatchlistReg = useCallback(() => {
+    const id = watchlistAdd.trim().toUpperCase().replace(/\s+/g, "");
+    if (!id) return;
+    if (!/^[A-Z0-9-]{2,12}$/.test(id)) {
+      setWatchlistError("Use 2–12 letters/digits (e.g. N730CF)");
+      return;
+    }
+    setWatchlistError(null);
+    setWatchlistDraft((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setWatchlistAdd("");
+  }, [watchlistAdd]);
+
+  const removeWatchlistReg = useCallback((id: string) => {
+    setWatchlistDraft((prev) => prev.filter((r) => r !== id));
+  }, []);
+
+  const saveWatchlist = useCallback(async () => {
+    setWatchlistSaving(true);
+    setWatchlistError(null);
+    try {
+      const res = await fetch("/api/radar/watchlist", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regs: watchlistDraft }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setWatchlistError(err?.error ?? `Save failed (${res.status})`);
+        return;
+      }
+      const data = (await res.json()) as { regs: string[] };
+      applyWatchlistRegs(data.regs);
+      setWatchlistOpen(false);
+    } catch {
+      setWatchlistError("Save failed");
+    } finally {
+      setWatchlistSaving(false);
+    }
+  }, [applyWatchlistRegs, watchlistDraft]);
 
   const frameTime =
     rainFramesRef.current.frames[frameIndex]?.time != null
@@ -963,6 +1069,95 @@ export function RadarMap() {
             </>
           ) : null}
         </div>
+
+        <div className="pointer-events-auto relative">
+          <button
+            type="button"
+            onClick={openWatchlist}
+            className="rounded-lg bg-slate-900/85 px-2.5 py-1.5 text-sm shadow-lg backdrop-blur hover:bg-slate-800"
+            title="Interesting aircraft watchlist"
+          >
+            Watchlist ({watchlistRegs.length})
+          </button>
+          {watchlistOpen ? (
+            <div className="absolute left-0 top-full z-20 mt-1 w-72 rounded-lg bg-slate-900/95 p-3 shadow-xl ring-1 ring-slate-700 backdrop-blur">
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                Interesting tails
+              </div>
+              <form
+                className="mb-2 flex gap-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addWatchlistReg();
+                }}
+              >
+                <input
+                  type="text"
+                  value={watchlistAdd}
+                  onChange={(e) =>
+                    setWatchlistAdd(e.target.value.toUpperCase())
+                  }
+                  placeholder="N730CF"
+                  maxLength={12}
+                  aria-label="Add registration"
+                  className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1.5 font-mono text-sm uppercase outline-none ring-sky-500/40 focus:ring"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-sky-600 px-2.5 py-1.5 text-sm font-medium hover:bg-sky-500"
+                >
+                  Add
+                </button>
+              </form>
+              <ul className="mb-2 max-h-48 space-y-1 overflow-y-auto text-sm">
+                {watchlistDraft.length === 0 ? (
+                  <li className="text-xs text-slate-500">No tails yet</li>
+                ) : (
+                  watchlistDraft.map((id) => (
+                    <li
+                      key={id}
+                      className="flex items-center justify-between gap-2 rounded bg-slate-800/80 px-2 py-1 font-mono"
+                    >
+                      <span>{id}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeWatchlistReg(id)}
+                        className="text-xs text-rose-400 hover:text-rose-300"
+                        aria-label={`Remove ${id}`}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+              {watchlistError ? (
+                <p className="mb-2 text-xs text-rose-400">{watchlistError}</p>
+              ) : null}
+              <div className="flex justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWatchlistDraft(watchlistRegs);
+                    setWatchlistOpen(false);
+                    setWatchlistError(null);
+                  }}
+                  className="rounded px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveWatchlist()}
+                  disabled={watchlistSaving}
+                  className="rounded bg-emerald-600 px-2.5 py-1.5 text-sm font-medium hover:bg-emerald-500 disabled:opacity-60"
+                >
+                  {watchlistSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(3.5rem,env(safe-area-inset-right))]">
@@ -987,6 +1182,9 @@ export function RadarMap() {
                   squawk: selected.squawk,
                   emergency: selected.emergency,
                   dbFlags: selected.dbFlags,
+                  registration: selected.registration,
+                  callsign: selected.callsign,
+                  interestingRegs: watchlistRegs,
                 }),
               })}
             </div>
