@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { REDIS_KEYS } from "@/lib/config";
 import { getRedis } from "@/lib/redis";
 
@@ -6,9 +9,101 @@ export const OURAIRPORTS_CSV_URL =
 
 const BATCH_SIZE = 500;
 
+const TOWERED_AIRPORTS_PATH = path.join(
+  process.cwd(),
+  "data",
+  "map",
+  "towered-airports.json",
+);
+
 export interface AirportCoords {
   lat: number;
   lon: number;
+}
+
+type ToweredAirportRow = {
+  icao: string;
+  lat: number;
+  lon: number;
+};
+
+let toweredCoordsByIcao: Map<string, AirportCoords> | null = null;
+
+export function parseAirportCoords(value: unknown): AirportCoords | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    "lat" in value &&
+    "lon" in value &&
+    typeof value.lat === "number" &&
+    typeof value.lon === "number"
+  ) {
+    return { lat: value.lat, lon: value.lon };
+  }
+
+  if (typeof value === "string") {
+    try {
+      return parseAirportCoords(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function loadToweredCoordsIndex(): Promise<Map<string, AirportCoords>> {
+  if (toweredCoordsByIcao) {
+    return toweredCoordsByIcao;
+  }
+
+  const text = await readFile(TOWERED_AIRPORTS_PATH, "utf8");
+  const airports = JSON.parse(text) as ToweredAirportRow[];
+  const index = new Map<string, AirportCoords>();
+
+  for (const airport of airports) {
+    if (
+      typeof airport.icao === "string" &&
+      Number.isFinite(airport.lat) &&
+      Number.isFinite(airport.lon)
+    ) {
+      index.set(airport.icao.toUpperCase(), {
+        lat: airport.lat,
+        lon: airport.lon,
+      });
+    }
+  }
+
+  toweredCoordsByIcao = index;
+  return index;
+}
+
+/** Resolve ICAO → coords via Redis, then committed towered-airport data. */
+export async function lookupAirportCoords(
+  code: string,
+): Promise<AirportCoords | null> {
+  const icao = code.trim().toUpperCase();
+  if (!icao) {
+    return null;
+  }
+
+  try {
+    const value = await getRedis().hget(REDIS_KEYS.airports, icao);
+    const coords = parseAirportCoords(value);
+    if (coords) {
+      return coords;
+    }
+  } catch {
+    // Redis missing/unavailable — fall through to disk.
+  }
+
+  const fromDisk = await loadToweredCoordsIndex();
+  return fromDisk.get(icao) ?? null;
+}
+
+/** Test helper — clears the in-process towered index cache. */
+export function clearAirportLookupCacheForTests(): void {
+  toweredCoordsByIcao = null;
 }
 
 function looksLikeIcao(code: string): boolean {

@@ -2,6 +2,10 @@ import {
   filterMapContext,
   loadMapContextData,
 } from "@/lib/fetchers/map_context";
+import {
+  MAP_CONTEXT_MAX_MI,
+  MAP_CONTEXT_MIN_MI,
+} from "@/components/radar/geo";
 
 const CACHE_CONTROL =
   "public, s-maxage=86400, max-age=3600, stale-while-revalidate=86400";
@@ -15,11 +19,11 @@ function parseNumber(value: string | null): number | null {
 }
 
 function clampRadiusMi(radiusMi: number): number {
-  if (radiusMi < 5) {
-    return 5;
+  if (radiusMi < MAP_CONTEXT_MIN_MI) {
+    return MAP_CONTEXT_MIN_MI;
   }
-  if (radiusMi > 50) {
-    return 50;
+  if (radiusMi > MAP_CONTEXT_MAX_MI) {
+    return MAP_CONTEXT_MAX_MI;
   }
   return radiusMi;
 }

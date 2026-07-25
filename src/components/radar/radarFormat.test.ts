@@ -7,7 +7,10 @@ import {
   formatRadarTagLine2,
   formatRadarTagLine3,
   markColorFor,
+  parseRadarDeclutterMode,
+  radarDeclutterShortLabel,
   radarTrendFromRate,
+  radarUnselectedLabel,
   vectorLengthPx,
 } from "./radarFormat";
 
@@ -98,5 +101,19 @@ describe("radarFormat", () => {
     expect(vectorLengthPx(400)).toBe(16);
     expect(vectorLengthPx(1000)).toBe(28);
     expect(vectorLengthPx(null)).toBe(16);
+  });
+
+  it("maps declutter modes to unselected label density", () => {
+    expect(radarUnselectedLabel("target")).toBe("none");
+    expect(radarUnselectedLabel("callsign")).toBe("callsign");
+    expect(radarUnselectedLabel("tag")).toBe("dense");
+  });
+
+  it("parses declutter modes with Tag default", () => {
+    expect(parseRadarDeclutterMode("callsign")).toBe("callsign");
+    expect(parseRadarDeclutterMode("nope")).toBe("tag");
+    expect(parseRadarDeclutterMode(null)).toBe("tag");
+    expect(radarDeclutterShortLabel("target")).toBe("Target");
+    expect(radarDeclutterShortLabel("tag")).toBe("Tag");
   });
 });

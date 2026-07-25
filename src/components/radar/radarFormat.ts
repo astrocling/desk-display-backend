@@ -2,8 +2,14 @@
 
 export const RADAR_FLIGHT_LEVEL_MIN_FT = 18000;
 export const RADAR_BARO_RATE_DEADBAND_FPM = 100;
-/** Device shows vectors/tags at ≤25 mi range. */
+/** Device shows vectors/tags at ≤25 mi range (web declutter ignores this). */
 export const RADAR_VECTOR_MAX_RANGE_MI = 25;
+
+export const RADAR_DECLUTTER_STORAGE_KEY = "desk-display.radar.declutter";
+export const RADAR_DECLUTTER_DEFAULT: RadarDeclutterMode = "tag";
+
+export type RadarDeclutterMode = "target" | "callsign" | "tag";
+export type RadarUnselectedLabel = "none" | "callsign" | "dense";
 
 export type RadarTrend = "none" | "climb" | "descend";
 export type RadarTagStyle = "full" | "dense";
@@ -22,6 +28,39 @@ export const COLORS = {
   airspaceC: "#A83A7A",
   airspaceD: "#3A6AA8",
 } as const;
+
+export function parseRadarDeclutterMode(raw: unknown): RadarDeclutterMode {
+  if (raw === "target" || raw === "callsign" || raw === "tag") {
+    return raw;
+  }
+  return RADAR_DECLUTTER_DEFAULT;
+}
+
+export function radarUnselectedLabel(
+  mode: RadarDeclutterMode,
+): RadarUnselectedLabel {
+  switch (mode) {
+    case "target":
+      return "none";
+    case "callsign":
+      return "callsign";
+    case "tag":
+    default:
+      return "dense";
+  }
+}
+
+export function radarDeclutterShortLabel(mode: RadarDeclutterMode): string {
+  switch (mode) {
+    case "target":
+      return "Target";
+    case "callsign":
+      return "Callsign";
+    case "tag":
+    default:
+      return "Tag";
+  }
+}
 
 export function radarTrendFromRate(
   baroRateFpm: number | null,

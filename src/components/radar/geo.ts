@@ -32,8 +32,12 @@ export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-/** Map-context API accepts 5–50 mi. */
-export const MAP_CONTEXT_MAX_MI = 50;
+/**
+ * Map-context API radius band (statute miles).
+ * Device radar historically capped near 50 mi for MCU/RAM limits; web can show
+ * full Class B/C/D shelves across a wide viewport without that constraint.
+ */
+export const MAP_CONTEXT_MAX_MI = 250;
 export const MAP_CONTEXT_MIN_MI = 5;
 
 /** adsb.lol accepts 1–250 nm. */
@@ -43,5 +47,5 @@ export const ADSB_MIN_NM = 1;
 /** Only poll ADS-B when viewport radius is within this band (nm). */
 export const ADSB_VIEWPORT_MAX_NM = 250;
 
-/** Only fetch map overlays when viewport radius ≤ this (mi). */
-export const OVERLAY_VIEWPORT_MAX_MI = 50;
+/** Soft ceiling matching map-context max (mi). */
+export const OVERLAY_VIEWPORT_MAX_MI = 250;

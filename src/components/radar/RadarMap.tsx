@@ -23,13 +23,18 @@ import {
 } from "./geo";
 import {
   COLORS,
-  RADAR_VECTOR_MAX_RANGE_MI,
+  RADAR_DECLUTTER_DEFAULT,
+  RADAR_DECLUTTER_STORAGE_KEY,
   classifyNotable,
   formatRadarTagLine2,
   formatRadarTagLine3,
   markColorFor,
+  parseRadarDeclutterMode,
+  radarDeclutterShortLabel,
+  radarUnselectedLabel,
   vectorLengthPx,
   type AircraftNotable,
+  type RadarDeclutterMode,
 } from "./radarFormat";
 import type {
   AirspaceRing,
@@ -39,6 +44,21 @@ import type {
   RainViewerMaps,
   ToweredAirport,
 } from "./types";
+
+const DECLUTTER_MODES: RadarDeclutterMode[] = ["target", "callsign", "tag"];
+
+function readStoredDeclutter(): RadarDeclutterMode {
+  if (typeof window === "undefined") {
+    return RADAR_DECLUTTER_DEFAULT;
+  }
+  try {
+    return parseRadarDeclutterMode(
+      window.localStorage.getItem(RADAR_DECLUTTER_STORAGE_KEY),
+    );
+  } catch {
+    return RADAR_DECLUTTER_DEFAULT;
+  }
+}
 
 /** Dark raster basemap with glyphs so symbol labels can render. */
 const BASEMAP_STYLE = {
@@ -157,15 +177,16 @@ function updateAircraftEl(
   root: HTMLElement,
   ac: AircraftPoint,
   selected: boolean,
-  showTags: boolean,
+  declutter: RadarDeclutterMode,
   interestingRegs: readonly string[],
 ) {
   const notable = notableFor(ac, interestingRegs);
   const color = markColorFor(notable, selected);
-  // Selected always gets ATC-lite tag even when zoomed out to dots.
-  const tagged = showTags || selected;
+  const unselected = radarUnselectedLabel(declutter);
+  const showLabel = selected || unselected !== "none";
+  const showLine2 = selected || unselected === "dense";
   root.classList.toggle("is-selected", selected);
-  root.classList.toggle("is-dense", !tagged);
+  root.classList.toggle("is-dense", !showLabel);
   root.dataset.hex = ac.hex;
   root.title = ac.callsign;
   root.setAttribute("aria-label", ac.callsign);
@@ -173,7 +194,7 @@ function updateAircraftEl(
   const mark = root.querySelector(".radar-ac-mark") as HTMLElement | null;
   if (mark) {
     mark.style.color = color;
-    if (!tagged) {
+    if (!showLabel) {
       mark.style.background = color;
     } else {
       mark.style.background = "transparent";
@@ -187,7 +208,7 @@ function updateAircraftEl(
     vector.style.background = color;
     vector.style.opacity = selected ? "1" : "0.85";
     vector.style.height = selected ? "2px" : "1px";
-    if (ac.trackDeg != null && tagged) {
+    if (ac.trackDeg != null) {
       vector.style.display = "block";
       vector.style.transform = `rotate(${ac.trackDeg - 90}deg)`;
     } else {
@@ -197,11 +218,11 @@ function updateAircraftEl(
 
   const tag = root.querySelector(".radar-ac-tag") as HTMLElement | null;
   if (tag) {
-    if (!tagged) {
+    if (!showLabel) {
       tag.style.display = "none";
     } else {
       tag.style.display = "block";
-      tag.style.opacity = selected ? "1" : showTags ? "0.75" : "1";
+      tag.style.opacity = selected ? "1" : "0.75";
       const line1 = tag.querySelector(".radar-ac-line1") as HTMLElement | null;
       const line2 = tag.querySelector(".radar-ac-line2") as HTMLElement | null;
       const line3 = tag.querySelector(".radar-ac-line3") as HTMLElement | null;
@@ -210,13 +231,19 @@ function updateAircraftEl(
         line1.style.color = color;
       }
       if (line2) {
-        line2.textContent = formatRadarTagLine2({
-          altFt: ac.altFt,
-          speedKt: ac.speedKt,
-          baroRateFpm: ac.baroRateFpm,
-          style: selected ? "full" : "dense",
-        });
-        line2.style.color = COLORS.accent;
+        if (showLine2) {
+          line2.textContent = formatRadarTagLine2({
+            altFt: ac.altFt,
+            speedKt: ac.speedKt,
+            baroRateFpm: ac.baroRateFpm,
+            style: selected ? "full" : "dense",
+          });
+          line2.style.display = "block";
+          line2.style.color = COLORS.accent;
+        } else {
+          line2.textContent = "";
+          line2.style.display = "none";
+        }
       }
       if (line3) {
         if (selected) {
@@ -258,7 +285,7 @@ function makeAircraftEl(
     e.stopPropagation();
     onSelect(ac);
   });
-  updateAircraftEl(el, ac, false, true, interestingRegs);
+  updateAircraftEl(el, ac, false, RADAR_DECLUTTER_DEFAULT, interestingRegs);
   return el;
 }
 
@@ -344,7 +371,7 @@ export function RadarMap() {
   const selectAircraftRef = useRef<(ac: AircraftPoint) => void>(() => {});
 
   const selectedHexRef = useRef<string | null>(null);
-  const showTagsRef = useRef(true);
+  const declutterRef = useRef<RadarDeclutterMode>(RADAR_DECLUTTER_DEFAULT);
   const interestingRegsRef = useRef<string[]>([]);
 
   const [status, setStatus] = useState("Loading map…");
@@ -358,12 +385,51 @@ export function RadarMap() {
   const [frameCount, setFrameCount] = useState(0);
   const [adsbActive, setAdsbActive] = useState(false);
   const [overlaysActive, setOverlaysActive] = useState(false);
+  const [declutter, setDeclutter] = useState<RadarDeclutterMode>(
+    RADAR_DECLUTTER_DEFAULT,
+  );
+  const [declutterOpen, setDeclutterOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
   const [watchlistDraft, setWatchlistDraft] = useState<string[]>([]);
   const [watchlistAdd, setWatchlistAdd] = useState("");
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [watchlistSaving, setWatchlistSaving] = useState(false);
+
+  useEffect(() => {
+    const stored = readStoredDeclutter();
+    declutterRef.current = stored;
+    setDeclutter(stored);
+  }, []);
+
+  const refreshAircraftLabels = useCallback(() => {
+    const selectedHex = selectedHexRef.current;
+    const regs = interestingRegsRef.current;
+    const mode = declutterRef.current;
+    for (const [hex, entry] of aircraftMarkersRef.current) {
+      updateAircraftEl(
+        entry.marker.getElement(),
+        entry.ac,
+        hex === selectedHex,
+        mode,
+        regs,
+      );
+    }
+  }, []);
+
+  const setDeclutterMode = useCallback(
+    (mode: RadarDeclutterMode) => {
+      declutterRef.current = mode;
+      setDeclutter(mode);
+      try {
+        window.localStorage.setItem(RADAR_DECLUTTER_STORAGE_KEY, mode);
+      } catch {
+        // ignore quota / private mode
+      }
+      refreshAircraftLabels();
+    },
+    [refreshAircraftLabels],
+  );
 
   selectAircraftRef.current = (ac: AircraftPoint) => {
     selectedHexRef.current = ac.hex;
@@ -381,12 +447,13 @@ export function RadarMap() {
       baroRateFpm: ac.baroRateFpm,
     });
     const regs = interestingRegsRef.current;
+    const mode = declutterRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
         entry.ac,
         hex === ac.hex,
-        showTagsRef.current,
+        mode,
         regs,
       );
     }
@@ -407,8 +474,8 @@ export function RadarMap() {
   }, []);
 
   const syncAircraftMarkers = useCallback(
-    (map: MapLibreMap, aircraft: AircraftPoint[], showTags: boolean) => {
-      showTagsRef.current = showTags;
+    (map: MapLibreMap, aircraft: AircraftPoint[]) => {
+      const declutterMode = declutterRef.current;
       const selectedHex = selectedHexRef.current;
       const regs = interestingRegsRef.current;
       const seen = new Set<string>();
@@ -424,14 +491,26 @@ export function RadarMap() {
             e.stopPropagation();
             selectAircraftRef.current(ac);
           };
-          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags, regs);
+          updateAircraftEl(
+            el,
+            ac,
+            ac.hex === selectedHex,
+            declutterMode,
+            regs,
+          );
         } else {
           const el = makeAircraftEl(
             ac,
             (picked) => selectAircraftRef.current(picked),
             regs,
           );
-          updateAircraftEl(el, ac, ac.hex === selectedHex, showTags, regs);
+          updateAircraftEl(
+            el,
+            ac,
+            ac.hex === selectedHex,
+            declutterMode,
+            regs,
+          );
           const marker = new Marker({ element: el, anchor: "center" })
             .setLngLat([ac.lon, ac.lat])
             .addTo(map);
@@ -536,15 +615,12 @@ export function RadarMap() {
       }
       const json = await res.json();
       const aircraft = parseAdsbAircraft(json);
-      // Tags when local: zoomed in OR PPI-equivalent range ≤25 mi (device vector band).
-      const showTags =
-        vp.zoom >= 8.5 || vp.rangeMi <= RADAR_VECTOR_MAX_RANGE_MI;
       setAdsbActive(true);
-      syncAircraftMarkers(map, aircraft, showTags);
+      syncAircraftMarkers(map, aircraft);
       setAircraftCount(aircraft.length);
       const bits = [`${aircraft.length} aircraft`];
       if (overlaysActive) bits.push("overlays on");
-      bits.push(showTags ? "tags" : "dots — zoom in");
+      bits.push(radarDeclutterShortLabel(declutterRef.current));
       setStatus(bits.join(" · "));
     } catch {
       setAdsbActive(false);
@@ -569,9 +645,8 @@ export function RadarMap() {
     const vp = readViewport();
     if (!map || !vp) return;
 
-    // Always request up to the API max around center. Large monitors often have a
-    // viewport radius > 50 mi at normal local zooms; blanking overlays there hid
-    // airspace rings even though airports/rings data was available.
+    // Request overlays for the visible radius (API allows up to MAP_CONTEXT_MAX_MI).
+    // Device radar capped near 50 mi; web keeps shelves complete when zoomed out.
     setOverlaysActive(true);
     const radiusMi = clamp(vp.radiusMi, MAP_CONTEXT_MIN_MI, MAP_CONTEXT_MAX_MI);
     try {
@@ -743,7 +818,7 @@ export function RadarMap() {
       container: containerRef.current,
       style: BASEMAP_STYLE,
       center: [homeRef.current.lon, homeRef.current.lat],
-      // Zoom 10 keeps viewport radius ≤50 mi so airspace overlays load immediately.
+      // Zoom 10 is a sensible local default; overlays scale with viewport radius.
       zoom: 10,
       attributionControl: { compact: true },
     });
@@ -794,12 +869,13 @@ export function RadarMap() {
         selectedHexRef.current = null;
         setSelected(null);
         const regs = interestingRegsRef.current;
+        const mode = declutterRef.current;
         for (const entry of aircraftMarkersRef.current.values()) {
           updateAircraftEl(
             entry.marker.getElement(),
             entry.ac,
             false,
-            showTagsRef.current,
+            mode,
             regs,
           );
         }
@@ -908,24 +984,21 @@ export function RadarMap() {
     interestingRegsRef.current = regs;
     setWatchlistRegs(regs);
     setWatchlistDraft(regs);
-    const selectedHex = selectedHexRef.current;
-    for (const [hex, entry] of aircraftMarkersRef.current) {
-      updateAircraftEl(
-        entry.marker.getElement(),
-        entry.ac,
-        hex === selectedHex,
-        showTagsRef.current,
-        regs,
-      );
-    }
-  }, []);
+    refreshAircraftLabels();
+  }, [refreshAircraftLabels]);
 
   const openWatchlist = useCallback(() => {
+    setDeclutterOpen(false);
     setWatchlistDraft(watchlistRegs);
     setWatchlistAdd("");
     setWatchlistError(null);
     setWatchlistOpen((open) => !open);
   }, [watchlistRegs]);
+
+  const openDeclutter = useCallback(() => {
+    setWatchlistOpen(false);
+    setDeclutterOpen((open) => !open);
+  }, []);
 
   const addWatchlistReg = useCallback(() => {
     const id = watchlistAdd.trim().toUpperCase().replace(/\s+/g, "");
@@ -1067,6 +1140,52 @@ export function RadarMap() {
                 </label>
               ) : null}
             </>
+          ) : null}
+        </div>
+
+        <div className="pointer-events-auto relative">
+          <button
+            type="button"
+            onClick={openDeclutter}
+            className="rounded-lg bg-slate-900/85 px-2.5 py-1.5 text-sm shadow-lg backdrop-blur hover:bg-slate-800"
+            title="Traffic declutter mode"
+            aria-expanded={declutterOpen}
+          >
+            Declutter · {radarDeclutterShortLabel(declutter)}
+          </button>
+          {declutterOpen ? (
+            <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-lg bg-slate-900/95 p-3 shadow-xl ring-1 ring-slate-700 backdrop-blur">
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                Unselected traffic
+              </div>
+              <div className="flex flex-col gap-1">
+                {DECLUTTER_MODES.map((mode) => {
+                  const active = declutter === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setDeclutterMode(mode)}
+                      className={`rounded px-2.5 py-1.5 text-left text-sm ${
+                        active
+                          ? "bg-emerald-600 font-medium text-white"
+                          : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                      }`}
+                      aria-pressed={active}
+                    >
+                      {radarDeclutterShortLabel(mode)}
+                      <span className="mt-0.5 block text-xs font-normal text-slate-300/80">
+                        {mode === "target"
+                          ? "Blip only"
+                          : mode === "callsign"
+                            ? "Blip + callsign"
+                            : "Blip + dense tag"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
         </div>
 
