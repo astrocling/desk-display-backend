@@ -24,3 +24,124 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Radar fixture — device ATC-lite theming (radar_lvgl / radar_format). */
+.radar-ac {
+  position: relative;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.radar-ac-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -55%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 16px;
+  line-height: 1;
+  color: #00ff00;
+  text-shadow: 0 0 3px #0b0f14;
+  pointer-events: none;
+}
+
+.radar-ac.is-dense .radar-ac-mark {
+  font-size: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #00ff00;
+  box-shadow: 0 0 0 1px #0b0f14;
+  transform: translate(-50%, -50%);
+}
+
+.radar-ac.is-dense.is-selected .radar-ac-mark {
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+
+.radar-ac-vector {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1px;
+  transform-origin: left center;
+  background: #00ff00;
+  pointer-events: none;
+}
+
+.radar-ac-tag {
+  position: absolute;
+  left: 16px;
+  top: -28px;
+  min-width: 4.5rem;
+  text-align: left;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 12px;
+  white-space: nowrap;
+  text-shadow:
+    0 0 3px #0b0f14,
+    0 1px 2px #0b0f14;
+}
+
+.radar-ac-line1,
+.radar-ac-line2,
+.radar-ac-line3 {
+  display: block;
+}
+
+.radar-ac-line1 {
+  color: #00ff00;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.radar-ac-line2,
+.radar-ac-line3 {
+  color: #3d9cf0;
+}
+
+.radar-airport {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.radar-airport-plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -55%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1;
+  color: #ffffff;
+  opacity: 1;
+  text-shadow: 0 0 3px #0b0f14;
+}
+
+.radar-airport-label {
+  position: absolute;
+  left: 8px;
+  top: -12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: #ffffff;
+  opacity: 0.9;
+  font-weight: 600;
+  text-shadow:
+    0 0 3px #0b0f14,
+    0 1px 2px #0b0f14;
+  white-space: nowrap;
+}
