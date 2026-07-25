@@ -19,9 +19,11 @@ function buildEspnPayload(
       batterShort?: string;
       batterSummary?: string;
       batterId?: number;
+      batterAthleteId?: string;
       pitcherShort?: string;
       pitcherSummary?: string;
       pitcherId?: number;
+      pitcherAthleteId?: string;
     };
   }>,
 ) {
@@ -67,16 +69,30 @@ function buildEspnPayload(
                   onThird: event.situation.onThird,
                   batter: event.situation.batterShort
                     ? {
-                        playerId: event.situation.batterId ?? 1,
+                        ...(event.situation.batterAthleteId
+                          ? {}
+                          : { playerId: event.situation.batterId ?? 1 }),
                         summary: event.situation.batterSummary,
-                        athlete: { shortName: event.situation.batterShort },
+                        athlete: {
+                          ...(event.situation.batterAthleteId
+                            ? { id: event.situation.batterAthleteId }
+                            : {}),
+                          shortName: event.situation.batterShort,
+                        },
                       }
                     : undefined,
                   pitcher: event.situation.pitcherShort
                     ? {
-                        playerId: event.situation.pitcherId ?? 1,
+                        ...(event.situation.pitcherAthleteId
+                          ? {}
+                          : { playerId: event.situation.pitcherId ?? 1 }),
                         summary: event.situation.pitcherSummary,
-                        athlete: { shortName: event.situation.pitcherShort },
+                        athlete: {
+                          ...(event.situation.pitcherAthleteId
+                            ? { id: event.situation.pitcherAthleteId }
+                            : {}),
+                          shortName: event.situation.pitcherShort,
+                        },
                       }
                     : undefined,
                 },
@@ -578,6 +594,111 @@ describe("fetchMlb", () => {
     mockEspnFetch({
       scoreboard: () => payload,
       summaryOk: false,
+    });
+
+    const result = await fetchMlb("HOU");
+    expect(result.batterName).toBe("A. Judge");
+    expect(result.pitcherName).toBe("F. Valdez");
+    expect(result.batterSummary).toBe("1-3, BB");
+    expect(result.pitcherSummary).toBe("5.0 IP, 2 ER");
+    expect(result.batterAvg).toBeNull();
+    expect(result.pitcherEra).toBeNull();
+  });
+
+  it("enriches AVG/ERA when situation has athlete.id but no playerId", async () => {
+    const payload = buildEspnPayload([
+      {
+        date: "2026-07-23T23:00:00Z",
+        away: { abbr: "HOU", nick: "Astros", score: "4" },
+        home: { abbr: "NYY", nick: "Yankees", score: "2" },
+        state: "in",
+        detail: "Top 7th",
+        situation: {
+          batterShort: "A. Judge",
+          batterAthleteId: "33192",
+          batterSummary: "1-3, BB",
+          pitcherShort: "F. Valdez",
+          pitcherAthleteId: "42501",
+          pitcherSummary: "5.0 IP, 2 ER",
+        },
+      },
+    ]);
+
+    mockEspnFetch({
+      scoreboard: () => payload,
+      summary: () => ({
+        boxscore: {
+          players: [
+            {
+              statistics: [
+                {
+                  type: "batting",
+                  labels: ["H-AB", "AVG"],
+                  athletes: [
+                    { athlete: { id: "33192" }, stats: ["1-3", ".311"] },
+                  ],
+                },
+              ],
+            },
+            {
+              statistics: [
+                {
+                  type: "pitching",
+                  labels: ["IP", "ERA"],
+                  athletes: [
+                    { athlete: { id: "42501" }, stats: ["5.0", "2.85"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+
+    const result = await fetchMlb("HOU");
+    expect(result.batterAvg).toBe(".311");
+    expect(result.pitcherEra).toBe("2.85");
+  });
+
+  it("keeps names and summaries when boxscore omits the live players", async () => {
+    const payload = buildEspnPayload([
+      {
+        date: "2026-07-23T23:00:00Z",
+        away: { abbr: "HOU", nick: "Astros", score: "4" },
+        home: { abbr: "NYY", nick: "Yankees", score: "2" },
+        state: "in",
+        detail: "Top 7th",
+        situation: {
+          batterShort: "A. Judge",
+          batterId: 33192,
+          batterSummary: "1-3, BB",
+          pitcherShort: "F. Valdez",
+          pitcherId: 42501,
+          pitcherSummary: "5.0 IP, 2 ER",
+        },
+      },
+    ]);
+
+    mockEspnFetch({
+      scoreboard: () => payload,
+      summary: () => ({
+        boxscore: {
+          players: [
+            {
+              statistics: [
+                {
+                  type: "batting",
+                  labels: ["H-AB", "AVG"],
+                  athletes: [
+                    { athlete: { id: "99999" }, stats: ["0-0", ".000"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
     });
 
     const result = await fetchMlb("HOU");

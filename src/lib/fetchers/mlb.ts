@@ -22,6 +22,7 @@ interface EspnCompetitor {
 }
 
 interface EspnSituationAthlete {
+  id?: string;
   shortName?: string;
   displayName?: string;
 }
@@ -314,8 +315,11 @@ function situationSummary(player: EspnSituationPlayer | undefined): string | nul
 }
 
 function situationPlayerId(player: EspnSituationPlayer | undefined): string | null {
-  if (player?.playerId === undefined || player.playerId === null) return null;
-  return String(player.playerId);
+  if (player?.playerId !== undefined && player.playerId !== null) {
+    return String(player.playerId);
+  }
+  const athleteId = player?.athlete?.id?.trim();
+  return athleteId ? athleteId : null;
 }
 
 function boxscoreStat(
@@ -343,6 +347,7 @@ async function fetchGameSummary(eventId: string): Promise<EspnGameSummary | null
   try {
     const response = await fetch(
       `${ESPN_SUMMARY_URL}?event=${encodeURIComponent(eventId)}`,
+      { signal: AbortSignal.timeout(8000) },
     );
     if (!response.ok) return null;
     return (await response.json()) as EspnGameSummary;
