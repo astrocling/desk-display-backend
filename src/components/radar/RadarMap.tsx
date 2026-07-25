@@ -294,7 +294,6 @@ function ringsToGeoJSON(
       }
       return {
         type: "Feature" as const,
-        id: ring.id,
         geometry: { type: "Polygon" as const, coordinates: [coords] },
         properties: { class: ring.class, id: ring.id },
       };
@@ -302,15 +301,86 @@ function ringsToGeoJSON(
   };
 }
 
-function setSourceData(
-  map: MapLibreMap,
-  id: string,
-  data: GeoJSON.FeatureCollection,
-) {
-  const source = map.getSource(id);
-  if (source && "setData" in source && typeof source.setData === "function") {
-    void (source as GeoJSONSource).setData(data);
+const RING_LAYER_IDS = [
+  "radar-rings-fill",
+  "radar-rings-line-bc",
+  "radar-rings-line-d",
+] as const;
+
+function removeRingLayers(map: MapLibreMap) {
+  for (const id of RING_LAYER_IDS) {
+    if (map.getLayer(id)) {
+      map.removeLayer(id);
+    }
   }
+  if (map.getSource(SOURCE_RINGS)) {
+    map.removeSource(SOURCE_RINGS);
+  }
+}
+
+/** Install/replace B/C/D airspace polygon layers (MapLibre 6-safe). */
+function setRingFeatures(
+  map: MapLibreMap,
+  rings: MapContextResponse["rings"],
+) {
+  if (!map.isStyleLoaded()) return;
+
+  const data = ringsToGeoJSON(rings);
+  removeRingLayers(map);
+
+  map.addSource(SOURCE_RINGS, { type: "geojson", data });
+  map.addLayer({
+    id: "radar-rings-fill",
+    type: "fill",
+    source: SOURCE_RINGS,
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "class"],
+        "B",
+        COLORS.airspaceB,
+        "C",
+        COLORS.airspaceC,
+        "D",
+        COLORS.airspaceD,
+        "#64748b",
+      ],
+      "fill-opacity": 0.18,
+    },
+  });
+  map.addLayer({
+    id: "radar-rings-line-bc",
+    type: "line",
+    source: SOURCE_RINGS,
+    filter: [
+      "any",
+      ["==", ["get", "class"], "B"],
+      ["==", ["get", "class"], "C"],
+    ],
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "class"],
+        "B",
+        COLORS.airspaceB,
+        "C",
+        COLORS.airspaceC,
+        "#64748b",
+      ],
+      "line-width": 2,
+    },
+  });
+  map.addLayer({
+    id: "radar-rings-line-d",
+    type: "line",
+    source: SOURCE_RINGS,
+    filter: ["==", ["get", "class"], "D"],
+    paint: {
+      "line-color": COLORS.airspaceD,
+      "line-width": 1.75,
+      "line-dasharray": [2, 2],
+    },
+  });
 }
 
 export function RadarMap() {

@@ -5,7 +5,6 @@ export const REDIS_KEYS = {
   airports: "airports",
   mapTowered: "map:towered",
   mapAirspace: "map:airspace",
-  mapHighways: "map:highways",
 } as const;
 
 export const TIMEZONE_CITIES = [

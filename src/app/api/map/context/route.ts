@@ -44,8 +44,8 @@ export async function GET(request: Request) {
   const radiusMi = clampRadiusMi(radiusRaw ?? 25);
 
   try {
-    const { towered, rings, highways } = await loadMapContextData();
-    const body = filterMapContext(lat, lon, radiusMi, towered, rings, highways);
+    const { towered, rings } = await loadMapContextData();
+    const body = filterMapContext(lat, lon, radiusMi, towered, rings);
     return Response.json(body, {
       headers: {
         "Cache-Control": CACHE_CONTROL,

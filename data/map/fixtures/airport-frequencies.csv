@@ -1,4 +1,6 @@
-"id","airport_ref","airport_ident","type","description","frequency_mhz"
-100001,3481,"KDAY","TWR","DAYTON TWR",119.4
-100002,3482,"KFFO","TWR","PATTERSON TWR",126.9
-100003,9999,"00AA","CTAF","CTAF",122.9
+"id","airport_ref","type","description","frequency_mhz"
+1,"3622","TWR","Tower",119.4
+2,"3630","TWR","Tower",118.3
+3,"4048","TWR","Tower",119.3
+4,"4164","TWR","Tower",120.9
+5,"9999","GND","Ground",121.9

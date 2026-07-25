@@ -27,9 +27,10 @@ body {
 
 /* Radar fixture — device ATC-lite theming (radar_lvgl / radar_format). */
 .radar-ac {
+  /* Non-zero hit target so targets can be selected (line 3 on select). */
   position: relative;
-  width: 0;
-  height: 0;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -79,8 +80,8 @@ body {
 
 .radar-ac-tag {
   position: absolute;
-  left: 16px;
-  top: -28px;
+  left: calc(50% + 14px);
+  top: calc(50% - 28px);
   min-width: 4.5rem;
   text-align: left;
   pointer-events: none;
