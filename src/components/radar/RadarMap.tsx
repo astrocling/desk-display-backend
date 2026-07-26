@@ -21,27 +21,43 @@ import {
   milesToNm,
   viewportRadiusMiles,
 } from "./geo";
+import { paintMapOverlays, paintScopeChrome } from "./radarOverlays";
+import {
+  SCOPE_SWEEP_MS,
+  bearingDegFromCenter,
+  crossedBySweep,
+} from "./radarScope";
 import {
   COLORS,
   RADAR_DECLUTTER_DEFAULT,
   RADAR_DECLUTTER_STORAGE_KEY,
+  RADAR_MODE_DEFAULT,
+  RADAR_MODE_STORAGE_KEY,
   classifyNotable,
   formatRadarTagLine2,
   formatRadarTagLine3,
   markColorFor,
   parseRadarDeclutterMode,
+  parseRadarDisplayMode,
   radarDeclutterShortLabel,
   radarUnselectedLabel,
   vectorLengthPx,
   type AircraftNotable,
   type RadarDeclutterMode,
+  type RadarDisplayMode,
 } from "./radarFormat";
 import type {
+  AirportDetailResponse,
+  AirportRunway,
   AirspaceRing,
   AircraftFeatureProps,
+  HighwayPolyline,
   HomeResponse,
   MapContextResponse,
   RainViewerMaps,
+  RouteLookupResponse,
+  TfrPolygon,
+  TfrResponse,
   ToweredAirport,
 } from "./types";
 
@@ -57,6 +73,19 @@ function readStoredDeclutter(): RadarDeclutterMode {
     );
   } catch {
     return RADAR_DECLUTTER_DEFAULT;
+  }
+}
+
+function readStoredDisplayMode(): RadarDisplayMode {
+  if (typeof window === "undefined") {
+    return RADAR_MODE_DEFAULT;
+  }
+  try {
+    return parseRadarDisplayMode(
+      window.localStorage.getItem(RADAR_MODE_STORAGE_KEY),
+    );
+  } catch {
+    return RADAR_MODE_DEFAULT;
   }
 }
 
@@ -92,10 +121,29 @@ const ADSB_POLL_MS = 10_000;
 const OVERLAY_DEBOUNCE_MS = 400;
 const RAIN_REFRESH_MS = 5 * 60_000;
 
+/** Scope sweep: one revolution per period, repainted at most every frame budget. */
+const SCOPE_FRAME_MS = 60;
+
+/** Ground mode engages once a focused airport fills the viewport. */
+const GROUND_ZOOM_MIN = 12.5;
+const GROUND_NEAR_MI = 6;
+const GROUND_MAX_ALT_FT = 500;
+const GROUND_VIEW_ZOOM = 13.5;
+
+/** Bulk route lookup guard (API caps at 80 per request). */
+const ROUTE_BULK_MAX = 60;
+
 const SOURCE_RAIN = "radar-rain";
 const LAYER_RAIN = "radar-rain-layer";
 
 type AircraftPoint = AircraftFeatureProps & { lat: number; lon: number };
+
+type FocusedAirport = {
+  icao: string;
+  name: string;
+  lat: number;
+  lon: number;
+};
 
 function labelForAircraft(ac: Record<string, unknown>): string {
   const flight = typeof ac.flight === "string" ? ac.flight.trim() : "";
@@ -116,6 +164,11 @@ function parseSquawk(value: unknown): string {
     return String(Math.trunc(value)).padStart(4, "0");
   }
   return "";
+}
+
+/** adsb.lol reports surface targets as the string "ground" in alt_baro. */
+function isGroundAlt(value: unknown): boolean {
+  return typeof value === "string" && value.trim().toLowerCase() === "ground";
 }
 
 function parseAdsbAircraft(data: unknown): AircraftPoint[] {
@@ -140,6 +193,7 @@ function parseAdsbAircraft(data: unknown): AircraftPoint[] {
       typeof item.dbFlags === "number" && Number.isFinite(item.dbFlags)
         ? item.dbFlags
         : 0;
+    const onGround = isGroundAlt(item.alt_baro) || isGroundAlt(item.alt_geom);
     out.push({
       hex,
       callsign: labelForAircraft(item) || "?",
@@ -148,15 +202,37 @@ function parseAdsbAircraft(data: unknown): AircraftPoint[] {
       squawk: parseSquawk(item.squawk),
       emergency: typeof item.emergency === "string" ? item.emergency : "",
       dbFlags,
-      altFt: numOrNull(item.alt_baro) ?? numOrNull(item.alt_geom),
+      altFt: onGround
+        ? 0
+        : (numOrNull(item.alt_baro) ?? numOrNull(item.alt_geom)),
       speedKt: numOrNull(item.gs),
       trackDeg: numOrNull(item.track) ?? numOrNull(item.calc_track),
       baroRateFpm: numOrNull(item.baro_rate) ?? numOrNull(item.geom_rate),
+      onGround,
+      arrivalIcao: null,
       lat,
       lon,
     });
   }
   return out;
+}
+
+function toFeatureProps(ac: AircraftPoint): AircraftFeatureProps {
+  return {
+    hex: ac.hex,
+    callsign: ac.callsign,
+    type: ac.type,
+    registration: ac.registration,
+    squawk: ac.squawk,
+    emergency: ac.emergency,
+    dbFlags: ac.dbFlags,
+    altFt: ac.altFt,
+    speedKt: ac.speedKt,
+    trackDeg: ac.trackDeg,
+    baroRateFpm: ac.baroRateFpm,
+    onGround: ac.onGround,
+    arrivalIcao: ac.arrivalIcao ?? null,
+  };
 }
 
 function notableFor(
@@ -173,6 +249,70 @@ function notableFor(
   });
 }
 
+/** Ground mode narrows traffic to surface/low targets around the focused field. */
+function visibleAircraftFor(
+  aircraft: AircraftPoint[],
+  ground: FocusedAirport | null,
+): AircraftPoint[] {
+  if (!ground) return aircraft;
+  return aircraft.filter((ac) => {
+    const low =
+      ac.onGround === true ||
+      (ac.altFt != null && ac.altFt < GROUND_MAX_ALT_FT);
+    if (!low) return false;
+    return haversineMiles(ground.lat, ground.lon, ac.lat, ac.lon) <=
+      GROUND_NEAR_MI;
+  });
+}
+
+function normalizeCallsign(raw: string): string {
+  return raw.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+/** Pure GA N-numbers have no airline route to look up. */
+function skipRouteLookup(callsign: string): boolean {
+  if (!callsign || callsign === "?") return true;
+  if (/^N\d/.test(callsign)) return true;
+  return !/^[A-Z0-9]{3,8}$/.test(callsign);
+}
+
+function metarOneLiner(metar: AirportDetailResponse["metar"]): string {
+  if (!metar) return "METAR unavailable";
+  const parts: string[] = [];
+  if (metar.flightCategory) parts.push(metar.flightCategory);
+  if (metar.wind) parts.push(metar.wind);
+  if (metar.visibility) parts.push(metar.visibility);
+  if (metar.ceiling) parts.push(metar.ceiling);
+  if (parts.length === 0) return metar.raw || "METAR unavailable";
+  return parts.join(" · ");
+}
+
+function runwayLabel(rwy: AirportRunway): string {
+  const idents = [rwy.leIdent, rwy.heIdent].filter(Boolean).join("/");
+  const bits: string[] = [idents || "RWY"];
+  if (rwy.lengthFt != null) {
+    bits.push(`${Math.round(rwy.lengthFt).toLocaleString()} ft`);
+  }
+  if (rwy.widthFt != null) bits.push(`${Math.round(rwy.widthFt)} ft wide`);
+  if (rwy.surface) bits.push(rwy.surface);
+  return bits.join(" · ");
+}
+
+/** Longest runway drives the airport glyph orientation. */
+function primaryRunwayHeading(runways: AirportRunway[]): number | null {
+  let best: AirportRunway | null = null;
+  for (const rwy of runways) {
+    if (!best || (rwy.lengthFt ?? 0) > (best.lengthFt ?? 0)) {
+      best = rwy;
+    }
+  }
+  if (!best) return null;
+  if (best.leHeadingDeg != null) return best.leHeadingDeg;
+  const ident = Number.parseInt(best.leIdent, 10);
+  if (Number.isFinite(ident) && ident >= 1 && ident <= 36) return ident * 10;
+  return null;
+}
+
 function updateAircraftEl(
   root: HTMLElement,
   ac: AircraftPoint,
@@ -181,12 +321,17 @@ function updateAircraftEl(
   interestingRegs: readonly string[],
 ) {
   const notable = notableFor(ac, interestingRegs);
-  const color = markColorFor(notable, selected);
+  const onGround = ac.onGround === true;
+  const color =
+    !selected && onGround && notable === "none"
+      ? COLORS.ground
+      : markColorFor(notable, selected);
   const unselected = radarUnselectedLabel(declutter);
   const showLabel = selected || unselected !== "none";
   const showLine2 = selected || unselected === "dense";
   root.classList.toggle("is-selected", selected);
   root.classList.toggle("is-dense", !showLabel);
+  root.classList.toggle("is-ground", onGround);
   root.dataset.hex = ac.hex;
   root.title = ac.callsign;
   root.setAttribute("aria-label", ac.callsign);
@@ -251,6 +396,7 @@ function updateAircraftEl(
             type: ac.type,
             squawk: ac.squawk,
             notable,
+            arrivalIcao: ac.arrivalIcao,
           });
           line3.textContent = text;
           line3.style.display = text ? "block" : "none";
@@ -289,69 +435,50 @@ function makeAircraftEl(
   return el;
 }
 
-function makeAirportEl(airport: ToweredAirport): HTMLDivElement {
-  const el = document.createElement("div");
+function makeAirportEl(
+  airport: ToweredAirport,
+  onSelect: (airport: ToweredAirport) => void,
+): HTMLButtonElement {
+  const el = document.createElement("button");
+  el.type = "button";
   el.className = "radar-airport";
   el.title = `${airport.icao} — ${airport.name}`;
+  el.setAttribute("aria-label", `${airport.icao} ${airport.name}`);
+  el.dataset.icao = airport.icao;
   el.innerHTML = `
     <span class="radar-airport-plus" aria-hidden="true">+</span>
-    <span class="radar-airport-label">${airport.icao}</span>
+    <span class="radar-airport-label"></span>
   `;
+  const label = el.querySelector(".radar-airport-label");
+  if (label) label.textContent = airport.icao;
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onSelect(airport);
+  });
   return el;
 }
 
-function ringStrokeColor(airspaceClass: AirspaceRing["class"]): string {
-  if (airspaceClass === "C") return COLORS.airspaceC;
-  return COLORS.airspaceB; // B and D share blue on the device palette
-}
-
-/** Project airspace rings into an SVG overlay (avoids MapLibre GeoJSON tile quirks). */
-function paintRingSvg(
-  map: MapLibreMap,
-  svg: SVGSVGElement,
-  rings: AirspaceRing[],
-) {
-  while (svg.firstChild) {
-    svg.removeChild(svg.firstChild);
+function applyAirportHeading(el: HTMLElement, headingDeg: number | null) {
+  if (headingDeg == null) {
+    el.classList.remove("has-heading");
+    el.style.removeProperty("--radar-rwy-rot");
+    delete el.dataset.heading;
+    return;
   }
-
-  const size = map.getCanvas().getBoundingClientRect();
-  svg.setAttribute("viewBox", `0 0 ${size.width} ${size.height}`);
-  svg.setAttribute("width", String(size.width));
-  svg.setAttribute("height", String(size.height));
-
-  for (const ring of rings) {
-    if (ring.points.length < 3) continue;
-    const poly = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "polygon",
-    );
-    const pts = ring.points
-      .map(([lat, lon]) => {
-        const p = map.project([lon, lat]);
-        return `${p.x},${p.y}`;
-      })
-      .join(" ");
-    const color = ringStrokeColor(ring.class);
-    poly.setAttribute("points", pts);
-    poly.setAttribute("fill", color);
-    // Keep rings readable but subordinate to traffic / tags.
-    poly.setAttribute("fill-opacity", "0.07");
-    poly.setAttribute("stroke", color);
-    poly.setAttribute("stroke-width", ring.class === "D" ? "1.5" : "2");
-    poly.setAttribute("stroke-opacity", "0.45");
-    if (ring.class === "D") {
-      poly.setAttribute("stroke-dasharray", "5 4");
-    }
-    svg.appendChild(poly);
-  }
+  el.dataset.heading = String(Math.round(headingDeg));
+  el.style.setProperty("--radar-rwy-rot", `${headingDeg}deg`);
+  el.classList.add("has-heading");
 }
 
 export function RadarMap() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const ringSvgRef = useRef<SVGSVGElement | null>(null);
+  const overlaySvgRef = useRef<SVGSVGElement | null>(null);
+  const scopeSvgRef = useRef<SVGSVGElement | null>(null);
   const ringsRef = useRef<AirspaceRing[]>([]);
+  const highwaysRef = useRef<HighwayPolyline[]>([]);
+  const tfrsRef = useRef<TfrPolygon[]>([]);
+  const runwaysRef = useRef<AirportRunway[]>([]);
   const homeRef = useRef<{ lat: number; lon: number }>({
     lat: 40.03353,
     lon: -84.19588,
@@ -368,7 +495,18 @@ export function RadarMap() {
     new Map<string, { marker: Marker; ac: AircraftPoint }>(),
   );
   const airportMarkersRef = useRef(new Map<string, Marker>());
+  const airportHeadingsRef = useRef(new Map<string, number>());
   const selectAircraftRef = useRef<(ac: AircraftPoint) => void>(() => {});
+  const selectAirportRef = useRef<(airport: ToweredAirport) => void>(() => {});
+  const lastAircraftRef = useRef<AircraftPoint[]>([]);
+  const arrivalCacheRef = useRef(new Map<string, string | null>());
+  const routeInflightRef = useRef(new Set<string>());
+  const sweepDegRef = useRef<number | null>(null);
+  const prevSweepDegRef = useRef<number | null>(null);
+  const focusedAirportRef = useRef<FocusedAirport | null>(null);
+  const groundModeRef = useRef(false);
+  const displayModeRef = useRef<RadarDisplayMode>(RADAR_MODE_DEFAULT);
+  const tfrsOnRef = useRef(true);
 
   const selectedHexRef = useRef<string | null>(null);
   const declutterRef = useRef<RadarDeclutterMode>(RADAR_DECLUTTER_DEFAULT);
@@ -388,6 +526,17 @@ export function RadarMap() {
   const [declutter, setDeclutter] = useState<RadarDeclutterMode>(
     RADAR_DECLUTTER_DEFAULT,
   );
+  const [displayMode, setDisplayMode] = useState<RadarDisplayMode>(
+    RADAR_MODE_DEFAULT,
+  );
+  const [tfrsOn, setTfrsOn] = useState(true);
+  const [tfrCount, setTfrCount] = useState(0);
+  const [groundMode, setGroundMode] = useState(false);
+  const [focusedIcao, setFocusedIcao] = useState<string | null>(null);
+  const [airportDetail, setAirportDetail] =
+    useState<AirportDetailResponse | null>(null);
+  const [airportLoading, setAirportLoading] = useState(false);
+  const [airportError, setAirportError] = useState<string | null>(null);
   const [declutterOpen, setDeclutterOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
@@ -400,6 +549,9 @@ export function RadarMap() {
     const stored = readStoredDeclutter();
     declutterRef.current = stored;
     setDeclutter(stored);
+    const storedMode = readStoredDisplayMode();
+    displayModeRef.current = storedMode;
+    setDisplayMode(storedMode);
   }, []);
 
   const refreshAircraftLabels = useCallback(() => {
@@ -433,19 +585,7 @@ export function RadarMap() {
 
   selectAircraftRef.current = (ac: AircraftPoint) => {
     selectedHexRef.current = ac.hex;
-    setSelected({
-      hex: ac.hex,
-      callsign: ac.callsign,
-      type: ac.type,
-      registration: ac.registration,
-      squawk: ac.squawk,
-      emergency: ac.emergency,
-      dbFlags: ac.dbFlags,
-      altFt: ac.altFt,
-      speedKt: ac.speedKt,
-      trackDeg: ac.trackDeg,
-      baroRateFpm: ac.baroRateFpm,
-    });
+    setSelected(toFeatureProps(ac));
     const regs = interestingRegsRef.current;
     const mode = declutterRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
@@ -473,62 +613,178 @@ export function RadarMap() {
     airportMarkersRef.current.clear();
   }, []);
 
-  const syncAircraftMarkers = useCallback(
-    (map: MapLibreMap, aircraft: AircraftPoint[]) => {
+  const upsertAircraftMarker = useCallback(
+    (map: MapLibreMap, ac: AircraftPoint) => {
       const declutterMode = declutterRef.current;
       const selectedHex = selectedHexRef.current;
       const regs = interestingRegsRef.current;
+      const existing = aircraftMarkersRef.current.get(ac.hex);
+      if (existing) {
+        existing.ac = ac;
+        existing.marker.setLngLat([ac.lon, ac.lat]);
+        const el = existing.marker.getElement();
+        el.onclick = (e) => {
+          e.stopPropagation();
+          selectAircraftRef.current(ac);
+        };
+        updateAircraftEl(
+          el,
+          ac,
+          ac.hex === selectedHex,
+          declutterMode,
+          regs,
+        );
+        return;
+      }
+      const el = makeAircraftEl(
+        ac,
+        (picked) => selectAircraftRef.current(picked),
+        regs,
+      );
+      updateAircraftEl(
+        el,
+        ac,
+        ac.hex === selectedHex,
+        declutterMode,
+        regs,
+      );
+      const marker = new Marker({ element: el, anchor: "center" })
+        .setLngLat([ac.lon, ac.lat])
+        .addTo(map);
+      aircraftMarkersRef.current.set(ac.hex, { marker, ac });
+    },
+    [],
+  );
+
+  const removeAircraftMarker = useCallback((hex: string) => {
+    const entry = aircraftMarkersRef.current.get(hex);
+    if (!entry) return;
+    entry.marker.remove();
+    aircraftMarkersRef.current.delete(hex);
+    if (selectedHexRef.current === hex) {
+      selectedHexRef.current = null;
+      setSelected(null);
+    }
+  }, []);
+
+  /** Map mode: paint every visible target immediately. */
+  const syncAircraftMarkers = useCallback(
+    (map: MapLibreMap, aircraft: AircraftPoint[]): AircraftPoint[] => {
+      const visible = visibleAircraftFor(
+        aircraft,
+        groundModeRef.current ? focusedAirportRef.current : null,
+      );
       const seen = new Set<string>();
-      for (const ac of aircraft) {
+      for (const ac of visible) {
         seen.add(ac.hex);
-        const existing = aircraftMarkersRef.current.get(ac.hex);
-        if (existing) {
-          existing.ac = ac;
-          existing.marker.setLngLat([ac.lon, ac.lat]);
-          // Rebind click to latest aircraft snapshot
-          const el = existing.marker.getElement();
-          el.onclick = (e) => {
-            e.stopPropagation();
-            selectAircraftRef.current(ac);
-          };
-          updateAircraftEl(
-            el,
-            ac,
-            ac.hex === selectedHex,
-            declutterMode,
-            regs,
-          );
-        } else {
-          const el = makeAircraftEl(
-            ac,
-            (picked) => selectAircraftRef.current(picked),
-            regs,
-          );
-          updateAircraftEl(
-            el,
-            ac,
-            ac.hex === selectedHex,
-            declutterMode,
-            regs,
-          );
-          const marker = new Marker({ element: el, anchor: "center" })
-            .setLngLat([ac.lon, ac.lat])
-            .addTo(map);
-          aircraftMarkersRef.current.set(ac.hex, { marker, ac });
+        upsertAircraftMarker(map, ac);
+      }
+      for (const hex of aircraftMarkersRef.current.keys()) {
+        if (!seen.has(hex)) {
+          removeAircraftMarker(hex);
         }
       }
+      return visible;
+    },
+    [removeAircraftMarker, upsertAircraftMarker],
+  );
+
+  /**
+   * Scope mode: update/drop markers only as the sweep crosses their bearing
+   * (matches device Classic paint-on-scan). Polls refresh the source list only.
+   */
+  const paintScopeAircraft = useCallback(
+    (sweepDeg: number, prevSweepDeg: number | null) => {
+      const map = mapRef.current;
+      if (!map || displayModeRef.current !== "scope") return;
+
+      const center = map.getCenter();
+      const source = visibleAircraftFor(
+        lastAircraftRef.current,
+        groundModeRef.current ? focusedAirportRef.current : null,
+      );
+      const sourceByHex = new Map(source.map((ac) => [ac.hex, ac]));
+
+      for (const ac of source) {
+        const brg = bearingDegFromCenter(
+          center.lat,
+          center.lng,
+          ac.lat,
+          ac.lon,
+        );
+        if (crossedBySweep(prevSweepDeg, sweepDeg, brg)) {
+          upsertAircraftMarker(map, ac);
+        }
+      }
+
       for (const [hex, entry] of aircraftMarkersRef.current) {
-        if (!seen.has(hex)) {
-          entry.marker.remove();
-          aircraftMarkersRef.current.delete(hex);
-          if (selectedHexRef.current === hex) {
-            selectedHexRef.current = null;
-            setSelected(null);
-          }
+        const brg = bearingDegFromCenter(
+          center.lat,
+          center.lng,
+          entry.ac.lat,
+          entry.ac.lon,
+        );
+        if (
+          crossedBySweep(prevSweepDeg, sweepDeg, brg) &&
+          !sourceByHex.has(hex)
+        ) {
+          removeAircraftMarker(hex);
+        }
+      }
+
+      setAircraftCount(aircraftMarkersRef.current.size);
+    },
+    [removeAircraftMarker, upsertAircraftMarker],
+  );
+
+  const resyncAircraft = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (displayModeRef.current === "scope") {
+      // Prune filtered-out targets; new ones wait for the sweep.
+      const visible = visibleAircraftFor(
+        lastAircraftRef.current,
+        groundModeRef.current ? focusedAirportRef.current : null,
+      );
+      const visibleHex = new Set(visible.map((ac) => ac.hex));
+      for (const hex of [...aircraftMarkersRef.current.keys()]) {
+        if (!visibleHex.has(hex)) {
+          removeAircraftMarker(hex);
+        }
+      }
+      for (const ac of visible) {
+        const existing = aircraftMarkersRef.current.get(ac.hex);
+        if (existing) {
+          upsertAircraftMarker(map, ac);
+        }
+      }
+      setAircraftCount(aircraftMarkersRef.current.size);
+      return;
+    }
+    const visible = syncAircraftMarkers(map, lastAircraftRef.current);
+    setAircraftCount(visible.length);
+  }, [removeAircraftMarker, syncAircraftMarkers, upsertAircraftMarker]);
+
+  const setDisplayModeAndPersist = useCallback(
+    (mode: RadarDisplayMode) => {
+      const prev = displayModeRef.current;
+      displayModeRef.current = mode;
+      setDisplayMode(mode);
+      try {
+        window.localStorage.setItem(RADAR_MODE_STORAGE_KEY, mode);
+      } catch {
+        // ignore quota / private mode
+      }
+      if (prev !== mode && mode === "map") {
+        // Leaving scope: snap every target to the latest poll.
+        const map = mapRef.current;
+        if (map) {
+          const visible = syncAircraftMarkers(map, lastAircraftRef.current);
+          setAircraftCount(visible.length);
         }
       }
     },
-    [],
+    [syncAircraftMarkers],
   );
 
   const syncAirportMarkers = useCallback(
@@ -540,10 +796,12 @@ export function RadarMap() {
         if (existing) {
           existing.setLngLat([airport.lon, airport.lat]);
         } else {
-          const marker = new Marker({
-            element: makeAirportEl(airport),
-            anchor: "center",
-          })
+          const el = makeAirportEl(airport, (picked) =>
+            selectAirportRef.current(picked),
+          );
+          const heading = airportHeadingsRef.current.get(airport.icao);
+          applyAirportHeading(el, heading ?? null);
+          const marker = new Marker({ element: el, anchor: "center" })
             .setLngLat([airport.lon, airport.lat])
             .addTo(map);
           airportMarkersRef.current.set(airport.icao, marker);
@@ -589,6 +847,120 @@ export function RadarMap() {
     };
   }, []);
 
+  const redrawScope = useCallback(() => {
+    const map = mapRef.current;
+    const svg = scopeSvgRef.current;
+    if (!map || !svg) return;
+    if (displayModeRef.current !== "scope") {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      svg.style.display = "none";
+      return;
+    }
+    const vp = readViewport();
+    if (!vp) return;
+    svg.style.display = "block";
+    paintScopeChrome(map, svg, {
+      centerLat: vp.lat,
+      centerLon: vp.lon,
+      radiusMi: vp.rangeMi,
+      sweepDeg: sweepDegRef.current,
+    });
+  }, [readViewport]);
+
+  /** Single SVG for map overlays; paint order highways → airspace → TFRs → runways. */
+  const redrawOverlays = useCallback(() => {
+    const map = mapRef.current;
+    const svg = overlaySvgRef.current;
+    if (!map || !svg) return;
+    const ground = groundModeRef.current;
+    paintMapOverlays(map, svg, {
+      highways: highwaysRef.current,
+      rings: ringsRef.current,
+      tfrs: tfrsRef.current,
+      runways: runwaysRef.current,
+      showHighways: true,
+      // Ground mode is an airport-surface view; airspace shelves add nothing.
+      showAirspace: !ground,
+      showTfrs: tfrsOnRef.current,
+      showRunways: ground && runwaysRef.current.length > 0,
+    });
+    redrawScope();
+  }, [redrawScope]);
+
+  const syncGroundMode = useCallback(() => {
+    const map = mapRef.current;
+    const focus = focusedAirportRef.current;
+    const next = !!focus && !!map && map.getZoom() >= GROUND_ZOOM_MIN;
+    if (next === groundModeRef.current) return;
+    groundModeRef.current = next;
+    setGroundMode(next);
+    redrawOverlays();
+    resyncAircraft();
+  }, [redrawOverlays, resyncAircraft]);
+
+  const applyArrivals = useCallback(() => {
+    const cache = arrivalCacheRef.current;
+    let changed = false;
+    for (const entry of aircraftMarkersRef.current.values()) {
+      const cs = normalizeCallsign(entry.ac.callsign);
+      const arrival = cache.get(cs);
+      if (arrival === undefined) continue;
+      if ((entry.ac.arrivalIcao ?? null) === arrival) continue;
+      entry.ac = { ...entry.ac, arrivalIcao: arrival };
+      changed = true;
+    }
+    if (!changed) return;
+    refreshAircraftLabels();
+    const selHex = selectedHexRef.current;
+    if (selHex) {
+      const entry = aircraftMarkersRef.current.get(selHex);
+      if (entry) setSelected(toFeatureProps(entry.ac));
+    }
+  }, [refreshAircraftLabels]);
+
+  const fetchRoutes = useCallback(
+    async (aircraft: AircraftPoint[]) => {
+      const cache = arrivalCacheRef.current;
+      const inflight = routeInflightRef.current;
+      const wanted: { callsign: string; lat: number; lon: number }[] = [];
+      const queued = new Set<string>();
+      for (const ac of aircraft) {
+        const cs = normalizeCallsign(ac.callsign);
+        if (skipRouteLookup(cs)) continue;
+        if (queued.has(cs) || cache.has(cs) || inflight.has(cs)) continue;
+        queued.add(cs);
+        wanted.push({ callsign: cs, lat: ac.lat, lon: ac.lon });
+        if (wanted.length >= ROUTE_BULK_MAX) break;
+      }
+      if (wanted.length === 0) return;
+
+      for (const p of wanted) inflight.add(p.callsign);
+      try {
+        const res = await fetch("/api/adsb/route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planes: wanted }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { routes?: RouteLookupResponse[] };
+        for (const route of data.routes ?? []) {
+          const cs = normalizeCallsign(route.callsign ?? "");
+          if (!cs) continue;
+          const arrival = route.arrivalIcao
+            ? route.arrivalIcao.trim().toUpperCase()
+            : null;
+          cache.set(cs, arrival);
+        }
+        applyArrivals();
+      } catch {
+        // routes are decoration; keep the scope usable without them
+      } finally {
+        for (const p of wanted) inflight.delete(p.callsign);
+      }
+    },
+    [applyArrivals],
+  );
+
   const fetchAdsb = useCallback(async () => {
     const map = mapRef.current;
     const vp = readViewport();
@@ -597,6 +969,7 @@ export function RadarMap() {
     if (vp.radiusNm > ADSB_VIEWPORT_MAX_NM) {
       setAdsbActive(false);
       clearAircraftMarkers();
+      lastAircraftRef.current = [];
       setAircraftCount(0);
       setStatus("Zoom in for traffic");
       return;
@@ -615,30 +988,70 @@ export function RadarMap() {
       }
       const json = await res.json();
       const aircraft = parseAdsbAircraft(json);
+      // Seed known arrivals so freshly created tags render complete.
+      for (const ac of aircraft) {
+        const arrival = arrivalCacheRef.current.get(
+          normalizeCallsign(ac.callsign),
+        );
+        if (arrival !== undefined) ac.arrivalIcao = arrival;
+      }
+      lastAircraftRef.current = aircraft;
       setAdsbActive(true);
-      syncAircraftMarkers(map, aircraft);
-      setAircraftCount(aircraft.length);
-      const bits = [`${aircraft.length} aircraft`];
+      const visible = visibleAircraftFor(
+        aircraft,
+        groundModeRef.current ? focusedAirportRef.current : null,
+      );
+      if (displayModeRef.current === "scope") {
+        // Source only — markers update when the sweep crosses each target.
+        setAircraftCount(aircraftMarkersRef.current.size);
+      } else {
+        syncAircraftMarkers(map, aircraft);
+        setAircraftCount(visible.length);
+      }
+      const bits = [`${visible.length} aircraft`];
+      if (groundModeRef.current && focusedAirportRef.current) {
+        bits.push(`ground ${focusedAirportRef.current.icao}`);
+      }
       if (overlaysActive) bits.push("overlays on");
       bits.push(radarDeclutterShortLabel(declutterRef.current));
       setStatus(bits.join(" · "));
+      void fetchRoutes(aircraft);
     } catch {
       setAdsbActive(false);
       setStatus("ADS-B fetch failed");
     }
   }, [
     clearAircraftMarkers,
+    fetchRoutes,
     overlaysActive,
     readViewport,
     syncAircraftMarkers,
   ]);
 
-  const redrawRings = useCallback(() => {
-    const map = mapRef.current;
-    const svg = ringSvgRef.current;
-    if (!map || !svg) return;
-    paintRingSvg(map, svg, ringsRef.current);
-  }, []);
+  const fetchTfrs = useCallback(async () => {
+    const vp = readViewport();
+    if (!vp) return;
+    if (!tfrsOnRef.current) {
+      tfrsRef.current = [];
+      setTfrCount(0);
+      redrawOverlays();
+      return;
+    }
+    const radiusMi = clamp(vp.radiusMi, MAP_CONTEXT_MIN_MI, MAP_CONTEXT_MAX_MI);
+    try {
+      const res = await fetch(
+        `/api/map/tfrs?lat=${vp.lat}&lon=${vp.lon}&radiusMi=${radiusMi.toFixed(1)}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as TfrResponse;
+      if (!tfrsOnRef.current) return;
+      tfrsRef.current = data.tfrs ?? [];
+      setTfrCount(tfrsRef.current.length);
+      redrawOverlays();
+    } catch {
+      // keep last-good TFRs
+    }
+  }, [readViewport, redrawOverlays]);
 
   const fetchOverlays = useCallback(async () => {
     const map = mapRef.current;
@@ -659,11 +1072,13 @@ export function RadarMap() {
       const ctx = (await res.json()) as MapContextResponse;
       syncAirportMarkers(map, ctx.airports ?? []);
       ringsRef.current = ctx.rings ?? [];
-      redrawRings();
+      highwaysRef.current = ctx.highways ?? [];
+      redrawOverlays();
     } catch {
       // keep last-good overlays
     }
-  }, [readViewport, redrawRings, syncAirportMarkers]);
+    void fetchTfrs();
+  }, [fetchTfrs, readViewport, redrawOverlays, syncAirportMarkers]);
 
   const scheduleOverlays = useCallback(() => {
     if (overlayTimerRef.current) {
@@ -673,6 +1088,87 @@ export function RadarMap() {
       void fetchOverlays();
     }, OVERLAY_DEBOUNCE_MS);
   }, [fetchOverlays]);
+
+  const clearAirportFocus = useCallback(() => {
+    focusedAirportRef.current = null;
+    runwaysRef.current = [];
+    setFocusedIcao(null);
+    setAirportDetail(null);
+    setAirportError(null);
+    syncGroundMode();
+    redrawOverlays();
+  }, [redrawOverlays, syncGroundMode]);
+
+  const openAirportDetail = useCallback(
+    async (airport: ToweredAirport) => {
+      setWatchlistOpen(false);
+      setDeclutterOpen(false);
+      setAirportError(null);
+      setAirportLoading(true);
+      focusedAirportRef.current = {
+        icao: airport.icao,
+        name: airport.name,
+        lat: airport.lat,
+        lon: airport.lon,
+      };
+      setFocusedIcao(airport.icao);
+      try {
+        const res = await fetch(
+          `/api/airport/detail?icao=${encodeURIComponent(airport.icao)}`,
+        );
+        if (!res.ok) {
+          setAirportError(
+            res.status === 404 ? "Airport not found" : `Error ${res.status}`,
+          );
+          setAirportDetail(null);
+          return;
+        }
+        const detail = (await res.json()) as AirportDetailResponse;
+        setAirportDetail(detail);
+        runwaysRef.current = detail.runways ?? [];
+        if (detail.lat && detail.lon) {
+          focusedAirportRef.current = {
+            icao: detail.icao,
+            name: detail.name || airport.name,
+            lat: detail.lat,
+            lon: detail.lon,
+          };
+        }
+        const heading = primaryRunwayHeading(detail.runways ?? []);
+        if (heading != null) {
+          airportHeadingsRef.current.set(detail.icao, heading);
+        }
+        const marker = airportMarkersRef.current.get(detail.icao);
+        if (marker) applyAirportHeading(marker.getElement(), heading);
+        syncGroundMode();
+        redrawOverlays();
+      } catch {
+        setAirportError("Lookup failed");
+        setAirportDetail(null);
+      } finally {
+        setAirportLoading(false);
+      }
+    },
+    [redrawOverlays, syncGroundMode],
+  );
+
+  useEffect(() => {
+    selectAirportRef.current = (airport: ToweredAirport) => {
+      void openAirportDetail(airport);
+    };
+  }, [openAirportDetail]);
+
+  const enterGroundView = useCallback(() => {
+    const map = mapRef.current;
+    const focus = focusedAirportRef.current;
+    if (!map || !focus) return;
+    map.flyTo({
+      center: [focus.lon, focus.lat],
+      zoom: GROUND_VIEW_ZOOM,
+      essential: true,
+    });
+    setStatus(`Ground view ${focus.icao}`);
+  }, []);
 
   const applyRainFrame = useCallback(
     (index: number, opacity: number, enabled: boolean) => {
@@ -824,14 +1320,29 @@ export function RadarMap() {
     });
     mapRef.current = map;
 
-    const ringSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    ringSvg.setAttribute("aria-hidden", "true");
-    ringSvg.classList.add("radar-airspace-svg");
-    // z-index 0 keeps rings under MapLibre markers (targets/airports).
-    ringSvg.style.cssText =
+    const overlaySvg = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg",
+    );
+    overlaySvg.setAttribute("aria-hidden", "true");
+    overlaySvg.classList.add("radar-airspace-svg");
+    // z-index 0 keeps overlays under MapLibre markers (targets/airports).
+    overlaySvg.style.cssText =
       "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible";
-    map.getCanvasContainer().appendChild(ringSvg);
-    ringSvgRef.current = ringSvg;
+    map.getCanvasContainer().appendChild(overlaySvg);
+    overlaySvgRef.current = overlaySvg;
+
+    const scopeSvg = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg",
+    );
+    scopeSvg.setAttribute("aria-hidden", "true");
+    scopeSvg.classList.add("radar-scope-svg");
+    // Scope chrome rides above markers (low opacity), hidden in Map mode.
+    scopeSvg.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;overflow:visible;display:none";
+    map.getCanvasContainer().appendChild(scopeSvg);
+    scopeSvgRef.current = scopeSvg;
 
     map.addControl(
       new NavigationControl({ visualizePitch: false }),
@@ -856,7 +1367,7 @@ export function RadarMap() {
     map.on("load", () => {
       if (cancelled) return;
       map.resize();
-      redrawRings();
+      redrawOverlays();
 
       map.on("click", (e: MapMouseEvent) => {
         const target = e.originalEvent.target;
@@ -938,12 +1449,13 @@ export function RadarMap() {
     });
 
     const onMoveEnd = () => {
+      syncGroundMode();
       scheduleOverlays();
       void fetchAdsb();
     };
     map.on("moveend", onMoveEnd);
-    map.on("move", redrawRings);
-    map.on("resize", redrawRings);
+    map.on("move", redrawOverlays);
+    map.on("resize", redrawOverlays);
 
     return () => {
       cancelled = true;
@@ -952,10 +1464,12 @@ export function RadarMap() {
       clearAircraftMarkers();
       clearAirportMarkers();
       map.off("moveend", onMoveEnd);
-      map.off("move", redrawRings);
-      map.off("resize", redrawRings);
-      ringSvg.remove();
-      ringSvgRef.current = null;
+      map.off("move", redrawOverlays);
+      map.off("resize", redrawOverlays);
+      overlaySvg.remove();
+      overlaySvgRef.current = null;
+      scopeSvg.remove();
+      scopeSvgRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -979,6 +1493,50 @@ export function RadarMap() {
   useEffect(() => {
     applyRainFrame(frameIndex, weatherOpacity, weatherOn);
   }, [applyRainFrame, frameIndex, weatherOn, weatherOpacity]);
+
+  // Scope mode: animated sweep on the chrome overlay + paint-on-scan traffic.
+  useEffect(() => {
+    if (displayMode !== "scope") {
+      sweepDegRef.current = null;
+      prevSweepDegRef.current = null;
+      redrawScope();
+      return;
+    }
+    let raf = 0;
+    let lastPaint = 0;
+    const start =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    prevSweepDegRef.current = null;
+    const tick = (now: number) => {
+      const prev = prevSweepDegRef.current;
+      const sweep = (((now - start) / SCOPE_SWEEP_MS) * 360) % 360;
+      sweepDegRef.current = sweep;
+      if (now - lastPaint >= SCOPE_FRAME_MS) {
+        lastPaint = now;
+        redrawScope();
+        paintScopeAircraft(sweep, prev);
+        prevSweepDegRef.current = sweep;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [displayMode, paintScopeAircraft, redrawScope]);
+
+  const toggleTfrs = useCallback(
+    (next: boolean) => {
+      tfrsOnRef.current = next;
+      setTfrsOn(next);
+      if (!next) {
+        tfrsRef.current = [];
+        setTfrCount(0);
+        redrawOverlays();
+        return;
+      }
+      void fetchTfrs();
+    },
+    [fetchTfrs, redrawOverlays],
+  );
 
   const applyWatchlistRegs = useCallback((regs: string[]) => {
     interestingRegsRef.current = regs;
@@ -1049,13 +1607,26 @@ export function RadarMap() {
         ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : "—";
 
+  const scopeActive = displayMode === "scope";
+
   return (
-    <div className="relative h-[100dvh] w-[100vw] overflow-hidden bg-slate-950 text-slate-100">
+    <div
+      className={`relative h-[100dvh] w-[100vw] overflow-hidden bg-slate-950 text-slate-100${
+        scopeActive ? " radar-scope-active" : ""
+      }`}
+    >
       <div
         ref={containerRef}
         className="absolute inset-0 h-full w-full"
         style={{ minHeight: "100dvh", minWidth: "100vw" }}
       />
+
+      {scopeActive ? (
+        <div
+          className="radar-scope-vignette pointer-events-none absolute inset-0 z-[5]"
+          aria-hidden="true"
+        />
+      ) : null}
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
         <form
@@ -1141,6 +1712,42 @@ export function RadarMap() {
               ) : null}
             </>
           ) : null}
+        </div>
+
+        <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-slate-900/85 p-1.5 shadow-lg backdrop-blur">
+          <div
+            className="flex overflow-hidden rounded ring-1 ring-slate-700"
+            role="group"
+            aria-label="Display mode"
+          >
+            {(["map", "scope"] as RadarDisplayMode[]).map((mode) => {
+              const active = displayMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setDisplayModeAndPersist(mode)}
+                  aria-pressed={active}
+                  className={`px-2.5 py-1 text-sm capitalize ${
+                    active
+                      ? "bg-emerald-600 font-medium text-white"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  {mode}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex cursor-pointer items-center gap-1.5 px-1 text-sm">
+            <input
+              type="checkbox"
+              checked={tfrsOn}
+              onChange={(e) => toggleTfrs(e.target.checked)}
+              className="accent-rose-500"
+            />
+            TFRs{tfrsOn && tfrCount > 0 ? ` (${tfrCount})` : ""}
+          </label>
         </div>
 
         <div className="pointer-events-auto relative">
@@ -1280,6 +1887,89 @@ export function RadarMap() {
       </header>
 
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(3.5rem,env(safe-area-inset-right))]">
+        {airportLoading || airportDetail || airportError ? (
+          <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg ring-1 ring-[#C8D0D8]/30 backdrop-blur">
+            {airportLoading && !airportDetail ? (
+              <div className="text-xs text-[#6B7280]">Loading airport…</div>
+            ) : null}
+            {airportError ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-rose-400">{airportError}</span>
+                <button
+                  type="button"
+                  onClick={clearAirportFocus}
+                  className="text-xs text-slate-400 hover:text-slate-200"
+                >
+                  Close
+                </button>
+              </div>
+            ) : null}
+            {airportDetail ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold tracking-wide text-white">
+                      {airportDetail.icao}
+                      {airportDetail.name ? (
+                        <span className="ml-2 font-normal text-slate-300">
+                          {airportDetail.name}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-0.5 font-mono text-xs text-[#3D9CF0]">
+                      {metarOneLiner(airportDetail.metar)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearAirportFocus}
+                    className="shrink-0 text-xs text-slate-400 hover:text-slate-200"
+                    aria-label="Close airport detail"
+                  >
+                    Close
+                  </button>
+                </div>
+                {airportDetail.runways.length > 0 ? (
+                  <ul className="mt-1.5 max-h-32 space-y-0.5 overflow-y-auto font-mono text-[11px] text-[#C8D0D8]">
+                    {airportDetail.runways.map((rwy) => (
+                      <li key={`${rwy.leIdent}-${rwy.heIdent}`}>
+                        {runwayLabel(rwy)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="mt-1.5 text-[11px] text-[#6B7280]">
+                    No runway data
+                  </div>
+                )}
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={enterGroundView}
+                    className="rounded bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-600"
+                  >
+                    Ground view
+                  </button>
+                  {groundMode ? (
+                    <button
+                      type="button"
+                      onClick={() => goHome(true)}
+                      className="rounded bg-slate-800 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700"
+                    >
+                      Zoom out
+                    </button>
+                  ) : null}
+                  {groundMode ? (
+                    <span className="font-mono text-[11px] text-[#3D6B3D]">
+                      GROUND MODE
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
         {selected ? (
           <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg backdrop-blur ring-1 ring-[#3D9CF0]/40">
             <div className="font-semibold tracking-wide text-white">
@@ -1292,11 +1982,13 @@ export function RadarMap() {
                 baroRateFpm: selected.baroRateFpm,
                 style: "full",
               })}
+              {selected.onGround ? " · GND" : ""}
             </div>
             <div className="mt-0.5 font-mono text-xs text-[#3D9CF0]">
               {formatRadarTagLine3({
                 type: selected.type,
                 squawk: selected.squawk,
+                arrivalIcao: selected.arrivalIcao,
                 notable: classifyNotable({
                   squawk: selected.squawk,
                   emergency: selected.emergency,
@@ -1307,6 +1999,11 @@ export function RadarMap() {
                 }),
               })}
             </div>
+            {selected.arrivalIcao ? (
+              <div className="mt-0.5 font-mono text-xs text-[#C8D0D8]">
+                → {selected.arrivalIcao}
+              </div>
+            ) : null}
             {selected.registration ? (
               <div className="mt-1 text-[11px] text-[#6B7280]">
                 {selected.registration}
@@ -1325,6 +2022,14 @@ export function RadarMap() {
           <span>
             {overlaysActive ? "Overlays on" : "Zoom in for overlays"}
           </span>
+          <span className="text-slate-500">·</span>
+          <span>{scopeActive ? "Scope" : "Map"}</span>
+          {groundMode && focusedIcao ? (
+            <>
+              <span className="text-slate-500">·</span>
+              <span className="text-emerald-400">Ground {focusedIcao}</span>
+            </>
+          ) : null}
           {weatherOn ? (
             <>
               <span className="text-slate-500">·</span>

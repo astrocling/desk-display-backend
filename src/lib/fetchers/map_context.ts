@@ -10,6 +10,7 @@ export const TOWERED_AIRPORTS_PATH = path.join(
   "towered-airports.json",
 );
 export const AIRSPACE_RINGS_PATH = path.join(MAP_DATA_DIR, "airspace-rings.json");
+export const HIGHWAYS_PATH = path.join(MAP_DATA_DIR, "highways.json");
 
 const FIXTURES_DIR = path.join(MAP_DATA_DIR, "fixtures");
 const FIXTURE_AIRPORTS_CSV = path.join(FIXTURES_DIR, "airports.csv");
@@ -18,14 +19,21 @@ const FIXTURE_FREQUENCIES_CSV = path.join(
   "airport-frequencies.csv",
 );
 const FIXTURE_AIRSPACE_GEOJSON = path.join(FIXTURES_DIR, "airspace.geojson");
+const FIXTURE_HIGHWAYS_GEOJSON = path.join(FIXTURES_DIR, "highways.geojson");
 
 export const OURAIRPORTS_AIRPORTS_URL =
   "https://davidmegginson.github.io/ourairports-data/airports.csv";
 export const OURAIRPORTS_FREQUENCIES_URL =
   "https://davidmegginson.github.io/ourairports-data/airport-frequencies.csv";
 
+/** National Transportation Atlas interstate highways (ArcGIS). */
+export const INTERSTATE_HIGHWAYS_URL =
+  "https://services.arcgis.com/nUFb6iiYleBwvux5/arcgis/rest/services/US_Data/FeatureServer/4/query?where=1%3D1&outFields=ROUTE_NUM&f=geojson&resultRecordCount=2000";
+
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_RING_VERTS = 60;
+const MAX_HIGHWAY_VERTS = 80;
+const MAX_HIGHWAYS_RESPONSE = 12;
 
 export interface ToweredAirport {
   icao: string;
@@ -40,9 +48,16 @@ export interface AirspaceRing {
   points: [number, number][];
 }
 
+export interface HighwayPolyline {
+  id: string;
+  route: string;
+  points: [number, number][];
+}
+
 export interface MapContextResponse {
   airports: ToweredAirport[];
   rings: AirspaceRing[];
+  highways: HighwayPolyline[];
 }
 
 function looksLikeIcao(code: string): boolean {
@@ -506,12 +521,129 @@ function ringIntersectsRadius(
   return haversineMiles(lat, lon, centroidLat, centroidLon) <= radiusMi;
 }
 
+export function normalizeInterstateRoute(raw: string): string | null {
+  const cleaned = raw.trim().toUpperCase().replace(/\s+/g, "");
+  if (!cleaned) {
+    return null;
+  }
+
+  const match = cleaned.match(/^I-?(\d{1,3}[A-Z]?)$/);
+  if (!match) {
+    return null;
+  }
+  return `I-${match[1]}`;
+}
+
+function lonLatLineToLatLon(line: number[][]): [number, number][] {
+  return line.map((coord) => [coord[1], coord[0]] as [number, number]);
+}
+
+export function buildHighwaysFromGeoJson(geojson: unknown): HighwayPolyline[] {
+  let root: unknown = geojson;
+  if (typeof geojson === "string") {
+    try {
+      root = JSON.parse(geojson);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!root || typeof root !== "object") {
+    return [];
+  }
+
+  const doc = root as {
+    type?: string;
+    features?: Array<{
+      properties?: Record<string, unknown>;
+      geometry?: { type?: string; coordinates?: unknown };
+    }>;
+  };
+
+  const features =
+    doc.type === "FeatureCollection" && Array.isArray(doc.features)
+      ? doc.features
+      : doc.type === "Feature"
+        ? [
+            doc as {
+              properties?: Record<string, unknown>;
+              geometry?: { type?: string; coordinates?: unknown };
+            },
+          ]
+        : [];
+
+  const highways: HighwayPolyline[] = [];
+  const routeCounters = new Map<string, number>();
+
+  for (const feature of features) {
+    const properties = feature.properties ?? {};
+    const routeRaw =
+      (typeof properties.ROUTE_NUM === "string" && properties.ROUTE_NUM) ||
+      (typeof properties.route === "string" && properties.route) ||
+      (typeof properties.id === "string" && properties.id) ||
+      "";
+    const route = normalizeInterstateRoute(routeRaw);
+    if (!route) {
+      continue;
+    }
+
+    const geometry = feature.geometry;
+    if (!geometry?.type || !geometry.coordinates) {
+      continue;
+    }
+
+    const lines: number[][][] = [];
+    if (geometry.type === "LineString") {
+      lines.push(geometry.coordinates as number[][]);
+    } else if (geometry.type === "MultiLineString") {
+      for (const line of geometry.coordinates as number[][][]) {
+        if (line?.length >= 2) {
+          lines.push(line);
+        }
+      }
+    }
+
+    for (const line of lines) {
+      if (line.length < 2) {
+        continue;
+      }
+      let points = lonLatLineToLatLon(line);
+      points = simplifyRing(points, MAX_HIGHWAY_VERTS);
+      if (points.length < 2) {
+        continue;
+      }
+      const part = routeCounters.get(route) ?? 0;
+      routeCounters.set(route, part + 1);
+      highways.push({
+        id: part === 0 ? route : `${route}_${part}`,
+        route,
+        points,
+      });
+    }
+  }
+
+  return highways;
+}
+
+function highwayMinDistanceMi(
+  points: [number, number][],
+  lat: number,
+  lon: number,
+): number {
+  let min = Infinity;
+  for (const [pointLat, pointLon] of points) {
+    min = Math.min(min, haversineMiles(lat, lon, pointLat, pointLon));
+  }
+  return min;
+}
+
 export function filterMapContext(
   lat: number,
   lon: number,
   radiusMi: number,
   towered: ToweredAirport[],
   rings: AirspaceRing[],
+  highways: HighwayPolyline[] = [],
 ): MapContextResponse {
   const airports = towered
     .map((airport) => ({
@@ -526,7 +658,21 @@ export function filterMapContext(
     ringIntersectsRadius(ring.points, lat, lon, radiusMi),
   );
 
-  return { airports, rings: filteredRings };
+  const filteredHighways = highways
+    .map((highway) => ({
+      highway,
+      distanceMi: highwayMinDistanceMi(highway.points, lat, lon),
+    }))
+    .filter(
+      ({ highway, distanceMi }) =>
+        distanceMi <= radiusMi ||
+        ringIntersectsRadius(highway.points, lat, lon, radiusMi),
+    )
+    .sort((a, b) => a.distanceMi - b.distanceMi)
+    .slice(0, MAX_HIGHWAYS_RESPONSE)
+    .map(({ highway }) => highway);
+
+  return { airports, rings: filteredRings, highways: filteredHighways };
 }
 
 async function fetchWithTimeout(url: string): Promise<string> {
@@ -584,64 +730,109 @@ export async function buildAirspaceRings(): Promise<AirspaceRing[]> {
   }
 }
 
+export async function buildHighways(): Promise<HighwayPolyline[]> {
+  try {
+    const geojsonText = await fetchWithTimeout(INTERSTATE_HIGHWAYS_URL);
+    const highways = buildHighwaysFromGeoJson(JSON.parse(geojsonText));
+    if (highways.length > 0) {
+      return highways;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Interstate download failed (${message})`);
+  }
+
+  try {
+    const geojsonText = await readFixtureText(FIXTURE_HIGHWAYS_GEOJSON);
+    return buildHighwaysFromGeoJson(JSON.parse(geojsonText));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `Highway fixture ingest failed (${message}); keeping committed ${HIGHWAYS_PATH}`,
+    );
+    try {
+      const existing = await readFile(HIGHWAYS_PATH, "utf8");
+      return JSON.parse(existing) as HighwayPolyline[];
+    } catch {
+      return [];
+    }
+  }
+}
+
 export async function seedMapContextToRedis(): Promise<{
   toweredCount: number;
   ringCount: number;
+  highwayCount: number;
 }> {
-  const [toweredText, ringsText] = await Promise.all([
+  const [toweredText, ringsText, highwaysText] = await Promise.all([
     readFile(TOWERED_AIRPORTS_PATH, "utf8"),
     readFile(AIRSPACE_RINGS_PATH, "utf8"),
+    readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
   ]);
 
   const towered = JSON.parse(toweredText) as ToweredAirport[];
   const rings = JSON.parse(ringsText) as AirspaceRing[];
+  const highways = JSON.parse(highwaysText) as HighwayPolyline[];
 
   const redis = getRedis();
   await Promise.all([
     redis.set(REDIS_KEYS.mapTowered, towered),
     redis.set(REDIS_KEYS.mapAirspace, rings),
+    redis.set(REDIS_KEYS.mapHighways, highways),
   ]);
 
-  cachedMapData = { towered, rings };
+  cachedMapData = { towered, rings, highways };
 
-  return { toweredCount: towered.length, ringCount: rings.length };
+  return {
+    toweredCount: towered.length,
+    ringCount: rings.length,
+    highwayCount: highways.length,
+  };
 }
 
 type MapDataBlobs = {
   towered: ToweredAirport[];
   rings: AirspaceRing[];
+  highways: HighwayPolyline[];
 };
 
 let cachedMapData: MapDataBlobs | null = null;
 
 async function readMapDataFromDisk(): Promise<MapDataBlobs> {
-  const [toweredText, ringsText] = await Promise.all([
+  const [toweredText, ringsText, highwaysText] = await Promise.all([
     readFile(TOWERED_AIRPORTS_PATH, "utf8"),
     readFile(AIRSPACE_RINGS_PATH, "utf8"),
+    readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
   ]);
   return {
     towered: JSON.parse(toweredText) as ToweredAirport[],
     rings: JSON.parse(ringsText) as AirspaceRing[],
+    highways: JSON.parse(highwaysText) as HighwayPolyline[],
   };
 }
 
 async function readMapDataFromRedis(): Promise<MapDataBlobs | null> {
   try {
     const redis = getRedis();
-    const [towered, rings] = await Promise.all([
+    const [towered, rings, highways] = await Promise.all([
       redis.get<ToweredAirport[]>(REDIS_KEYS.mapTowered),
       redis.get<AirspaceRing[]>(REDIS_KEYS.mapAirspace),
+      redis.get<HighwayPolyline[]>(REDIS_KEYS.mapHighways),
     ]);
     if (!Array.isArray(towered) || !Array.isArray(rings)) {
       return null;
     }
-    return { towered, rings };
+    return {
+      towered,
+      rings,
+      highways: Array.isArray(highways) ? highways : [],
+    };
   } catch {
     return null;
   }
 }
 
-/** Load towered + airspace blobs once per warm isolate (Redis, then disk). */
+/** Load towered + airspace + highway blobs once per warm isolate (Redis, then disk). */
 export async function loadMapContextData(): Promise<MapDataBlobs> {
   if (cachedMapData) {
     return cachedMapData;

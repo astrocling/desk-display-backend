@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildAirspaceRingsFromGeoJson,
+  buildHighwaysFromGeoJson,
   buildToweredAirportsFromCsv,
   filterMapContext,
   type AirspaceRing,
+  type HighwayPolyline,
   type ToweredAirport,
 } from "./map_context";
 
@@ -18,6 +20,24 @@ const FREQUENCIES_CSV = `"id","airport_ref","type","description","frequency_mhz"
 2,"9999","GND","Ground",121.9
 `;
 
+const HIGHWAYS_GEOJSON = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { ROUTE_NUM: "I75" },
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [-84.19, 40.05],
+          [-84.2, 39.95],
+          [-84.21, 39.85],
+        ],
+      },
+    },
+  ],
+};
+
 describe("buildToweredAirportsFromCsv", () => {
   it("emits only airports with a TWR frequency", () => {
     const airports = buildToweredAirportsFromCsv(AIRPORTS_CSV, FREQUENCIES_CSV);
@@ -30,6 +50,16 @@ describe("buildToweredAirportsFromCsv", () => {
         lon: -84.219398,
       },
     ]);
+  });
+});
+
+describe("buildHighwaysFromGeoJson", () => {
+  it("normalizes interstate routes to I-N with lat/lon points", () => {
+    const highways = buildHighwaysFromGeoJson(HIGHWAYS_GEOJSON);
+    expect(highways).toHaveLength(1);
+    expect(highways[0].route).toBe("I-75");
+    expect(highways[0].id).toBe("I-75");
+    expect(highways[0].points[0]).toEqual([40.05, -84.19]);
   });
 });
 
@@ -72,18 +102,31 @@ describe("filterMapContext", () => {
     },
   ];
 
+  const highways: HighwayPolyline[] = buildHighwaysFromGeoJson(HIGHWAYS_GEOJSON);
+
   it("returns airports inside the radius sorted by distance", () => {
-    const result = filterMapContext(39.9, -84.22, 30, towered, rings);
+    const result = filterMapContext(39.9, -84.22, 30, towered, rings, highways);
 
     expect(result.airports).toHaveLength(1);
     expect(result.airports[0].icao).toBe("KDAY");
   });
 
   it("includes rings that intersect the radius", () => {
-    const result = filterMapContext(39.9, -84.22, 30, towered, rings);
+    const result = filterMapContext(39.9, -84.22, 30, towered, rings, highways);
 
     expect(result.rings).toHaveLength(1);
     expect(result.rings[0].id).toBe("KDAY_D");
+  });
+
+  it("includes nearby interstate highways", () => {
+    const result = filterMapContext(39.9, -84.2, 20, towered, rings, highways);
+    expect(result.highways).toHaveLength(1);
+    expect(result.highways[0].route).toBe("I-75");
+  });
+
+  it("omits far highways", () => {
+    const result = filterMapContext(45.0, -93.0, 5, towered, rings, highways);
+    expect(result.highways).toHaveLength(0);
   });
 });
 

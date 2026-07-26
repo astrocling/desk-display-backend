@@ -56,6 +56,17 @@ describe("radarFormat", () => {
     ).toBe("B738 1200 MIL");
   });
 
+  it("puts arrival ICAO next to type on line 3", () => {
+    expect(
+      formatRadarTagLine3({
+        type: "B772",
+        squawk: "2204",
+        notable: "none",
+        arrivalIcao: "LSZH",
+      }),
+    ).toBe("B772 LSZH 2204");
+  });
+
   it("classifies emergency squawk and military flag", () => {
     expect(
       classifyNotable({ squawk: "7700", emergency: "none", dbFlags: 0 }),

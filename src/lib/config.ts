@@ -5,6 +5,8 @@ export const REDIS_KEYS = {
   airports: "airports",
   mapTowered: "map:towered",
   mapAirspace: "map:airspace",
+  mapHighways: "map:highways",
+  mapRunways: "map:runways",
   radarInterestingRegs: "radar:interestingRegs",
 } as const;
 

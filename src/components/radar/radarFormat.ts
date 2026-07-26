@@ -27,7 +27,21 @@ export const COLORS = {
   airspaceB: "#3A6AA8",
   airspaceC: "#A83A7A",
   airspaceD: "#3A6AA8",
+  highway: "#2A323C",
+  runway: "#C8D0D8",
+  tfr: "#E85D4C",
+  ground: "#3D6B3D",
+  scopeRing: "#1A4A1A",
 } as const;
+
+export type RadarDisplayMode = "map" | "scope";
+export const RADAR_MODE_STORAGE_KEY = "desk-display.radar.mode";
+export const RADAR_MODE_DEFAULT: RadarDisplayMode = "map";
+
+export function parseRadarDisplayMode(raw: unknown): RadarDisplayMode {
+  if (raw === "map" || raw === "scope") return raw;
+  return RADAR_MODE_DEFAULT;
+}
 
 export function parseRadarDeclutterMode(raw: unknown): RadarDeclutterMode {
   if (raw === "target" || raw === "callsign" || raw === "tag") {
@@ -126,9 +140,12 @@ export function formatRadarTagLine3(opts: {
   type: string;
   squawk: string;
   notable: AircraftNotable;
+  arrivalIcao?: string | null;
 }): string {
   const parts: string[] = [];
   if (opts.type) parts.push(opts.type);
+  const arrival = opts.arrivalIcao?.trim().toUpperCase();
+  if (arrival) parts.push(arrival);
   if (opts.squawk) parts.push(opts.squawk);
   const reason = notableReason(opts.notable);
   if (reason) parts.push(reason);

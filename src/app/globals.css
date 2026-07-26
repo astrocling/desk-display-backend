@@ -122,30 +122,50 @@ body {
   color: #3d9cf0;
 }
 
+/* On-ground / surface targets read as a dimmer green than airborne traffic. */
+.radar-ac.is-ground .radar-ac-mark {
+  text-shadow: 0 0 2px #0b0f14;
+}
+
+.radar-ac.is-ground:not(.is-selected) .radar-ac-tag {
+  opacity: 0.65;
+}
+
 .radar-airport {
+  /* Clickable hit target for the airport detail card. */
   position: relative;
-  width: 0;
-  height: 0;
-  pointer-events: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  overflow: visible;
 }
 
 .radar-airport-plus {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -55%);
+  /* Oriented to the primary runway heading once airport detail is known. */
+  transform: translate(-50%, -55%) rotate(var(--radar-rwy-rot, 0deg));
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;
   line-height: 1;
   color: #ffffff;
   opacity: 1;
   text-shadow: 0 0 3px #0b0f14;
+  pointer-events: none;
+}
+
+.radar-airport.has-heading .radar-airport-plus {
+  color: #c8d0d8;
 }
 
 .radar-airport-label {
   position: absolute;
-  left: 8px;
-  top: -12px;
+  left: calc(50% + 8px);
+  top: calc(50% - 12px);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   line-height: 1;
@@ -156,4 +176,28 @@ body {
     0 0 3px #0b0f14,
     0 1px 2px #0b0f14;
   white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Scope mode — circular PPI vignette + dimmed basemap. */
+.radar-scope-active .maplibregl-canvas {
+  filter: saturate(0.25) brightness(0.55) contrast(1.05);
+}
+
+/* closest-side keeps the clear area a true circle on any aspect ratio. */
+.radar-scope-vignette {
+  background:
+    radial-gradient(
+      circle closest-side at 50% 50%,
+      rgba(11, 15, 20, 0) 0%,
+      rgba(11, 15, 20, 0) 94%,
+      rgba(11, 15, 20, 0.55) 99%,
+      rgba(11, 15, 20, 0.92) 104%,
+      #0b0f14 112%
+    ),
+    radial-gradient(
+      circle closest-side at 50% 50%,
+      rgba(0, 255, 0, 0.05) 0%,
+      rgba(0, 255, 0, 0) 90%
+    );
 }
