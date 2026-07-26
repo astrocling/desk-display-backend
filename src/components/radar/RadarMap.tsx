@@ -583,6 +583,32 @@ export function RadarMap() {
     [refreshAircraftLabels],
   );
 
+  const syncAircraftMarkersRef = useRef<
+    (map: MapLibreMap, aircraft: AircraftPoint[]) => AircraftPoint[]
+  >(() => []);
+
+  const setDisplayModeAndPersist = useCallback((mode: RadarDisplayMode) => {
+    const prev = displayModeRef.current;
+    displayModeRef.current = mode;
+    setDisplayMode(mode);
+    try {
+      window.localStorage.setItem(RADAR_MODE_STORAGE_KEY, mode);
+    } catch {
+      // ignore quota / private mode
+    }
+    if (prev !== mode && mode === "map") {
+      // Leaving scope: snap every target to the latest poll.
+      const map = mapRef.current;
+      if (map) {
+        const visible = syncAircraftMarkersRef.current(
+          map,
+          lastAircraftRef.current,
+        );
+        setAircraftCount(visible.length);
+      }
+    }
+  }, []);
+
   selectAircraftRef.current = (ac: AircraftPoint) => {
     selectedHexRef.current = ac.hex;
     setSelected(toFeatureProps(ac));
@@ -765,27 +791,7 @@ export function RadarMap() {
     setAircraftCount(visible.length);
   }, [removeAircraftMarker, syncAircraftMarkers, upsertAircraftMarker]);
 
-  const setDisplayModeAndPersist = useCallback(
-    (mode: RadarDisplayMode) => {
-      const prev = displayModeRef.current;
-      displayModeRef.current = mode;
-      setDisplayMode(mode);
-      try {
-        window.localStorage.setItem(RADAR_MODE_STORAGE_KEY, mode);
-      } catch {
-        // ignore quota / private mode
-      }
-      if (prev !== mode && mode === "map") {
-        // Leaving scope: snap every target to the latest poll.
-        const map = mapRef.current;
-        if (map) {
-          const visible = syncAircraftMarkers(map, lastAircraftRef.current);
-          setAircraftCount(visible.length);
-        }
-      }
-    },
-    [syncAircraftMarkers],
-  );
+  syncAircraftMarkersRef.current = syncAircraftMarkers;
 
   const syncAirportMarkers = useCallback(
     (map: MapLibreMap, airports: ToweredAirport[]) => {
