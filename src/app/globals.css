@@ -184,6 +184,11 @@ body {
   filter: saturate(0.25) brightness(0.55) contrast(1.05);
 }
 
+/* Ground mode stays dark; ease the scope dim so pavement stays readable. */
+.radar-scope-active.radar-ground-active .maplibregl-canvas {
+  filter: saturate(0.4) brightness(0.82) contrast(1.05);
+}
+
 /* closest-side keeps the clear area a true circle on any aspect ratio. */
 .radar-scope-vignette {
   background:

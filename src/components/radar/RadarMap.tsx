@@ -90,26 +90,17 @@ function readStoredDisplayMode(): RadarDisplayMode {
 }
 
 /** Dark raster basemap with glyphs so symbol labels can render. */
-const BASEMAP_DARK_TILES = [
-  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-] as const;
-
-/** Brighter OSM/Carto tiles for ground view — runways/taxiways read clearly. */
-const BASEMAP_GROUND_TILES = [
-  "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-  "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-  "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-] as const;
-
 const BASEMAP_STYLE = {
   version: 8 as const,
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources: {
     carto: {
       type: "raster" as const,
-      tiles: [...BASEMAP_DARK_TILES],
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+      ],
       tileSize: 256,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -126,13 +117,11 @@ const BASEMAP_STYLE = {
   ],
 };
 
+/** Stay on dark tiles; lift blacks so pavement/taxiways read in ground mode. */
 function applyBasemapForGround(map: MapLibreMap, ground: boolean) {
-  const source = map.getSource("carto");
-  if (!source || !("setTiles" in source)) return;
-  const tiles = ground ? BASEMAP_GROUND_TILES : BASEMAP_DARK_TILES;
-  (
-    source as { setTiles: (tiles: string[]) => void }
-  ).setTiles([...tiles]);
+  if (!map.getLayer("carto-basemap")) return;
+  map.setPaintProperty("carto-basemap", "raster-brightness-min", ground ? 0.22 : 0);
+  map.setPaintProperty("carto-basemap", "raster-contrast", ground ? 0.12 : 0);
 }
 
 const ADSB_POLL_MS = 10_000;
@@ -141,6 +130,9 @@ const RAIN_REFRESH_MS = 5 * 60_000;
 
 /** Scope sweep: one revolution per period, repainted at most every frame budget. */
 const SCOPE_FRAME_MS = 60;
+
+/** Default local overview zoom (home / locate / leave ground). */
+const DEFAULT_MAP_ZOOM = 10;
 
 /** Ground mode engages once a focused airport fills the viewport. */
 const GROUND_ZOOM_MIN = 12.5;
@@ -902,7 +894,7 @@ export function RadarMap() {
     });
   }, [readViewport]);
 
-  /** Single SVG for map overlays; paint order highways → airspace → TFRs. */
+  /** Single SVG for map overlays; paint order highways → airspace → TFRs → runways. */
   const redrawOverlays = useCallback(() => {
     const map = mapRef.current;
     const svg = overlaySvgRef.current;
@@ -917,8 +909,7 @@ export function RadarMap() {
       // Ground mode is an airport-surface view; airspace shelves add nothing.
       showAirspace: !ground,
       showTfrs: tfrsOnRef.current,
-      // OSM basemap already draws runways/taxiways — skip our stick overlays.
-      showRunways: false,
+      showRunways: ground && runwaysRef.current.length > 0,
     });
     redrawScope();
   }, [redrawScope]);
@@ -1207,6 +1198,19 @@ export function RadarMap() {
     setStatus(`Ground view ${focus.icao}`);
   }, []);
 
+  /** Leave ground mode: back to default overview zoom on the focused field. */
+  const exitGroundView = useCallback(() => {
+    const map = mapRef.current;
+    const focus = focusedAirportRef.current;
+    if (!map || !focus) return;
+    map.flyTo({
+      center: [focus.lon, focus.lat],
+      zoom: DEFAULT_MAP_ZOOM,
+      essential: true,
+    });
+    setStatus(`Centered on ${focus.icao}`);
+  }, []);
+
   const applyRainFrame = useCallback(
     (index: number, opacity: number, enabled: boolean) => {
       const map = mapRef.current;
@@ -1274,10 +1278,10 @@ export function RadarMap() {
     if (!map) return;
     const { lat, lon } = homeRef.current;
     if (animate) {
-      map.flyTo({ center: [lon, lat], zoom: 10, essential: true });
+      map.flyTo({ center: [lon, lat], zoom: DEFAULT_MAP_ZOOM, essential: true });
     } else {
       map.setCenter([lon, lat]);
-      map.setZoom(10);
+      map.setZoom(DEFAULT_MAP_ZOOM);
     }
   }, []);
 
@@ -1294,7 +1298,7 @@ export function RadarMap() {
         if (!map) return;
         map.flyTo({
           center: [pos.coords.longitude, pos.coords.latitude],
-          zoom: 10,
+          zoom: DEFAULT_MAP_ZOOM,
           essential: true,
         });
         setStatus("Centered on your location");
@@ -1352,7 +1356,7 @@ export function RadarMap() {
       style: BASEMAP_STYLE,
       center: [homeRef.current.lon, homeRef.current.lat],
       // Zoom 10 is a sensible local default; overlays scale with viewport radius.
-      zoom: 10,
+      zoom: DEFAULT_MAP_ZOOM,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
@@ -1465,7 +1469,7 @@ export function RadarMap() {
               if (cancelled || !mapRef.current) return;
               mapRef.current.flyTo({
                 center: [pos.coords.longitude, pos.coords.latitude],
-                zoom: 10,
+                zoom: DEFAULT_MAP_ZOOM,
                 essential: true,
               });
               setStatus("Centered on your location");
@@ -1650,7 +1654,7 @@ export function RadarMap() {
     <div
       className={`relative h-[100dvh] w-[100vw] overflow-hidden bg-slate-950 text-slate-100${
         scopeActive ? " radar-scope-active" : ""
-      }`}
+      }${groundMode ? " radar-ground-active" : ""}`}
     >
       <div
         ref={containerRef}
@@ -1990,7 +1994,7 @@ export function RadarMap() {
                   {groundMode ? (
                     <button
                       type="button"
-                      onClick={() => goHome(true)}
+                      onClick={exitGroundView}
                       className="rounded bg-slate-800 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700"
                     >
                       Zoom out
