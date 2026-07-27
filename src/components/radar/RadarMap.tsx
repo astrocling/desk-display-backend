@@ -47,6 +47,7 @@ import {
   type RadarDisplayMode,
 } from "./radarFormat";
 import { SelectionAircraftCard } from "./SelectionAircraftCard";
+import { SelectionAirportCard } from "./SelectionAirportCard";
 import type {
   AirportDetailResponse,
   AirportRunway,
@@ -350,28 +351,6 @@ function skipRouteLookup(callsign: string): boolean {
   if (!callsign || callsign === "?") return true;
   if (/^N\d/.test(callsign)) return true;
   return !/^[A-Z0-9]{3,8}$/.test(callsign);
-}
-
-function metarOneLiner(metar: AirportDetailResponse["metar"]): string {
-  if (!metar) return "METAR unavailable";
-  const parts: string[] = [];
-  if (metar.flightCategory) parts.push(metar.flightCategory);
-  if (metar.wind) parts.push(metar.wind);
-  if (metar.visibility) parts.push(metar.visibility);
-  if (metar.ceiling) parts.push(metar.ceiling);
-  if (parts.length === 0) return metar.raw || "METAR unavailable";
-  return parts.join(" · ");
-}
-
-function runwayLabel(rwy: AirportRunway): string {
-  const idents = [rwy.leIdent, rwy.heIdent].filter(Boolean).join("/");
-  const bits: string[] = [idents || "RWY"];
-  if (rwy.lengthFt != null) {
-    bits.push(`${Math.round(rwy.lengthFt).toLocaleString()} ft`);
-  }
-  if (rwy.widthFt != null) bits.push(`${Math.round(rwy.widthFt)} ft wide`);
-  if (rwy.surface) bits.push(rwy.surface);
-  return bits.join(" · ");
 }
 
 /** Longest runway drives the airport glyph orientation. */
@@ -1999,87 +1978,34 @@ export function RadarMap() {
       </header>
 
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(3.5rem,env(safe-area-inset-right))]">
-        {airportLoading || airportDetail || airportError ? (
+        {airportLoading && !airportDetail ? (
           <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg ring-1 ring-[#C8D0D8]/30 backdrop-blur">
-            {airportLoading && !airportDetail ? (
-              <div className="text-xs text-[#6B7280]">Loading airport…</div>
-            ) : null}
-            {airportError ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-rose-400">{airportError}</span>
-                <button
-                  type="button"
-                  onClick={clearAirportFocus}
-                  className="text-xs text-slate-400 hover:text-slate-200"
-                >
-                  Close
-                </button>
-              </div>
-            ) : null}
-            {airportDetail ? (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold tracking-wide text-white">
-                      {airportDetail.icao}
-                      {airportDetail.name ? (
-                        <span className="ml-2 font-normal text-slate-300">
-                          {airportDetail.name}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 font-mono text-xs text-[#3D9CF0]">
-                      {metarOneLiner(airportDetail.metar)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearAirportFocus}
-                    className="shrink-0 text-xs text-slate-400 hover:text-slate-200"
-                    aria-label="Close airport detail"
-                  >
-                    Close
-                  </button>
-                </div>
-                {airportDetail.runways.length > 0 ? (
-                  <ul className="mt-1.5 max-h-32 space-y-0.5 overflow-y-auto font-mono text-[11px] text-[#C8D0D8]">
-                    {airportDetail.runways.map((rwy) => (
-                      <li key={`${rwy.leIdent}-${rwy.heIdent}`}>
-                        {runwayLabel(rwy)}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="mt-1.5 text-[11px] text-[#6B7280]">
-                    No runway data
-                  </div>
-                )}
-                <div className="mt-2 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={enterGroundView}
-                    className="rounded bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-600"
-                  >
-                    Ground view
-                  </button>
-                  {groundMode ? (
-                    <button
-                      type="button"
-                      onClick={exitGroundView}
-                      className="rounded bg-slate-800 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700"
-                    >
-                      Zoom out
-                    </button>
-                  ) : null}
-                  {groundMode ? (
-                    <span className="font-mono text-[11px] text-[#3D6B3D]">
-                      GROUND MODE
-                    </span>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
+            <div className="text-xs text-[#6B7280]">Loading airport…</div>
           </div>
+        ) : null}
+        {airportError ? (
+          <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg ring-1 ring-[#C8D0D8]/30 backdrop-blur">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-rose-400">{airportError}</span>
+              <button
+                type="button"
+                onClick={clearAirportFocus}
+                className="text-xs text-slate-400 hover:text-slate-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {airportDetail ? (
+          <SelectionAirportCard
+            detail={airportDetail}
+            groundMode={groundMode}
+            onClose={clearAirportFocus}
+            onEnterGround={enterGroundView}
+            onExitGround={exitGroundView}
+            traffic={null}
+          />
         ) : null}
 
         {selected ? <SelectionAircraftCard selected={selected} /> : null}
