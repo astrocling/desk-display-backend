@@ -106,11 +106,20 @@ export function formatAirportRunwayLabel(rwy: AirportRunway): string {
   return parts.join(" · ");
 }
 
+/** Dedupes by frequency type (keeping the first of each) so hubs with many
+ * duplicate ATIS/TWR/GND entries don't blow out the card. */
 export function formatAirportFreqLine(
   freqs: readonly AirportFrequency[],
 ): string | null {
   if (!freqs.length) return null;
-  const parts = freqs.map((f) => `${f.type} ${formatMhz(f.mhz)}`);
+  const seenTypes = new Set<string>();
+  const parts: string[] = [];
+  for (const f of freqs) {
+    if (seenTypes.has(f.type)) continue;
+    seenTypes.add(f.type);
+    parts.push(`${f.type} ${formatMhz(f.mhz)}`);
+  }
+  if (!parts.length) return null;
   return parts.join(" · ");
 }
 

@@ -32,7 +32,15 @@ describe("buildRunwaysFromCsv", () => {
 `;
     const byIcao = buildRunwaysFromCsv(csv);
     const airports = attachPrimaryRunwayHeadings(
-      [{ icao: "KDAY", name: "Dayton", lat: 39.9, lon: -84.2 }],
+      [
+        {
+          icao: "KDAY",
+          name: "Dayton",
+          lat: 39.9,
+          lon: -84.2,
+          primaryRunwayHeadingDeg: null,
+        },
+      ],
       byIcao,
     );
     expect(airports[0].primaryRunwayHeadingDeg).toBe(55.3);

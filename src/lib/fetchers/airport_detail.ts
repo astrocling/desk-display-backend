@@ -118,6 +118,7 @@ let frequenciesCache: FrequenciesByIcao | null = null;
 let airportsAndFrequenciesCsvPromise: Promise<{
   airportsCsv: string;
   frequenciesCsv: string;
+  source: "live" | "fixture";
 }> | null = null;
 const metarCache = new Map<string, { at: number; value: MetarSummary | null }>();
 const tafCache = new Map<string, { at: number; value: TafSummary | null }>();
@@ -416,41 +417,66 @@ export async function loadRunwaysByIcao(): Promise<RunwaysByIcao> {
   }
 }
 
+type CsvSource = "live" | "fixture";
+
+/**
+ * Fetches the OurAirports CSVs, falling back to the committed fixture
+ * CSVs (with a loud warning, matching map_context's pattern) when the live
+ * download fails. Fixture data is a last resort for a handful of sample
+ * airports — never treat it as authoritative, and never invent frequencies
+ * that aren't in one of these sources.
+ */
 async function fetchAirportsAndFrequenciesCsv(): Promise<{
   airportsCsv: string;
   frequenciesCsv: string;
+  source: CsvSource;
 }> {
   try {
     const [airportsCsv, frequenciesCsv] = await Promise.all([
       fetchWithTimeout(OURAIRPORTS_AIRPORTS_URL),
       fetchWithTimeout(OURAIRPORTS_FREQUENCIES_URL),
     ]);
-    return { airportsCsv, frequenciesCsv };
-  } catch {
+    return { airportsCsv, frequenciesCsv, source: "live" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `OurAirports live download failed (${message}); falling back to sample fixture CSVs from ${FIXTURES_DIR}. ` +
+        "Identity/frequency data will be incomplete until a retry succeeds.",
+    );
     const [airportsCsv, frequenciesCsv] = await Promise.all([
       readFile(FIXTURE_AIRPORTS_CSV, "utf8"),
       readFile(FIXTURE_FREQUENCIES_CSV, "utf8"),
     ]);
-    return { airportsCsv, frequenciesCsv };
+    return { airportsCsv, frequenciesCsv, source: "fixture" };
   }
 }
 
 /**
  * Memoizes the in-flight CSV fetch so identity + frequencies loaders
  * (run concurrently from getAirportDetail) don't each trigger their own
- * network round-trip on a cold cache.
+ * network round-trip on a cold cache. Deliberately does NOT keep a
+ * fixture-sourced result memoized: fixture data is only a handful of
+ * sample airports, so pinning it for the rest of the process lifetime
+ * would silently serve wrong/missing data forever. Leaving the memo null
+ * lets the next call retry the live download.
  */
 function loadAirportsAndFrequenciesCsv(): Promise<{
   airportsCsv: string;
   frequenciesCsv: string;
+  source: CsvSource;
 }> {
   if (!airportsAndFrequenciesCsvPromise) {
-    airportsAndFrequenciesCsvPromise = fetchAirportsAndFrequenciesCsv().catch(
-      (error: unknown) => {
+    airportsAndFrequenciesCsvPromise = fetchAirportsAndFrequenciesCsv()
+      .then((result) => {
+        if (result.source === "fixture") {
+          airportsAndFrequenciesCsvPromise = null;
+        }
+        return result;
+      })
+      .catch((error: unknown) => {
         airportsAndFrequenciesCsvPromise = null;
         throw error;
-      },
-    );
+      });
   }
   return airportsAndFrequenciesCsvPromise;
 }
@@ -467,12 +493,13 @@ export async function loadAirportIdentityByIcao(): Promise<IdentityByIcao> {
   }
 
   try {
-    const { airportsCsv } = await loadAirportsAndFrequenciesCsv();
-    identityCache = buildAirportIdentityFromCsv(airportsCsv);
-    return identityCache;
+    const { airportsCsv, source } = await loadAirportsAndFrequenciesCsv();
+    const identity = buildAirportIdentityFromCsv(airportsCsv);
+    // Only pin a live-sourced result; a fixture result should be retried.
+    if (source === "live") identityCache = identity;
+    return identity;
   } catch {
-    identityCache = {};
-    return identityCache;
+    return {};
   }
 }
 
@@ -488,12 +515,14 @@ export async function loadFrequenciesByIcao(): Promise<FrequenciesByIcao> {
   }
 
   try {
-    const { airportsCsv, frequenciesCsv } = await loadAirportsAndFrequenciesCsv();
-    frequenciesCache = buildFrequenciesFromCsv(airportsCsv, frequenciesCsv);
-    return frequenciesCache;
+    const { airportsCsv, frequenciesCsv, source } =
+      await loadAirportsAndFrequenciesCsv();
+    const frequencies = buildFrequenciesFromCsv(airportsCsv, frequenciesCsv);
+    // Only pin a live-sourced result; a fixture result should be retried.
+    if (source === "live") frequenciesCache = frequencies;
+    return frequencies;
   } catch {
-    frequenciesCache = {};
-    return frequenciesCache;
+    return {};
   }
 }
 
