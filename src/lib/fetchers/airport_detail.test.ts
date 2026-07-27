@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assembleAirportDetail,
   attachPrimaryRunwayHeadings,
   buildAirportIdentityFromCsv,
   buildFrequenciesFromCsv,
@@ -104,6 +105,51 @@ describe("parseTafRow", () => {
 
   it("returns null for empty", () => {
     expect(parseTafRow(null)).toBeNull();
+  });
+});
+
+describe("getAirportDetail assembly", () => {
+  it("merges identity, freqs, metar, taf without inventing", async () => {
+    // Prefer unit-testing a pure assembleAirportDetail(...) helper
+    // that takes already-loaded pieces, so no network in tests.
+    const detail = assembleAirportDetail({
+      icao: "KDAY",
+      identity: {
+        icao: "KDAY",
+        iata: "DAY",
+        name: "James M Cox Dayton International Airport",
+        municipality: "Dayton",
+        elevFt: 1009,
+        lat: 39.9,
+        lon: -84.2,
+      },
+      runways: [],
+      frequencies: [{ type: "ATIS", description: "ATIS", mhz: 134.875 }],
+      metar: null,
+      taf: null,
+    });
+    expect(detail.iata).toBe("DAY");
+    expect(detail.municipality).toBe("Dayton");
+    expect(detail.elevFt).toBe(1009);
+    expect(detail.frequencies).toHaveLength(1);
+    expect(detail.taf).toBeNull();
+  });
+
+  it("omits unknown iata/municipality instead of inventing them", () => {
+    const detail = assembleAirportDetail({
+      icao: "KXYZ",
+      identity: null,
+      runways: [],
+      frequencies: [],
+      metar: null,
+      taf: null,
+      fallback: { name: "Fallback Field", lat: 1, lon: 2, elevFt: null },
+    });
+    expect(detail.iata).toBeNull();
+    expect(detail.municipality).toBeNull();
+    expect(detail.name).toBe("Fallback Field");
+    expect(detail.lat).toBe(1);
+    expect(detail.lon).toBe(2);
   });
 });
 

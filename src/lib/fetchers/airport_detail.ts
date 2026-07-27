@@ -96,12 +96,16 @@ export interface TafSummary {
 
 export interface AirportDetail {
   icao: string;
+  iata: string | null;
   name: string;
+  municipality: string | null;
+  elevFt: number | null;
   lat: number;
   lon: number;
-  elevFt: number | null;
   runways: AirportRunway[];
+  frequencies: AirportFrequency[];
   metar: MetarSummary | null;
+  taf: TafSummary | null;
 }
 
 type RunwaysByIcao = Record<string, AirportRunway[]>;
@@ -111,6 +115,10 @@ type FrequenciesByIcao = Record<string, AirportFrequency[]>;
 let runwaysCache: RunwaysByIcao | null = null;
 let identityCache: IdentityByIcao | null = null;
 let frequenciesCache: FrequenciesByIcao | null = null;
+let airportsAndFrequenciesCsvPromise: Promise<{
+  airportsCsv: string;
+  frequenciesCsv: string;
+}> | null = null;
 const metarCache = new Map<string, { at: number; value: MetarSummary | null }>();
 const tafCache = new Map<string, { at: number; value: TafSummary | null }>();
 
@@ -408,7 +416,7 @@ export async function loadRunwaysByIcao(): Promise<RunwaysByIcao> {
   }
 }
 
-async function loadAirportsAndFrequenciesCsv(): Promise<{
+async function fetchAirportsAndFrequenciesCsv(): Promise<{
   airportsCsv: string;
   frequenciesCsv: string;
 }> {
@@ -425,6 +433,26 @@ async function loadAirportsAndFrequenciesCsv(): Promise<{
     ]);
     return { airportsCsv, frequenciesCsv };
   }
+}
+
+/**
+ * Memoizes the in-flight CSV fetch so identity + frequencies loaders
+ * (run concurrently from getAirportDetail) don't each trigger their own
+ * network round-trip on a cold cache.
+ */
+function loadAirportsAndFrequenciesCsv(): Promise<{
+  airportsCsv: string;
+  frequenciesCsv: string;
+}> {
+  if (!airportsAndFrequenciesCsvPromise) {
+    airportsAndFrequenciesCsvPromise = fetchAirportsAndFrequenciesCsv().catch(
+      (error: unknown) => {
+        airportsAndFrequenciesCsvPromise = null;
+        throw error;
+      },
+    );
+  }
+  return airportsAndFrequenciesCsvPromise;
 }
 
 export async function loadAirportIdentityByIcao(): Promise<IdentityByIcao> {
@@ -615,6 +643,46 @@ export async function fetchTaf(icao: string): Promise<TafSummary | null> {
   }
 }
 
+/**
+ * Pure assembly of an already-loaded airport's pieces into the response
+ * shape. Never invents iata/municipality/elev — omits (null) when the
+ * identity lookup doesn't have them, falling back to caller-supplied
+ * hints (e.g. from the towered-airports map context) only for
+ * name/lat/lon/elevFt.
+ */
+export function assembleAirportDetail(input: {
+  icao: string;
+  identity: AirportIdentity | null;
+  runways: AirportRunway[];
+  frequencies: AirportFrequency[];
+  metar: MetarSummary | null;
+  taf: TafSummary | null;
+  fallback?: {
+    name?: string;
+    lat?: number;
+    lon?: number;
+    elevFt?: number | null;
+  };
+}): AirportDetail {
+  const icao = input.icao.trim().toUpperCase();
+  const { identity, runways, frequencies, metar, taf } = input;
+  const fallback = input.fallback ?? {};
+
+  return {
+    icao,
+    iata: identity?.iata ? identity.iata : null,
+    name: identity?.name || fallback.name || icao,
+    municipality: identity?.municipality ? identity.municipality : null,
+    elevFt: identity?.elevFt ?? fallback.elevFt ?? null,
+    lat: identity?.lat ?? fallback.lat ?? runways[0]?.leLat ?? 0,
+    lon: identity?.lon ?? fallback.lon ?? runways[0]?.leLon ?? 0,
+    runways,
+    frequencies,
+    metar,
+    taf,
+  };
+}
+
 export async function getAirportDetail(opts: {
   icao: string;
   name?: string;
@@ -623,25 +691,41 @@ export async function getAirportDetail(opts: {
   elevFt?: number | null;
 }): Promise<AirportDetail> {
   const icao = opts.icao.trim().toUpperCase();
-  const byIcao = await loadRunwaysByIcao();
-  const runways = byIcao[icao] ?? [];
-  const metar = await fetchMetar(icao);
+  const [runwaysByIcao, identityByIcao, frequenciesByIcao] =
+    await Promise.all([
+      loadRunwaysByIcao(),
+      loadAirportIdentityByIcao(),
+      loadFrequenciesByIcao(),
+    ]);
+  const runways = runwaysByIcao[icao] ?? [];
+  const identity = identityByIcao[icao] ?? null;
+  const frequencies = filterOperationalFrequencies(
+    frequenciesByIcao[icao] ?? [],
+  );
 
-  return {
+  const [metar, taf] = await Promise.all([fetchMetar(icao), fetchTaf(icao)]);
+
+  return assembleAirportDetail({
     icao,
-    name: opts.name ?? icao,
-    lat: opts.lat ?? runways[0]?.leLat ?? 0,
-    lon: opts.lon ?? runways[0]?.leLon ?? 0,
-    elevFt: opts.elevFt ?? null,
+    identity,
     runways,
+    frequencies,
     metar,
-  };
+    taf,
+    fallback: {
+      name: opts.name,
+      lat: opts.lat,
+      lon: opts.lon,
+      elevFt: opts.elevFt,
+    },
+  });
 }
 
 export function clearAirportDetailCachesForTests(): void {
   runwaysCache = null;
   identityCache = null;
   frequenciesCache = null;
+  airportsAndFrequenciesCsvPromise = null;
   metarCache.clear();
   tafCache.clear();
 }

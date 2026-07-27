@@ -37,15 +37,25 @@ export interface AirportRunway {
   heLon: number;
   leHeadingDeg: number | null;
   heHeadingDeg: number | null;
+  lighted: boolean | null;
+}
+
+export interface AirportFrequency {
+  type: string;
+  description: string;
+  mhz: number;
 }
 
 export interface AirportDetailResponse {
   icao: string;
+  iata: string | null;
   name: string;
+  municipality: string | null;
+  elevFt: number | null;
   lat: number;
   lon: number;
-  elevFt: number | null;
   runways: AirportRunway[];
+  frequencies: AirportFrequency[];
   metar: {
     raw: string;
     flightCategory: string | null;
@@ -53,7 +63,14 @@ export interface AirportDetailResponse {
     visibility: string | null;
     ceiling: string | null;
     tempC: number | null;
+    dewpointC: number | null;
+    altimeterInHg: number | null;
     observed: string | null;
+  } | null;
+  taf: {
+    raw: string;
+    validFrom: string | null;
+    validTo: string | null;
   } | null;
 }
 
