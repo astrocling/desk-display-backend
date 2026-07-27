@@ -26,21 +26,23 @@ import {
   TOWERED_AIRPORTS_PATH,
 } from "../src/lib/fetchers/map_context";
 import {
+  attachPrimaryRunwayHeadings,
   buildRunwaysFromCsv,
   OURAIRPORTS_RUNWAYS_URL,
   RUNWAYS_PATH,
+  type AirportRunway,
 } from "../src/lib/fetchers/airport_detail";
 
 async function buildRunwaysForTowered(
   toweredIcaos: Set<string>,
-): Promise<number> {
+): Promise<{ filtered: Record<string, AirportRunway[]>; count: number }> {
   const res = await fetch(OURAIRPORTS_RUNWAYS_URL);
   if (!res.ok) {
     throw new Error(`runways csv download failed: ${res.status}`);
   }
   const csv = await res.text();
   const all = buildRunwaysFromCsv(csv);
-  const filtered: Record<string, (typeof all)[string]> = {};
+  const filtered: Record<string, AirportRunway[]> = {};
   let count = 0;
   for (const [icao, rwys] of Object.entries(all)) {
     if (!toweredIcaos.has(icao)) continue;
@@ -48,17 +50,21 @@ async function buildRunwaysForTowered(
     count += rwys.length;
   }
   await writeFile(RUNWAYS_PATH, `${JSON.stringify(filtered)}\n`, "utf8");
-  return count;
+  return { filtered, count };
 }
 
 async function main() {
   await mkdir(MAP_DATA_DIR, { recursive: true });
 
-  const [towered, rings, highways] = await Promise.all([
+  const [toweredRaw, rings, highways] = await Promise.all([
     buildToweredAirports(),
     buildAirspaceRings(),
     buildHighways(),
   ]);
+
+  const { filtered: runwaysByIcao, count: runwayCount } =
+    await buildRunwaysForTowered(new Set(toweredRaw.map((a) => a.icao)));
+  const towered = attachPrimaryRunwayHeadings(toweredRaw, runwaysByIcao);
 
   const toweredJson = `${JSON.stringify(towered)}\n`;
   const ringsJson = `${JSON.stringify(rings)}\n`;
@@ -70,15 +76,15 @@ async function main() {
     writeFile(HIGHWAYS_PATH, highwaysJson, "utf8"),
   ]);
 
-  const runwayCount = await buildRunwaysForTowered(
-    new Set(towered.map((a) => a.icao)),
-  );
-
   const toweredKb = Math.round(Buffer.byteLength(toweredJson) / 1024);
   const ringsKb = Math.round(Buffer.byteLength(ringsJson) / 1024);
   const highwaysKb = Math.round(Buffer.byteLength(highwaysJson) / 1024);
+  const withHeading = towered.filter(
+    (a) => a.primaryRunwayHeadingDeg != null,
+  ).length;
 
   console.log(`Wrote ${towered.length} towered airports to ${TOWERED_AIRPORTS_PATH}`);
+  console.log(`  (${withHeading} with primary runway heading)`);
   console.log(`Wrote ${rings.length} airspace rings to ${AIRSPACE_RINGS_PATH}`);
   console.log(`Wrote ${highways.length} highways to ${HIGHWAYS_PATH}`);
   console.log(`Wrote runways for towered airports (${runwayCount} strips) to ${RUNWAYS_PATH}`);

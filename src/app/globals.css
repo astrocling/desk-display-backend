@@ -147,7 +147,7 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  /* Oriented to the primary runway heading once airport detail is known. */
+  /* Oriented to the primary runway heading from map context. */
   transform: translate(-50%, -55%) rotate(var(--radar-rwy-rot, 0deg));
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 14px;

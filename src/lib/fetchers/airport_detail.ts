@@ -221,6 +221,22 @@ export function primaryRunwayHeading(runways: AirportRunway[]): number | null {
   return ((deg % 360) + 360) % 360;
 }
 
+/** Attach longest-runway true headings for radar airport glyphs. */
+export function attachPrimaryRunwayHeadings<
+  T extends { icao: string; primaryRunwayHeadingDeg?: number | null },
+>(airports: T[], runwaysByIcao: RunwaysByIcao): T[] {
+  return airports.map((airport) => {
+    const heading = primaryRunwayHeading(runwaysByIcao[airport.icao] ?? []);
+    if (heading == null && airport.primaryRunwayHeadingDeg == null) {
+      return airport;
+    }
+    return {
+      ...airport,
+      primaryRunwayHeadingDeg: heading,
+    };
+  });
+}
+
 function formatWind(wdir: unknown, wspd: unknown, wgst?: unknown): string | null {
   if (typeof wspd !== "number") return null;
   const dir =

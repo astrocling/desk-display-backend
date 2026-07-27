@@ -90,17 +90,26 @@ function readStoredDisplayMode(): RadarDisplayMode {
 }
 
 /** Dark raster basemap with glyphs so symbol labels can render. */
+const BASEMAP_DARK_TILES = [
+  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+] as const;
+
+/** Brighter OSM/Carto tiles for ground view — runways/taxiways read clearly. */
+const BASEMAP_GROUND_TILES = [
+  "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+  "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+  "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+] as const;
+
 const BASEMAP_STYLE = {
   version: 8 as const,
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources: {
     carto: {
       type: "raster" as const,
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
+      tiles: [...BASEMAP_DARK_TILES],
       tileSize: 256,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -108,7 +117,7 @@ const BASEMAP_STYLE = {
   },
   layers: [
     {
-      id: "carto-dark",
+      id: "carto-basemap",
       type: "raster" as const,
       source: "carto",
       minzoom: 0,
@@ -116,6 +125,15 @@ const BASEMAP_STYLE = {
     },
   ],
 };
+
+function applyBasemapForGround(map: MapLibreMap, ground: boolean) {
+  const source = map.getSource("carto");
+  if (!source || !("setTiles" in source)) return;
+  const tiles = ground ? BASEMAP_GROUND_TILES : BASEMAP_DARK_TILES;
+  (
+    source as { setTiles: (tiles: string[]) => void }
+  ).setTiles([...tiles]);
+}
 
 const ADSB_POLL_MS = 10_000;
 const OVERLAY_DEBOUNCE_MS = 400;
@@ -798,15 +816,26 @@ export function RadarMap() {
       const seen = new Set<string>();
       for (const airport of airports) {
         seen.add(airport.icao);
+        const headingFromCtx =
+          typeof airport.primaryRunwayHeadingDeg === "number"
+            ? airport.primaryRunwayHeadingDeg
+            : null;
+        if (headingFromCtx != null) {
+          airportHeadingsRef.current.set(airport.icao, headingFromCtx);
+        }
+        const heading =
+          headingFromCtx ??
+          airportHeadingsRef.current.get(airport.icao) ??
+          null;
         const existing = airportMarkersRef.current.get(airport.icao);
         if (existing) {
           existing.setLngLat([airport.lon, airport.lat]);
+          applyAirportHeading(existing.getElement(), heading);
         } else {
           const el = makeAirportEl(airport, (picked) =>
             selectAirportRef.current(picked),
           );
-          const heading = airportHeadingsRef.current.get(airport.icao);
-          applyAirportHeading(el, heading ?? null);
+          applyAirportHeading(el, heading);
           const marker = new Marker({ element: el, anchor: "center" })
             .setLngLat([airport.lon, airport.lat])
             .addTo(map);
@@ -873,7 +902,7 @@ export function RadarMap() {
     });
   }, [readViewport]);
 
-  /** Single SVG for map overlays; paint order highways → airspace → TFRs → runways. */
+  /** Single SVG for map overlays; paint order highways → airspace → TFRs. */
   const redrawOverlays = useCallback(() => {
     const map = mapRef.current;
     const svg = overlaySvgRef.current;
@@ -884,11 +913,12 @@ export function RadarMap() {
       rings: ringsRef.current,
       tfrs: tfrsRef.current,
       runways: runwaysRef.current,
-      showHighways: true,
+      showHighways: !ground,
       // Ground mode is an airport-surface view; airspace shelves add nothing.
       showAirspace: !ground,
       showTfrs: tfrsOnRef.current,
-      showRunways: ground && runwaysRef.current.length > 0,
+      // OSM basemap already draws runways/taxiways — skip our stick overlays.
+      showRunways: false,
     });
     redrawScope();
   }, [redrawScope]);
@@ -900,6 +930,7 @@ export function RadarMap() {
     if (next === groundModeRef.current) return;
     groundModeRef.current = next;
     setGroundMode(next);
+    if (map) applyBasemapForGround(map, next);
     redrawOverlays();
     resyncAircraft();
   }, [redrawOverlays, resyncAircraft]);

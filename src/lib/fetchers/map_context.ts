@@ -40,6 +40,8 @@ export interface ToweredAirport {
   name: string;
   lat: number;
   lon: number;
+  /** Longest runway true heading (degrees) for glyph orientation. */
+  primaryRunwayHeadingDeg?: number | null;
 }
 
 export interface AirspaceRing {

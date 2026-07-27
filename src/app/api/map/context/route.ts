@@ -3,6 +3,10 @@ import {
   loadMapContextData,
 } from "@/lib/fetchers/map_context";
 import {
+  attachPrimaryRunwayHeadings,
+  loadRunwaysByIcao,
+} from "@/lib/fetchers/airport_detail";
+import {
   MAP_CONTEXT_MAX_MI,
   MAP_CONTEXT_MIN_MI,
 } from "@/components/radar/geo";
@@ -48,8 +52,12 @@ export async function GET(request: Request) {
   const radiusMi = clampRadiusMi(radiusRaw ?? 25);
 
   try {
-    const { towered, rings, highways } = await loadMapContextData();
+    const [{ towered, rings, highways }, runwaysByIcao] = await Promise.all([
+      loadMapContextData(),
+      loadRunwaysByIcao(),
+    ]);
     const body = filterMapContext(lat, lon, radiusMi, towered, rings, highways);
+    body.airports = attachPrimaryRunwayHeadings(body.airports, runwaysByIcao);
     return Response.json(body, {
       headers: {
         "Cache-Control": CACHE_CONTROL,
