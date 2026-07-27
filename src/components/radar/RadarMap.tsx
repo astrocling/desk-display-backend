@@ -46,6 +46,7 @@ import {
   type RadarDeclutterMode,
   type RadarDisplayMode,
 } from "./radarFormat";
+import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import type {
   AirportDetailResponse,
   AirportRunway,
@@ -148,6 +149,65 @@ const LAYER_RAIN = "radar-rain-layer";
 
 type AircraftPoint = AircraftFeatureProps & { lat: number; lon: number };
 
+type RouteCacheEntry = {
+  arrivalIcao: string | null;
+  routeIcaos: string[];
+  routeLocations: string[];
+  airlineCode: string | null;
+};
+
+function routesEqual(
+  a: Pick<
+    AircraftFeatureProps,
+    "arrivalIcao" | "routeIcaos" | "routeLocations" | "airlineCode"
+  >,
+  b: RouteCacheEntry,
+): boolean {
+  if ((a.arrivalIcao ?? null) !== b.arrivalIcao) return false;
+  if ((a.airlineCode ?? null) !== b.airlineCode) return false;
+  const aIcaos = a.routeIcaos ?? [];
+  const aLocs = a.routeLocations ?? [];
+  if (aIcaos.length !== b.routeIcaos.length) return false;
+  if (aLocs.length !== b.routeLocations.length) return false;
+  for (let i = 0; i < aIcaos.length; i++) {
+    if (aIcaos[i] !== b.routeIcaos[i]) return false;
+  }
+  for (let i = 0; i < aLocs.length; i++) {
+    if (aLocs[i] !== b.routeLocations[i]) return false;
+  }
+  return true;
+}
+
+function applyRouteCacheEntry(
+  ac: AircraftPoint,
+  entry: RouteCacheEntry,
+): AircraftPoint {
+  return {
+    ...ac,
+    arrivalIcao: entry.arrivalIcao,
+    routeIcaos: entry.routeIcaos,
+    routeLocations: entry.routeLocations,
+    airlineCode: entry.airlineCode,
+  };
+}
+
+function routeEntryFromLookup(route: RouteLookupResponse): RouteCacheEntry {
+  return {
+    arrivalIcao: route.arrivalIcao
+      ? route.arrivalIcao.trim().toUpperCase()
+      : null,
+    routeIcaos: Array.isArray(route.routeIcaos)
+      ? route.routeIcaos.map((c) => c.trim().toUpperCase()).filter(Boolean)
+      : [],
+    routeLocations: Array.isArray(route.routeLocations)
+      ? route.routeLocations.map((c) => String(c ?? "").trim())
+      : [],
+    airlineCode: route.airlineCode
+      ? route.airlineCode.trim().toUpperCase()
+      : null,
+  };
+}
+
 type FocusedAirport = {
   icao: string;
   name: string;
@@ -220,6 +280,9 @@ function parseAdsbAircraft(data: unknown): AircraftPoint[] {
       baroRateFpm: numOrNull(item.baro_rate) ?? numOrNull(item.geom_rate),
       onGround,
       arrivalIcao: null,
+      routeIcaos: null,
+      routeLocations: null,
+      airlineCode: null,
       lat,
       lon,
     });
@@ -242,6 +305,9 @@ function toFeatureProps(ac: AircraftPoint): AircraftFeatureProps {
     baroRateFpm: ac.baroRateFpm,
     onGround: ac.onGround,
     arrivalIcao: ac.arrivalIcao ?? null,
+    routeIcaos: ac.routeIcaos ?? null,
+    routeLocations: ac.routeLocations ?? null,
+    airlineCode: ac.airlineCode ?? null,
   };
 }
 
@@ -509,7 +575,7 @@ export function RadarMap() {
   const selectAircraftRef = useRef<(ac: AircraftPoint) => void>(() => {});
   const selectAirportRef = useRef<(airport: ToweredAirport) => void>(() => {});
   const lastAircraftRef = useRef<AircraftPoint[]>([]);
-  const arrivalCacheRef = useRef(new Map<string, string | null>());
+  const arrivalCacheRef = useRef(new Map<string, RouteCacheEntry>());
   const routeInflightRef = useRef(new Set<string>());
   const sweepDegRef = useRef<number | null>(null);
   const prevSweepDegRef = useRef<number | null>(null);
@@ -670,6 +736,9 @@ export function RadarMap() {
           declutterMode,
           regs,
         );
+        if (ac.hex === selectedHex) {
+          setSelected(toFeatureProps(ac));
+        }
         return;
       }
       const el = makeAircraftEl(
@@ -931,10 +1000,10 @@ export function RadarMap() {
     let changed = false;
     for (const entry of aircraftMarkersRef.current.values()) {
       const cs = normalizeCallsign(entry.ac.callsign);
-      const arrival = cache.get(cs);
-      if (arrival === undefined) continue;
-      if ((entry.ac.arrivalIcao ?? null) === arrival) continue;
-      entry.ac = { ...entry.ac, arrivalIcao: arrival };
+      const route = cache.get(cs);
+      if (route === undefined) continue;
+      if (routesEqual(entry.ac, route)) continue;
+      entry.ac = applyRouteCacheEntry(entry.ac, route);
       changed = true;
     }
     if (!changed) return;
@@ -974,10 +1043,7 @@ export function RadarMap() {
         for (const route of data.routes ?? []) {
           const cs = normalizeCallsign(route.callsign ?? "");
           if (!cs) continue;
-          const arrival = route.arrivalIcao
-            ? route.arrivalIcao.trim().toUpperCase()
-            : null;
-          cache.set(cs, arrival);
+          cache.set(cs, routeEntryFromLookup(route));
         }
         applyArrivals();
       } catch {
@@ -1016,12 +1082,17 @@ export function RadarMap() {
       }
       const json = await res.json();
       const aircraft = parseAdsbAircraft(json);
-      // Seed known arrivals so freshly created tags render complete.
+      // Seed known routes so freshly created tags/cards render complete.
       for (const ac of aircraft) {
-        const arrival = arrivalCacheRef.current.get(
+        const route = arrivalCacheRef.current.get(
           normalizeCallsign(ac.callsign),
         );
-        if (arrival !== undefined) ac.arrivalIcao = arrival;
+        if (route) {
+          ac.arrivalIcao = route.arrivalIcao;
+          ac.routeIcaos = route.routeIcaos;
+          ac.routeLocations = route.routeLocations;
+          ac.airlineCode = route.airlineCode;
+        }
       }
       lastAircraftRef.current = aircraft;
       setAdsbActive(true);
@@ -2011,47 +2082,7 @@ export function RadarMap() {
           </div>
         ) : null}
 
-        {selected ? (
-          <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg backdrop-blur ring-1 ring-[#3D9CF0]/40">
-            <div className="font-semibold tracking-wide text-white">
-              {selected.callsign}
-            </div>
-            <div className="mt-0.5 font-mono text-xs text-[#3D9CF0]">
-              {formatRadarTagLine2({
-                altFt: selected.altFt,
-                speedKt: selected.speedKt,
-                baroRateFpm: selected.baroRateFpm,
-                style: "full",
-              })}
-              {selected.onGround ? " · GND" : ""}
-            </div>
-            <div className="mt-0.5 font-mono text-xs text-[#3D9CF0]">
-              {formatRadarTagLine3({
-                type: selected.type,
-                squawk: selected.squawk,
-                arrivalIcao: selected.arrivalIcao,
-                notable: classifyNotable({
-                  squawk: selected.squawk,
-                  emergency: selected.emergency,
-                  dbFlags: selected.dbFlags,
-                  registration: selected.registration,
-                  callsign: selected.callsign,
-                  interestingRegs: watchlistRegs,
-                }),
-              })}
-            </div>
-            {selected.arrivalIcao ? (
-              <div className="mt-0.5 font-mono text-xs text-[#C8D0D8]">
-                → {selected.arrivalIcao}
-              </div>
-            ) : null}
-            {selected.registration ? (
-              <div className="mt-1 text-[11px] text-[#6B7280]">
-                {selected.registration}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {selected ? <SelectionAircraftCard selected={selected} /> : null}
 
         <div className="pointer-events-auto flex flex-wrap items-center gap-2 self-start rounded-lg bg-slate-900/85 px-3 py-1.5 text-xs text-slate-300 shadow-lg backdrop-blur">
           <span>{status}</span>

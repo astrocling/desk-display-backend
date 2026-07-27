@@ -62,6 +62,9 @@ export interface RouteLookupResponse {
   originIcao: string | null;
   arrivalIcao: string | null;
   airportCodes: string | null;
+  routeIcaos: string[];
+  routeLocations: string[];
+  airlineCode: string | null;
   plausible: boolean | null;
 }
 
@@ -96,7 +99,13 @@ export interface AircraftFeatureProps {
   baroRateFpm: number | null;
   /** True when ADS-B reports on-ground / alt_baro "ground". */
   onGround?: boolean;
+  /** Arrival ICAO for blip tags (first←→last of route when known). */
   arrivalIcao?: string | null;
+  /** Full ordered ICAO chain for the selection card. */
+  routeIcaos?: string[] | null;
+  /** City/location per hop when aligned with routeIcaos. */
+  routeLocations?: string[] | null;
+  airlineCode?: string | null;
 }
 
 export interface RainViewerFrame {

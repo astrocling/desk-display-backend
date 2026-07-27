@@ -3,7 +3,12 @@
  * (same dataset adsb.lol routeset uses). Prefer CDN; fall back to GET route.
  */
 
-import { parseAirportCodes } from "@/lib/fetchers/flight_routes_parse";
+import {
+  parseAirportCodeList,
+  parseAirportCodes,
+  parseAirlineCode,
+  parseRouteLocations,
+} from "@/lib/fetchers/flight_routes_parse";
 
 const VRS_STANDING_BASE = "https://vrs-standing-data.adsb.lol/routes";
 const ADSB_ROUTE_BASE = "https://api.adsb.lol/api/0/route";
@@ -15,6 +20,11 @@ export interface RouteLookup {
   originIcao: string | null;
   arrivalIcao: string | null;
   airportCodes: string | null;
+  /** Full ordered ICAO chain from airport_codes (multi-stop aware). */
+  routeIcaos: string[];
+  /** City/location per hop when aligned with routeIcaos. */
+  routeLocations: string[];
+  airlineCode: string | null;
   plausible: boolean | null;
 }
 
@@ -51,12 +61,19 @@ function fromStandingPayload(
 ): RouteLookup {
   const airportCodes =
     typeof data.airport_codes === "string" ? data.airport_codes : null;
-  const { originIcao, arrivalIcao } = parseAirportCodes(airportCodes);
+  const normalizedCodes =
+    airportCodes === "unknown" ? null : airportCodes;
+  const routeIcaos = parseAirportCodeList(normalizedCodes);
+  const { originIcao, arrivalIcao } = parseAirportCodes(normalizedCodes);
+  const routeLocations = parseRouteLocations(routeIcaos, data._airports);
   return {
     callsign,
     originIcao,
     arrivalIcao,
-    airportCodes: airportCodes === "unknown" ? null : airportCodes,
+    airportCodes: normalizedCodes,
+    routeIcaos,
+    routeLocations,
+    airlineCode: parseAirlineCode(data.airline_code),
     plausible,
   };
 }
@@ -91,19 +108,26 @@ async function fetchAdsbRoute(
   return fromStandingPayload(callsign, obj, plausible);
 }
 
+function emptyLookup(callsign: string): RouteLookup {
+  return {
+    callsign,
+    originIcao: null,
+    arrivalIcao: null,
+    airportCodes: null,
+    routeIcaos: [],
+    routeLocations: [],
+    airlineCode: null,
+    plausible: null,
+  };
+}
+
 export async function lookupRoute(
   rawCallsign: string,
   lat: number | null = null,
   lon: number | null = null,
 ): Promise<RouteLookup> {
   const callsign = normalizeCallsign(rawCallsign);
-  const empty: RouteLookup = {
-    callsign,
-    originIcao: null,
-    arrivalIcao: null,
-    airportCodes: null,
-    plausible: null,
-  };
+  const empty = emptyLookup(callsign);
   if (!callsign) return empty;
 
   const cached = memoryCache.get(callsign);
@@ -117,7 +141,21 @@ export async function lookupRoute(
   } else if (lat != null && lon != null && result.plausible == null) {
     const withPlausible = await fetchAdsbRoute(callsign, lat, lon);
     if (withPlausible?.plausible != null) {
-      result = { ...result, plausible: withPlausible.plausible };
+      result = {
+        ...result,
+        plausible: withPlausible.plausible,
+        // Prefer route payload that includes locations when standing lacked them.
+        routeLocations:
+          result.routeLocations.length > 0
+            ? result.routeLocations
+            : withPlausible.routeLocations,
+        airlineCode: result.airlineCode ?? withPlausible.airlineCode,
+        routeIcaos:
+          result.routeIcaos.length > 0
+            ? result.routeIcaos
+            : withPlausible.routeIcaos,
+        airportCodes: result.airportCodes ?? withPlausible.airportCodes,
+      };
     }
   }
 
