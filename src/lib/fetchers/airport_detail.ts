@@ -29,8 +29,10 @@ const FIXTURE_FREQUENCIES_CSV = path.join(
 );
 
 const METAR_URL = "https://aviationweather.gov/api/data/metar";
+const TAF_URL = "https://aviationweather.gov/api/data/taf";
 const FETCH_TIMEOUT_MS = 10_000;
 const METAR_CACHE_TTL_MS = 5 * 60_000;
+const TAF_CACHE_TTL_MS = 10 * 60_000;
 
 const OPERATIONAL_FREQUENCY_ORDER = [
   "ATIS",
@@ -81,7 +83,15 @@ export interface MetarSummary {
   visibility: string | null;
   ceiling: string | null;
   tempC: number | null;
+  dewpointC: number | null;
+  altimeterInHg: number | null;
   observed: string | null;
+}
+
+export interface TafSummary {
+  raw: string;
+  validFrom: string | null;
+  validTo: string | null;
 }
 
 export interface AirportDetail {
@@ -102,6 +112,7 @@ let runwaysCache: RunwaysByIcao | null = null;
 let identityCache: IdentityByIcao | null = null;
 let frequenciesCache: FrequenciesByIcao | null = null;
 const metarCache = new Map<string, { at: number; value: MetarSummary | null }>();
+const tafCache = new Map<string, { at: number; value: TafSummary | null }>();
 
 function numOrNull(v: string | undefined): number | null {
   if (v == null || v.trim() === "") return null;
@@ -514,6 +525,29 @@ function formatCeiling(clouds: unknown): string | null {
   return "SKC";
 }
 
+/** Converts a METAR altimeter reading from hectopascals to inches of mercury. */
+export function hPaToInHg(hPa: number): number {
+  return Math.round((hPa / 33.8639) * 100) / 100;
+}
+
+export function parseTafRow(row: unknown): TafSummary | null {
+  if (!row || typeof row !== "object") return null;
+  const t = row as Record<string, unknown>;
+  const raw = typeof t.rawTAF === "string" ? t.rawTAF : "";
+  if (!raw) return null;
+  return {
+    raw,
+    validFrom:
+      typeof t.validTimeFrom === "number"
+        ? new Date(t.validTimeFrom * 1000).toISOString()
+        : null,
+    validTo:
+      typeof t.validTimeTo === "number"
+        ? new Date(t.validTimeTo * 1000).toISOString()
+        : null,
+  };
+}
+
 export async function fetchMetar(icao: string): Promise<MetarSummary | null> {
   const code = icao.trim().toUpperCase();
   const cached = metarCache.get(code);
@@ -544,6 +578,8 @@ export async function fetchMetar(icao: string): Promise<MetarSummary | null> {
       visibility: vis,
       ceiling: formatCeiling(m.clouds),
       tempC: typeof m.temp === "number" ? m.temp : null,
+      dewpointC: typeof m.dewp === "number" ? m.dewp : null,
+      altimeterInHg: typeof m.altim === "number" ? hPaToInHg(m.altim) : null,
       observed: typeof m.obsTime === "number"
         ? new Date(m.obsTime * 1000).toISOString()
         : typeof m.reportTime === "string"
@@ -554,6 +590,27 @@ export async function fetchMetar(icao: string): Promise<MetarSummary | null> {
     return summary;
   } catch {
     metarCache.set(code, { at: Date.now(), value: null });
+    return null;
+  }
+}
+
+export async function fetchTaf(icao: string): Promise<TafSummary | null> {
+  const code = icao.trim().toUpperCase();
+  const cached = tafCache.get(code);
+  if (cached && Date.now() - cached.at < TAF_CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  const url = `${TAF_URL}?ids=${encodeURIComponent(code)}&format=json`;
+  try {
+    const text = await fetchWithTimeout(url);
+    const data = JSON.parse(text) as unknown;
+    const row = Array.isArray(data) ? data[0] : null;
+    const summary = parseTafRow(row);
+    tafCache.set(code, { at: Date.now(), value: summary });
+    return summary;
+  } catch {
+    tafCache.set(code, { at: Date.now(), value: null });
     return null;
   }
 }
@@ -586,4 +643,5 @@ export function clearAirportDetailCachesForTests(): void {
   identityCache = null;
   frequenciesCache = null;
   metarCache.clear();
+  tafCache.clear();
 }

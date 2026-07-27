@@ -6,6 +6,8 @@ import {
   buildFrequenciesFromCsv,
   buildRunwaysFromCsv,
   filterOperationalFrequencies,
+  hPaToInHg,
+  parseTafRow,
   primaryRunwayHeading,
 } from "./airport_detail";
 import { parseTfrGeoJson } from "./tfrs";
@@ -79,6 +81,29 @@ describe("buildRunwaysFromCsv lighted", () => {
 `;
     const byIcao = buildRunwaysFromCsv(csv);
     expect(byIcao.KDAY[0].lighted).toBe(true);
+  });
+});
+
+describe("metar altimeter conversion", () => {
+  it("converts hPa to inHg", () => {
+    expect(hPaToInHg(1011.3)).toBeCloseTo(29.86, 2);
+  });
+});
+
+describe("parseTafRow", () => {
+  it("maps raw and validity window", () => {
+    const summary = parseTafRow({
+      rawTAF: "TAF KDAY ...",
+      validTimeFrom: 1785175200,
+      validTimeTo: 1785261600,
+    });
+    expect(summary?.raw).toContain("TAF KDAY");
+    expect(summary?.validFrom).toBe(new Date(1785175200 * 1000).toISOString());
+    expect(summary?.validTo).toBe(new Date(1785261600 * 1000).toISOString());
+  });
+
+  it("returns null for empty", () => {
+    expect(parseTafRow(null)).toBeNull();
   });
 });
 
