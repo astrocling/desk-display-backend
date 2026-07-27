@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   attachPrimaryRunwayHeadings,
+  buildAirportIdentityFromCsv,
+  buildFrequenciesFromCsv,
   buildRunwaysFromCsv,
+  filterOperationalFrequencies,
   primaryRunwayHeading,
 } from "./airport_detail";
 import { parseTfrGeoJson } from "./tfrs";
@@ -30,6 +33,52 @@ describe("buildRunwaysFromCsv", () => {
       byIcao,
     );
     expect(airports[0].primaryRunwayHeadingDeg).toBe(55.3);
+  });
+});
+
+const AIRPORTS_CSV = `"id","ident","type","name","latitude_deg","longitude_deg","elevation_ft","continent","iso_country","iso_region","municipality","scheduled_service","icao_code","iata_code","gps_code","local_code","home_link","wikipedia_link","keywords"
+3622,"KDAY","large_airport","James M Cox Dayton International Airport",39.9024,-84.2194,1009,"NA","US","US-OH","Dayton","yes","KDAY","DAY","KDAY","DAY",,,
+`;
+
+const FREQ_CSV = `"id","airport_ref","type","description","frequency_mhz"
+1,3622,"ATIS","ATIS",134.875
+2,3622,"TWR","Tower",119.9
+3,3622,"GND","Ground",121.9
+4,3622,"APP","Approach",126.375
+5,3622,"VOR","VORTAC",117.0
+`;
+
+describe("buildAirportIdentityFromCsv", () => {
+  it("maps ICAO to iata, municipality, elev", () => {
+    const map = buildAirportIdentityFromCsv(AIRPORTS_CSV);
+    expect(map.KDAY).toEqual({
+      icao: "KDAY",
+      iata: "DAY",
+      name: "James M Cox Dayton International Airport",
+      municipality: "Dayton",
+      elevFt: 1009,
+      lat: 39.9024,
+      lon: -84.2194,
+    });
+  });
+});
+
+describe("buildFrequenciesFromCsv", () => {
+  it("keeps operational freqs and drops VOR", () => {
+    const byIcao = buildFrequenciesFromCsv(AIRPORTS_CSV, FREQ_CSV);
+    const filtered = filterOperationalFrequencies(byIcao.KDAY ?? []);
+    expect(filtered.map((f) => f.type)).toEqual(["ATIS", "TWR", "GND", "APP"]);
+    expect(filtered.find((f) => f.type === "ATIS")?.mhz).toBe(134.875);
+  });
+});
+
+describe("buildRunwaysFromCsv lighted", () => {
+  it("parses lighted flag", () => {
+    const csv = `"id","airport_ref","airport_ident","length_ft","width_ft","surface","lighted","closed","le_ident","le_latitude_deg","le_longitude_deg","le_elevation_ft","le_heading_degT","le_displaced_threshold_ft","he_ident","he_latitude_deg","he_longitude_deg","he_elevation_ft","he_heading_degT","he_displaced_threshold_ft"
+1,"1","KDAY","10901","150","ASP","1","0","06L","39.895","-84.246","1009","55.3","","24R","39.912","-84.214","1009","235.3",""
+`;
+    const byIcao = buildRunwaysFromCsv(csv);
+    expect(byIcao.KDAY[0].lighted).toBe(true);
   });
 });
 

@@ -5,15 +5,43 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { MAP_DATA_DIR } from "@/lib/fetchers/map_context";
+import {
+  MAP_DATA_DIR,
+  OURAIRPORTS_AIRPORTS_URL,
+  OURAIRPORTS_FREQUENCIES_URL,
+} from "@/lib/fetchers/map_context";
 
 export const RUNWAYS_PATH = path.join(MAP_DATA_DIR, "runways.json");
 export const OURAIRPORTS_RUNWAYS_URL =
   "https://davidmegginson.github.io/ourairports-data/runways.csv";
 
+export const AIRPORT_IDENTITY_PATH = path.join(
+  MAP_DATA_DIR,
+  "airport-identity.json",
+);
+export const FREQUENCIES_PATH = path.join(MAP_DATA_DIR, "frequencies.json");
+
+const FIXTURES_DIR = path.join(MAP_DATA_DIR, "fixtures");
+const FIXTURE_AIRPORTS_CSV = path.join(FIXTURES_DIR, "airports.csv");
+const FIXTURE_FREQUENCIES_CSV = path.join(
+  FIXTURES_DIR,
+  "airport-frequencies.csv",
+);
+
 const METAR_URL = "https://aviationweather.gov/api/data/metar";
 const FETCH_TIMEOUT_MS = 10_000;
 const METAR_CACHE_TTL_MS = 5 * 60_000;
+
+const OPERATIONAL_FREQUENCY_ORDER = [
+  "ATIS",
+  "TWR",
+  "GND",
+  "GROUND",
+  "APP",
+  "DEP",
+  "CTAF",
+  "UNICOM",
+];
 
 export interface AirportRunway {
   leIdent: string;
@@ -27,6 +55,23 @@ export interface AirportRunway {
   heLon: number;
   leHeadingDeg: number | null;
   heHeadingDeg: number | null;
+  lighted: boolean | null;
+}
+
+export interface AirportIdentity {
+  icao: string;
+  iata: string;
+  name: string;
+  municipality: string;
+  elevFt: number | null;
+  lat: number;
+  lon: number;
+}
+
+export interface AirportFrequency {
+  type: string;
+  description: string;
+  mhz: number;
 }
 
 export interface MetarSummary {
@@ -50,14 +95,25 @@ export interface AirportDetail {
 }
 
 type RunwaysByIcao = Record<string, AirportRunway[]>;
+type IdentityByIcao = Record<string, AirportIdentity>;
+type FrequenciesByIcao = Record<string, AirportFrequency[]>;
 
 let runwaysCache: RunwaysByIcao | null = null;
+let identityCache: IdentityByIcao | null = null;
+let frequenciesCache: FrequenciesByIcao | null = null;
 const metarCache = new Map<string, { at: number; value: MetarSummary | null }>();
 
 function numOrNull(v: string | undefined): number | null {
   if (v == null || v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function boolOrNull(v: string | undefined): boolean | null {
+  const trimmed = (v ?? "").trim();
+  if (trimmed === "1") return true;
+  if (trimmed === "0") return false;
+  return null;
 }
 
 function parseCsvRecords(text: string): string[][] {
@@ -124,6 +180,7 @@ export function buildRunwaysFromCsv(csv: string): RunwaysByIcao {
   const iLen = idx("length_ft");
   const iWidth = idx("width_ft");
   const iSurface = idx("surface");
+  const iLighted = idx("lighted");
   const iLeIdent = idx("le_ident");
   const iHeIdent = idx("he_ident");
   const iLeLat = idx("le_latitude_deg");
@@ -162,6 +219,7 @@ export function buildRunwaysFromCsv(csv: string): RunwaysByIcao {
       heLon,
       leHeadingDeg: numOrNull(row[iLeHdg]),
       heHeadingDeg: numOrNull(row[iHeHdg]),
+      lighted: boolOrNull(row[iLighted]),
     };
 
     if (!out[icao]) out[icao] = [];
@@ -173,6 +231,135 @@ export function buildRunwaysFromCsv(csv: string): RunwaysByIcao {
     list.sort((a, b) => (b.lengthFt ?? 0) - (a.lengthFt ?? 0));
   }
   return out;
+}
+
+function icaoFromIdentAndCode(
+  ident: string | undefined,
+  icaoCode: string | undefined,
+): string | null {
+  const upperIdent = (ident ?? "").trim().toUpperCase();
+  if (/^[A-Z]{4}$/.test(upperIdent)) return upperIdent;
+  const upperCode = (icaoCode ?? "").trim().toUpperCase();
+  if (/^[A-Z]{4}$/.test(upperCode)) return upperCode;
+  return null;
+}
+
+export function buildAirportIdentityFromCsv(csv: string): IdentityByIcao {
+  const records = parseCsvRecords(csv);
+  if (records.length < 2) return {};
+  const header = records[0].map((h) => h.replace(/^"|"$/g, ""));
+  const idx = (name: string) => header.indexOf(name);
+
+  const iIdent = idx("ident");
+  const iIcaoCode = idx("icao_code");
+  const iIata = idx("iata_code");
+  const iName = idx("name");
+  const iMunicipality = idx("municipality");
+  const iElev = idx("elevation_ft");
+  const iLat = idx("latitude_deg");
+  const iLon = idx("longitude_deg");
+
+  if (iIdent < 0 || iLat < 0 || iLon < 0) return {};
+
+  const out: IdentityByIcao = {};
+  for (let r = 1; r < records.length; r++) {
+    const row = records[r];
+    const icao = icaoFromIdentAndCode(
+      row[iIdent],
+      iIcaoCode >= 0 ? row[iIcaoCode] : undefined,
+    );
+    if (!icao) continue;
+
+    const lat = numOrNull(row[iLat]);
+    const lon = numOrNull(row[iLon]);
+    if (lat == null || lon == null) continue;
+
+    out[icao] = {
+      icao,
+      iata: iIata >= 0 ? (row[iIata] ?? "").trim() : "",
+      name: iName >= 0 ? (row[iName] ?? "").trim() : icao,
+      municipality: iMunicipality >= 0 ? (row[iMunicipality] ?? "").trim() : "",
+      elevFt: iElev >= 0 ? numOrNull(row[iElev]) : null,
+      lat,
+      lon,
+    };
+  }
+  return out;
+}
+
+export function buildFrequenciesFromCsv(
+  airportsCsv: string,
+  frequenciesCsv: string,
+): FrequenciesByIcao {
+  const airportRecords = parseCsvRecords(airportsCsv);
+  const freqRecords = parseCsvRecords(frequenciesCsv);
+  if (airportRecords.length < 2 || freqRecords.length < 2) return {};
+
+  const airportHeader = airportRecords[0].map((h) => h.replace(/^"|"$/g, ""));
+  const aIdx = (name: string) => airportHeader.indexOf(name);
+  const iId = aIdx("id");
+  const iIdent = aIdx("ident");
+  const iIcaoCode = aIdx("icao_code");
+  if (iId < 0 || iIdent < 0) return {};
+
+  const icaoById = new Map<string, string>();
+  for (let r = 1; r < airportRecords.length; r++) {
+    const row = airportRecords[r];
+    const id = (row[iId] ?? "").trim();
+    if (!id) continue;
+    const icao = icaoFromIdentAndCode(
+      row[iIdent],
+      iIcaoCode >= 0 ? row[iIcaoCode] : undefined,
+    );
+    if (icao) icaoById.set(id, icao);
+  }
+
+  const freqHeader = freqRecords[0].map((h) => h.replace(/^"|"$/g, ""));
+  const fIdx = (name: string) => freqHeader.indexOf(name);
+  const iRef = fIdx("airport_ref");
+  const iType = fIdx("type");
+  const iDesc = fIdx("description");
+  const iMhz = fIdx("frequency_mhz");
+  if (iRef < 0 || iType < 0 || iMhz < 0) return {};
+
+  const out: FrequenciesByIcao = {};
+  for (let r = 1; r < freqRecords.length; r++) {
+    const row = freqRecords[r];
+    const icao = icaoById.get((row[iRef] ?? "").trim());
+    if (!icao) continue;
+
+    const mhz = numOrNull(row[iMhz]);
+    if (mhz == null) continue;
+
+    const freq: AirportFrequency = {
+      type: (row[iType] ?? "").trim().toUpperCase(),
+      description: iDesc >= 0 ? (row[iDesc] ?? "").trim() : "",
+      mhz,
+    };
+
+    if (!out[icao]) out[icao] = [];
+    out[icao].push(freq);
+  }
+  return out;
+}
+
+function operationalRank(type: string): number {
+  const upper = type.toUpperCase();
+  for (let i = 0; i < OPERATIONAL_FREQUENCY_ORDER.length; i++) {
+    if (upper.includes(OPERATIONAL_FREQUENCY_ORDER[i])) return i;
+  }
+  return -1;
+}
+
+/** Keeps only operational frequency types, sorted ATIS -> TWR -> GND -> APP -> DEP -> CTAF -> UNICOM -> other. */
+export function filterOperationalFrequencies(
+  freqs: AirportFrequency[],
+): AirportFrequency[] {
+  return freqs
+    .map((freq) => ({ freq, rank: operationalRank(freq.type) }))
+    .filter((entry) => entry.rank !== -1)
+    .sort((a, b) => a.rank - b.rank)
+    .map((entry) => entry.freq);
 }
 
 async function fetchWithTimeout(url: string): Promise<string> {
@@ -207,6 +394,67 @@ export async function loadRunwaysByIcao(): Promise<RunwaysByIcao> {
   } catch {
     runwaysCache = {};
     return runwaysCache;
+  }
+}
+
+async function loadAirportsAndFrequenciesCsv(): Promise<{
+  airportsCsv: string;
+  frequenciesCsv: string;
+}> {
+  try {
+    const [airportsCsv, frequenciesCsv] = await Promise.all([
+      fetchWithTimeout(OURAIRPORTS_AIRPORTS_URL),
+      fetchWithTimeout(OURAIRPORTS_FREQUENCIES_URL),
+    ]);
+    return { airportsCsv, frequenciesCsv };
+  } catch {
+    const [airportsCsv, frequenciesCsv] = await Promise.all([
+      readFile(FIXTURE_AIRPORTS_CSV, "utf8"),
+      readFile(FIXTURE_FREQUENCIES_CSV, "utf8"),
+    ]);
+    return { airportsCsv, frequenciesCsv };
+  }
+}
+
+export async function loadAirportIdentityByIcao(): Promise<IdentityByIcao> {
+  if (identityCache) return identityCache;
+
+  try {
+    const text = await readFile(AIRPORT_IDENTITY_PATH, "utf8");
+    identityCache = JSON.parse(text) as IdentityByIcao;
+    return identityCache;
+  } catch {
+    // fall through to live/fixture CSV (slow cold path)
+  }
+
+  try {
+    const { airportsCsv } = await loadAirportsAndFrequenciesCsv();
+    identityCache = buildAirportIdentityFromCsv(airportsCsv);
+    return identityCache;
+  } catch {
+    identityCache = {};
+    return identityCache;
+  }
+}
+
+export async function loadFrequenciesByIcao(): Promise<FrequenciesByIcao> {
+  if (frequenciesCache) return frequenciesCache;
+
+  try {
+    const text = await readFile(FREQUENCIES_PATH, "utf8");
+    frequenciesCache = JSON.parse(text) as FrequenciesByIcao;
+    return frequenciesCache;
+  } catch {
+    // fall through to live/fixture CSV (slow cold path)
+  }
+
+  try {
+    const { airportsCsv, frequenciesCsv } = await loadAirportsAndFrequenciesCsv();
+    frequenciesCache = buildFrequenciesFromCsv(airportsCsv, frequenciesCsv);
+    return frequenciesCache;
+  } catch {
+    frequenciesCache = {};
+    return frequenciesCache;
   }
 }
 
@@ -335,5 +583,7 @@ export async function getAirportDetail(opts: {
 
 export function clearAirportDetailCachesForTests(): void {
   runwaysCache = null;
+  identityCache = null;
+  frequenciesCache = null;
   metarCache.clear();
 }
