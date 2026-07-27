@@ -696,13 +696,22 @@ async function readFixtureText(filePath: string): Promise<string> {
   return readFile(filePath, "utf8");
 }
 
-export async function buildToweredAirports(): Promise<ToweredAirport[]> {
+/**
+ * Fetches the OurAirports airports + frequencies CSVs, falling back to the
+ * committed fixture CSVs (with a loud warning) when the live download
+ * fails. Shared by tower detection and by the airport identity/frequency
+ * builders so the build script only pays for one round-trip.
+ */
+export async function fetchOurAirportsCsvs(): Promise<{
+  airportsCsv: string;
+  frequenciesCsv: string;
+}> {
   try {
     const [airportsCsv, frequenciesCsv] = await Promise.all([
       fetchWithTimeout(OURAIRPORTS_AIRPORTS_URL),
       fetchWithTimeout(OURAIRPORTS_FREQUENCIES_URL),
     ]);
-    return buildToweredAirportsFromCsv(airportsCsv, frequenciesCsv);
+    return { airportsCsv, frequenciesCsv };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(
@@ -714,8 +723,13 @@ export async function buildToweredAirports(): Promise<ToweredAirport[]> {
       readFixtureText(FIXTURE_FREQUENCIES_CSV),
     ]);
 
-    return buildToweredAirportsFromCsv(airportsCsv, frequenciesCsv);
+    return { airportsCsv, frequenciesCsv };
   }
+}
+
+export async function buildToweredAirports(): Promise<ToweredAirport[]> {
+  const { airportsCsv, frequenciesCsv } = await fetchOurAirportsCsvs();
+  return buildToweredAirportsFromCsv(airportsCsv, frequenciesCsv);
 }
 
 export async function buildAirspaceRings(): Promise<AirspaceRing[]> {
