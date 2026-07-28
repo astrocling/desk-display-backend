@@ -614,6 +614,7 @@ export function RadarMap() {
   const interestingEntriesRef = useRef<WatchlistEntry[]>([]);
   const tagPhaseRef = useRef<0 | 1>(0);
   const identQueryRef = useRef("");
+  const identAutoHexRef = useRef<string | null>(null);
   const identInputRef = useRef<HTMLInputElement>(null);
 
   const [status, setStatus] = useState("Loading map…");
@@ -797,7 +798,10 @@ export function RadarMap() {
   const applyIdentSelection = useCallback(
     (map: MapLibreMap, visible: AircraftPoint[]) => {
       const q = identQueryRef.current;
-      if (!normalizeIdentQuery(q)) return;
+      if (!normalizeIdentQuery(q)) {
+        identAutoHexRef.current = null;
+        return;
+      }
       const matches = visible.filter((a) => aircraftMatchesIdent(a, q));
       const center = map.getCenter();
       const best = pickBestIdentMatch(
@@ -805,7 +809,14 @@ export function RadarMap() {
         { lat: center.lat, lon: center.lng },
         q,
       );
-      if (best) selectAircraftRef.current(best);
+      if (!best) {
+        identAutoHexRef.current = null;
+        return;
+      }
+      if (best.hex !== identAutoHexRef.current) {
+        identAutoHexRef.current = best.hex;
+        selectAircraftRef.current(best);
+      }
     },
     [],
   );
@@ -813,9 +824,10 @@ export function RadarMap() {
   const setIdentQuery = useCallback(
     (raw: string) => {
       identQueryRef.current = raw;
+      identAutoHexRef.current = null;
       setIdentQueryState(raw);
       refreshAircraftLabels();
-      if (!raw) return;
+      if (!normalizeIdentQuery(raw)) return;
       const map = mapRef.current;
       if (map) {
         const visible = visibleAircraftFor(
@@ -2186,10 +2198,9 @@ export function RadarMap() {
             placeholder="squawk / callsign"
             spellCheck={false}
             autoComplete="off"
-            aria-label="Ident squawk or callsign"
             className="w-36 rounded bg-slate-800 px-2 py-1 font-mono text-sm uppercase outline-none ring-cyan-500/40 focus:ring"
           />
-          {identQuery ? (
+          {normalizeIdentQuery(identQuery) ? (
             <button
               type="button"
               onClick={() => setIdentQuery("")}

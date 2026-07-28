@@ -36,7 +36,10 @@ When listening to ATC, the operator hears a callsign fragment or squawk and need
 
 ### Best match (selected when ≥1 match)
 
-1. Prefer aircraft whose squawk **exactly equals** the query interpreted as a 4-digit squawk when the query is numeric (pad with leading zeros to length 4).
+1. Prefer aircraft whose squawk **exactly equals** the query interpreted as a 4-digit squawk when the query is numeric:
+   - Length 1–2: pad with leading zeros to 4 digits (e.g. `75` → `0075`).
+   - Length 3: exact only if it starts with `0` (e.g. `075` → `0075`); bare 3-digit queries like `475` are substring-only (no exact preference).
+   - Length ≥4: compare digit strings as-is (pad only when length &lt;4).
 2. Otherwise (or among those preferred), pick closest to the **current map viewport center** (haversine).
 3. Stable tie-break: lower `hex` string wins.
 
