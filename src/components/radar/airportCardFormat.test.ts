@@ -79,6 +79,12 @@ describe("airportCardFormat", () => {
       formatAirportTrafficSummary({ inbound: 3, outbound: 1 }),
     ).toBe("Inbound 3 · Outbound 1");
     expect(
+      formatAirportTrafficSummary({ inbound: 2, outbound: 0 }),
+    ).toBe("Inbound 2 · Outbound 0");
+    expect(
+      formatAirportTrafficSummary({ inbound: 0, outbound: 4 }),
+    ).toBe("Inbound 0 · Outbound 4");
+    expect(
       formatAirportTrafficSummary({ inbound: 0, outbound: 0 }),
     ).toBeNull();
   });

@@ -128,8 +128,5 @@ export function formatAirportTrafficSummary(opts: {
   outbound: number;
 }): string | null {
   if (opts.inbound === 0 && opts.outbound === 0) return null;
-  const parts: string[] = [];
-  if (opts.inbound > 0) parts.push(`Inbound ${opts.inbound}`);
-  if (opts.outbound > 0) parts.push(`Outbound ${opts.outbound}`);
-  return parts.join(" · ");
+  return `Inbound ${opts.inbound} · Outbound ${opts.outbound}`;
 }

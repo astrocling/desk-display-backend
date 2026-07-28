@@ -21,6 +21,11 @@ import {
   milesToNm,
   viewportRadiusMiles,
 } from "./geo";
+import {
+  AIRPORT_TRAFFIC_RADIUS_NM,
+  classifyAirportTraffic,
+  type TrafficAircraft,
+} from "./airportTraffic";
 import { paintMapOverlays, paintScopeChrome } from "./radarOverlays";
 import {
   SCOPE_SWEEP_MS,
@@ -217,6 +222,14 @@ type FocusedAirport = {
   lat: number;
   lon: number;
 };
+
+type AirportTrafficChip = { callsign: string; hex: string };
+
+type AirportTrafficState = {
+  inbound: AirportTrafficChip[];
+  outbound: AirportTrafficChip[];
+  radiusNm: number;
+} | null;
 
 function labelForAircraft(ac: Record<string, unknown>): string {
   const flight = typeof ac.flight === "string" ? ac.flight.trim() : "";
@@ -561,6 +574,8 @@ export function RadarMap() {
   const sweepDegRef = useRef<number | null>(null);
   const prevSweepDegRef = useRef<number | null>(null);
   const focusedAirportRef = useRef<FocusedAirport | null>(null);
+  /** Guards against a stale traffic response landing after focus changed/cleared. */
+  const airportTrafficGenerationRef = useRef(0);
   const groundModeRef = useRef(false);
   const displayModeRef = useRef<RadarDisplayMode>(RADAR_MODE_DEFAULT);
   const tfrsOnRef = useRef(true);
@@ -599,6 +614,8 @@ export function RadarMap() {
     [],
   );
   const atcRadio = useAtcRadio();
+  const [airportTraffic, setAirportTraffic] =
+    useState<AirportTrafficState>(null);
   const [declutterOpen, setDeclutterOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
@@ -1113,6 +1130,67 @@ export function RadarMap() {
     syncAircraftMarkers,
   ]);
 
+  /**
+   * Poll ADS-B centered on the focused airport (not the viewport) so the
+   * selection card can show live nearby inbound/outbound. Never touches the
+   * main map's aircraft markers or count.
+   */
+  const fetchAirportTraffic = useCallback(async () => {
+    const focus = focusedAirportRef.current;
+    if (!focus) return;
+    const generation = ++airportTrafficGenerationRef.current;
+    const dist = clamp(AIRPORT_TRAFFIC_RADIUS_NM, ADSB_MIN_NM, ADSB_MAX_NM);
+
+    try {
+      const res = await fetch(
+        `/api/adsb?lat=${focus.lat}&lon=${focus.lon}&dist=${dist}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) {
+        if (generation === airportTrafficGenerationRef.current) {
+          setAirportTraffic(null);
+        }
+        return;
+      }
+      const json = await res.json();
+      const aircraft = parseAdsbAircraft(json);
+      for (const ac of aircraft) {
+        const route = arrivalCacheRef.current.get(
+          normalizeCallsign(ac.callsign),
+        );
+        if (route) ac.routeIcaos = route.routeIcaos;
+      }
+      // Resolve routes we don't have cached yet; next poll tick will see them.
+      void fetchRoutes(aircraft);
+
+      if (
+        generation !== airportTrafficGenerationRef.current ||
+        focusedAirportRef.current?.icao !== focus.icao
+      ) {
+        return; // focus changed/cleared or a newer poll is in flight
+      }
+
+      const trafficAircraft: TrafficAircraft[] = aircraft.map((ac) => ({
+        hex: ac.hex,
+        callsign: ac.callsign,
+        routeIcaos: ac.routeIcaos,
+      }));
+      const { inbound, outbound } = classifyAirportTraffic(
+        focus.icao,
+        trafficAircraft,
+      );
+      setAirportTraffic({
+        inbound: inbound.map((a) => ({ callsign: a.callsign, hex: a.hex })),
+        outbound: outbound.map((a) => ({ callsign: a.callsign, hex: a.hex })),
+        radiusNm: AIRPORT_TRAFFIC_RADIUS_NM,
+      });
+    } catch {
+      if (generation === airportTrafficGenerationRef.current) {
+        setAirportTraffic(null);
+      }
+    }
+  }, [fetchRoutes]);
+
   const fetchTfrs = useCallback(async () => {
     const vp = readViewport();
     if (!vp) return;
@@ -1176,12 +1254,25 @@ export function RadarMap() {
     }, OVERLAY_DEBOUNCE_MS);
   }, [fetchOverlays]);
 
+  /** Chip click on the airport card: select the aircraft if it's currently known, else no-op. */
+  const selectAirportTrafficHex = useCallback((hex: string) => {
+    const entry = aircraftMarkersRef.current.get(hex);
+    if (entry) {
+      selectAircraftRef.current(entry.ac);
+      return;
+    }
+    const ac = lastAircraftRef.current.find((candidate) => candidate.hex === hex);
+    if (ac) selectAircraftRef.current(ac);
+  }, []);
+
   const clearAirportFocus = useCallback(() => {
     focusedAirportRef.current = null;
     runwaysRef.current = [];
+    airportTrafficGenerationRef.current++;
     setFocusedIcao(null);
     setAirportDetail(null);
     setAirportError(null);
+    setAirportTraffic(null);
     syncGroundMode();
     redrawOverlays();
   }, [redrawOverlays, syncGroundMode]);
@@ -1198,6 +1289,8 @@ export function RadarMap() {
         lat: airport.lat,
         lon: airport.lon,
       };
+      airportTrafficGenerationRef.current++;
+      setAirportTraffic(null);
       setFocusedIcao(airport.icao);
       try {
         const res = await fetch(
@@ -1595,6 +1688,20 @@ export function RadarMap() {
     }, ADSB_POLL_MS);
     return () => clearInterval(id);
   }, [fetchAdsb]);
+
+  useEffect(() => {
+    if (!focusedIcao) {
+      // Both entry points (openAirportDetail/clearAirportFocus) already
+      // clear airportTraffic when focus changes; this effect only owns the
+      // poll interval lifecycle.
+      return;
+    }
+    void fetchAirportTraffic();
+    const id = setInterval(() => {
+      void fetchAirportTraffic();
+    }, ADSB_POLL_MS);
+    return () => clearInterval(id);
+  }, [focusedIcao, fetchAirportTraffic]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -2035,7 +2142,8 @@ export function RadarMap() {
             onClose={clearAirportFocus}
             onEnterGround={enterGroundView}
             onExitGround={exitGroundView}
-            traffic={null}
+            traffic={airportTraffic}
+            onSelectTrafficHex={selectAirportTrafficHex}
             radio={atcRadio}
           />
         ) : null}

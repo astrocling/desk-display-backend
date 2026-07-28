@@ -143,12 +143,12 @@ export function SelectionAirportCard({
         <div className="mt-1.5 border-t border-[#3D9CF0]/20 pt-1.5">
           <div className="font-mono text-[11px] text-[#C8D0D8]">
             {trafficSummary}
-            {traffic ? (
-              <span className="ml-1.5 text-[#6B7280]">
-                within {traffic.radiusNm} nm
-              </span>
-            ) : null}
           </div>
+          {traffic ? (
+            <div className="text-[10px] text-[#6B7280]">
+              live ADS-B · within {traffic.radiusNm} nm
+            </div>
+          ) : null}
           {showTrafficChips ? (
             <div className="mt-1 flex flex-wrap gap-1">
               {trafficChips.map((ac) => (
