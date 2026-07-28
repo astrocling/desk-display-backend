@@ -25,7 +25,8 @@ function paddedSquawkDigits(queryDigits: string): string {
 }
 
 function isExactSquawkQuery(qDigits: string): boolean {
-  if (qDigits.length === 4 || qDigits.length <= 2) return true;
+  if (qDigits.length <= 2 || qDigits.length === 4 || qDigits.length > 4)
+    return true;
   return qDigits.length === 3 && qDigits.startsWith("0");
 }
 

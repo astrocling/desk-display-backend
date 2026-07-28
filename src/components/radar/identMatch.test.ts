@@ -72,6 +72,12 @@ describe("isExactSquawkMatch", () => {
     const a = ac({ hex: "a", squawk: "0475" });
     expect(isExactSquawkMatch(a, "475")).toBe(false);
   });
+
+  it("matches squawk longer than 4 digits without padding", () => {
+    const a = ac({ hex: "a", squawk: "12001" });
+    expect(isExactSquawkMatch(a, "12001")).toBe(true);
+    expect(isExactSquawkMatch(a, "1200")).toBe(false);
+  });
 });
 
 describe("pickBestIdentMatch", () => {
