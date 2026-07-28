@@ -1280,6 +1280,8 @@ export function RadarMap() {
         lat: airport.lat,
         lon: airport.lon,
       };
+      airportTrafficGenerationRef.current++;
+      setAirportTraffic(null);
       setFocusedIcao(airport.icao);
       try {
         const res = await fetch(
@@ -1667,7 +1669,9 @@ export function RadarMap() {
 
   useEffect(() => {
     if (!focusedIcao) {
-      setAirportTraffic(null);
+      // Both entry points (openAirportDetail/clearAirportFocus) already
+      // clear airportTraffic when focus changes; this effect only owns the
+      // poll interval lifecycle.
       return;
     }
     void fetchAirportTraffic();

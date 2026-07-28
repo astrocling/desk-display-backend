@@ -141,7 +141,7 @@ export function SelectionAirportCard({
           </div>
           {traffic ? (
             <div className="text-[10px] text-[#6B7280]">
-              live ADS-B · {traffic.radiusNm} nm
+              live ADS-B · within {traffic.radiusNm} nm
             </div>
           ) : null}
           {showTrafficChips ? (
