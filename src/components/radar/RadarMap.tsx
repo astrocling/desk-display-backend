@@ -46,8 +46,10 @@ import {
   type RadarDeclutterMode,
   type RadarDisplayMode,
 } from "./radarFormat";
+import { CommsPanel } from "./CommsPanel";
 import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import { SelectionAirportCard } from "./SelectionAirportCard";
+import { useAtcRadio } from "./useAtcRadio";
 import type {
   AirportDetailResponse,
   AirportRunway,
@@ -592,6 +594,11 @@ export function RadarMap() {
     useState<AirportDetailResponse | null>(null);
   const [airportLoading, setAirportLoading] = useState(false);
   const [airportError, setAirportError] = useState<string | null>(null);
+  /** Towered airports from last map-context fetch (Comms panel membership). */
+  const [onScreenAirports, setOnScreenAirports] = useState<ToweredAirport[]>(
+    [],
+  );
+  const atcRadio = useAtcRadio();
   const [declutterOpen, setDeclutterOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
@@ -1148,7 +1155,9 @@ export function RadarMap() {
         return;
       }
       const ctx = (await res.json()) as MapContextResponse;
-      syncAirportMarkers(map, ctx.airports ?? []);
+      const airports = ctx.airports ?? [];
+      setOnScreenAirports(airports);
+      syncAirportMarkers(map, airports);
       ringsRef.current = ctx.rings ?? [];
       highwaysRef.current = ctx.highways ?? [];
       redrawOverlays();
@@ -1228,6 +1237,19 @@ export function RadarMap() {
       }
     },
     [redrawOverlays, syncGroundMode],
+  );
+
+  const selectCommsAirport = useCallback(
+    (icao: string) => {
+      const code = icao.trim().toUpperCase();
+      const airport = onScreenAirports.find(
+        (a) => a.icao.toUpperCase() === code,
+      );
+      if (airport) {
+        void openAirportDetail(airport);
+      }
+    },
+    [onScreenAirports, openAirportDetail],
   );
 
   useEffect(() => {
@@ -1977,6 +1999,15 @@ export function RadarMap() {
         </div>
       </header>
 
+      <aside className="pointer-events-none absolute top-0 left-0 z-10 max-h-[min(70dvh,32rem)] overflow-y-auto p-3 pt-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] pl-[max(0.75rem,env(safe-area-inset-left))]">
+        <CommsPanel
+          airportsOnScreen={onScreenAirports}
+          focusedIcao={focusedIcao}
+          radio={atcRadio}
+          onSelectAirport={selectCommsAirport}
+        />
+      </aside>
+
       <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(3.5rem,env(safe-area-inset-right))]">
         {airportLoading && !airportDetail ? (
           <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2 text-sm shadow-lg ring-1 ring-[#C8D0D8]/30 backdrop-blur">
@@ -2005,6 +2036,7 @@ export function RadarMap() {
             onEnterGround={enterGroundView}
             onExitGround={exitGroundView}
             traffic={null}
+            radio={atcRadio}
           />
         ) : null}
 

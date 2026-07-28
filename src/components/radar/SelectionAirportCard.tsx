@@ -8,6 +8,8 @@ import {
   formatAirportTrafficSummary,
   formatAirportWeatherRows,
 } from "./airportCardFormat";
+import { AtcListenButton } from "./AtcListenButton";
+import type { AtcRadio } from "./useAtcRadio";
 import type { AirportDetailResponse } from "./types";
 
 type AirportTrafficAircraft = { callsign: string; hex: string };
@@ -29,6 +31,7 @@ export function SelectionAirportCard({
   onExitGround,
   traffic = null,
   onSelectTrafficHex,
+  radio = null,
 }: {
   detail: AirportDetailResponse;
   groundMode: boolean;
@@ -37,6 +40,8 @@ export function SelectionAirportCard({
   onExitGround: () => void;
   traffic?: AirportTraffic;
   onSelectTrafficHex?: (hex: string) => void;
+  /** Shared ATC radio — Listen appears only for catalog ICAOs. */
+  radio?: AtcRadio | null;
 }) {
   const subtitle = formatAirportSubtitle({
     municipality: detail.municipality,
@@ -162,7 +167,7 @@ export function SelectionAirportCard({
         </div>
       ) : null}
 
-      <div className="mt-2.5 flex items-center gap-2 border-t border-[#3D9CF0]/20 pt-2">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-[#3D9CF0]/20 pt-2">
         <button
           type="button"
           onClick={onEnterGround}
@@ -179,6 +184,7 @@ export function SelectionAirportCard({
             Zoom out
           </button>
         ) : null}
+        {radio ? <AtcListenButton icao={detail.icao} radio={radio} /> : null}
         {groundMode ? (
           <span className="font-mono text-[11px] text-[#3D6B3D]">
             GROUND MODE
