@@ -32,6 +32,8 @@ export function SelectionAirportCard({
   traffic = null,
   onSelectTrafficHex,
   radio = null,
+  addSession,
+  setExpanded,
 }: {
   detail: AirportDetailResponse;
   groundMode: boolean;
@@ -42,6 +44,10 @@ export function SelectionAirportCard({
   onSelectTrafficHex?: (hex: string) => void;
   /** Shared ATC radio — Listen appears only for catalog ICAOs. */
   radio?: AtcRadio | null;
+  /** Required when `radio` is provided — adds airport to Comms session rack. */
+  addSession?: (icao: string) => void;
+  /** Required when `radio` is provided — expands the Comms panel. */
+  setExpanded?: (expanded: boolean) => void;
 }) {
   const subtitle = formatAirportSubtitle({
     municipality: detail.municipality,
@@ -184,7 +190,14 @@ export function SelectionAirportCard({
             Zoom out
           </button>
         ) : null}
-        {radio ? <AtcListenButton icao={detail.icao} radio={radio} /> : null}
+        {radio && addSession && setExpanded ? (
+          <AtcListenButton
+            icao={detail.icao}
+            radio={radio}
+            addSession={addSession}
+            setExpanded={setExpanded}
+          />
+        ) : null}
         {groundMode ? (
           <span className="font-mono text-[11px] text-[#3D6B3D]">
             GROUND MODE

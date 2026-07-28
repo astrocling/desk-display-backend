@@ -1,5 +1,6 @@
 "use client";
 
+import { beginListenToAirport } from "./atcListenActions";
 import { isCatalogIcao } from "@/lib/atc/feeds";
 import type { AtcRadio } from "./useAtcRadio";
 
@@ -10,9 +11,13 @@ import type { AtcRadio } from "./useAtcRadio";
 export function AtcListenButton({
   icao,
   radio,
+  addSession,
+  setExpanded,
 }: {
   icao: string;
   radio: AtcRadio;
+  addSession: (icao: string) => void;
+  setExpanded: (expanded: boolean) => void;
 }) {
   const upper = icao.trim().toUpperCase();
   if (!isCatalogIcao(upper)) return null;
@@ -31,16 +36,18 @@ export function AtcListenButton({
   return (
     <button
       type="button"
-      onClick={() => {
-        if (!isActive) {
-          radio.selectAirport(upper);
-          // selectAirport stops any prior stream and sets the default feed;
-          // always start (do not toggle-stop) after switching airports.
-          void radio.play();
-          return;
-        }
-        void radio.toggle();
-      }}
+      onClick={() =>
+        beginListenToAirport({
+          icao: upper,
+          activeIcao: radio.activeIcao,
+          status: radio.status,
+          selectAirport: radio.selectAirport,
+          play: radio.play,
+          toggle: radio.toggle,
+          addSession,
+          setExpanded,
+        })
+      }
       className="rounded bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700"
       aria-label={isPlaying ? `Stop ATC for ${upper}` : `Listen to ATC for ${upper}`}
       title={radio.error && isActive ? radio.error : undefined}

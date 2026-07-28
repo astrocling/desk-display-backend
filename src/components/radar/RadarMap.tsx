@@ -2147,6 +2147,8 @@ export function RadarMap() {
             traffic={airportTraffic}
             onSelectTrafficHex={selectAirportTrafficHex}
             radio={atcRadio}
+            addSession={commsPresets.addSession}
+            setExpanded={commsPresets.setExpanded}
           />
         ) : null}
 
