@@ -5,9 +5,9 @@ import { feedsForIcao, isCatalogIcao } from "@/lib/atc/feeds";
 import type { AtcRadio } from "./useAtcRadio";
 import type { CommsPresets } from "./useCommsPresets";
 
-/** Rail indicator label: drop the leading "K" so it fits the narrow strip. */
+/** Rail indicator label: drop the leading "K" (US ICAO) so it fits the narrow strip. */
 function railLabel(icao: string): string {
-  return icao.length > 3 ? icao.slice(1) : icao;
+  return icao.startsWith("K") && icao.length > 3 ? icao.slice(1) : icao;
 }
 
 export function CommsPanel({

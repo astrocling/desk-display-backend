@@ -28,17 +28,45 @@ describe("beginListenToAirport", () => {
   it("toggles stop when already playing this airport", () => {
     const toggle = vi.fn(async () => {});
     const addSession = vi.fn();
+    const setExpanded = vi.fn();
+    const play = vi.fn(async () => {});
+    const selectAirport = vi.fn();
     beginListenToAirport({
       icao: "KIND",
       activeIcao: "KIND",
       status: "playing",
-      selectAirport: vi.fn(),
-      play: vi.fn(async () => {}),
+      selectAirport,
+      play,
       toggle,
       addSession,
-      setExpanded: vi.fn(),
+      setExpanded,
     });
     expect(toggle).toHaveBeenCalled();
     expect(addSession).not.toHaveBeenCalled();
+    expect(setExpanded).not.toHaveBeenCalled();
+    expect(play).not.toHaveBeenCalled();
+    expect(selectAirport).not.toHaveBeenCalled();
+  });
+
+  it("starts play when active but idle on the same airport", () => {
+    const addSession = vi.fn();
+    const setExpanded = vi.fn();
+    const play = vi.fn(async () => {});
+    const toggle = vi.fn(async () => {});
+    const selectAirport = vi.fn();
+    beginListenToAirport({
+      icao: "KIND",
+      activeIcao: "KIND",
+      status: "idle",
+      selectAirport,
+      play,
+      toggle,
+      addSession,
+      setExpanded,
+    });
+    expect(addSession).toHaveBeenCalledWith("KIND");
+    expect(setExpanded).toHaveBeenCalledWith(true);
+    expect(play).toHaveBeenCalled();
+    expect(toggle).not.toHaveBeenCalled();
   });
 });

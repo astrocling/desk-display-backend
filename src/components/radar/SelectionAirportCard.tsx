@@ -22,6 +22,32 @@ type AirportTraffic = {
 
 const MAX_TRAFFIC_CHIPS = 6;
 
+type ListenProps =
+  | {
+      /** Shared ATC radio — Listen appears only for catalog ICAOs. */
+      radio?: null;
+      addSession?: undefined;
+      setExpanded?: undefined;
+    }
+  | {
+      /** Shared ATC radio — Listen appears only for catalog ICAOs. */
+      radio: AtcRadio;
+      /** Required alongside `radio` — adds airport to Comms session rack. */
+      addSession: (icao: string) => void;
+      /** Required alongside `radio` — expands the Comms panel. */
+      setExpanded: (expanded: boolean) => void;
+    };
+
+type SelectionAirportCardProps = {
+  detail: AirportDetailResponse;
+  groundMode: boolean;
+  onClose: () => void;
+  onEnterGround: () => void;
+  onExitGround: () => void;
+  traffic?: AirportTraffic;
+  onSelectTrafficHex?: (hex: string) => void;
+} & ListenProps;
+
 /** Presentational airport selection panel — parallel to SelectionAircraftCard. */
 export function SelectionAirportCard({
   detail,
@@ -34,21 +60,7 @@ export function SelectionAirportCard({
   radio = null,
   addSession,
   setExpanded,
-}: {
-  detail: AirportDetailResponse;
-  groundMode: boolean;
-  onClose: () => void;
-  onEnterGround: () => void;
-  onExitGround: () => void;
-  traffic?: AirportTraffic;
-  onSelectTrafficHex?: (hex: string) => void;
-  /** Shared ATC radio — Listen appears only for catalog ICAOs. */
-  radio?: AtcRadio | null;
-  /** Required when `radio` is provided — adds airport to Comms session rack. */
-  addSession?: (icao: string) => void;
-  /** Required when `radio` is provided — expands the Comms panel. */
-  setExpanded?: (expanded: boolean) => void;
-}) {
+}: SelectionAirportCardProps) {
   const subtitle = formatAirportSubtitle({
     municipality: detail.municipality,
     elevFt: detail.elevFt,

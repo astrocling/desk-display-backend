@@ -52,6 +52,7 @@ export function useCommsPresets(): CommsPresets {
 
   useEffect(() => {
     const stored = readStored();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client hydrate from localStorage after SSR-safe collapsed default, not a render-triggered sync
     setPinnedIcaos(stored.pinnedIcaos);
     setExpandedState(stored.expanded);
     setHydrated(true);
