@@ -2015,6 +2015,28 @@ export function RadarMap() {
                   );
                 })}
               </div>
+              <div className="mt-3 border-t border-slate-700 pt-3">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Ground targets
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGroundTargets(!showGroundTargets)}
+                  className={`w-full rounded px-2.5 py-1.5 text-left text-sm ${
+                    showGroundTargets
+                      ? "bg-emerald-600 font-medium text-white"
+                      : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                  }`}
+                  aria-pressed={showGroundTargets}
+                >
+                  Ground targets
+                  <span className="mt-0.5 block text-xs font-normal text-slate-300/80">
+                    {showGroundTargets
+                      ? "On-ground aircraft visible"
+                      : "Hidden · shown in ground mode"}
+                  </span>
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
