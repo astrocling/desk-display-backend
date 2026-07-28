@@ -39,6 +39,7 @@ import {
   RADAR_MODE_DEFAULT,
   RADAR_MODE_STORAGE_KEY,
   classifyNotable,
+  findWatchlistEntry,
   formatRadarTagLine2,
   formatRadarTagLine3,
   markColorFor,
@@ -46,11 +47,20 @@ import {
   parseRadarDisplayMode,
   radarDeclutterShortLabel,
   radarUnselectedLabel,
+  tagLine1Display,
+  watchlistColorHex,
   vectorLengthPx,
   type AircraftNotable,
   type RadarDeclutterMode,
   type RadarDisplayMode,
+  type WatchlistColor,
+  type WatchlistEntry,
 } from "./radarFormat";
+import {
+  WATCHLIST_COLORS,
+  isValidWatchlistReg,
+  normalizeWatchlistNote,
+} from "@/lib/radar-watchlist";
 import { CommsPanel } from "./CommsPanel";
 import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import { SelectionAirportCard } from "./SelectionAirportCard";
@@ -329,7 +339,7 @@ function toFeatureProps(ac: AircraftPoint): AircraftFeatureProps {
 
 function notableFor(
   ac: AircraftPoint,
-  interestingRegs: readonly string[],
+  interestingEntries: readonly WatchlistEntry[],
 ): AircraftNotable {
   return classifyNotable({
     squawk: ac.squawk,
@@ -337,7 +347,7 @@ function notableFor(
     dbFlags: ac.dbFlags,
     registration: ac.registration,
     callsign: ac.callsign,
-    interestingRegs,
+    interestingEntries,
   });
 }
 
@@ -372,14 +382,20 @@ function updateAircraftEl(
   ac: AircraftPoint,
   selected: boolean,
   declutter: RadarDeclutterMode,
-  interestingRegs: readonly string[],
+  interestingEntries: readonly WatchlistEntry[],
+  tagPhase: 0 | 1,
 ) {
-  const notable = notableFor(ac, interestingRegs);
+  const entry = findWatchlistEntry(
+    ac.registration,
+    ac.callsign,
+    interestingEntries,
+  );
+  const notable = notableFor(ac, interestingEntries);
   const onGround = ac.onGround === true;
   const color =
     !selected && onGround && notable === "none"
       ? COLORS.ground
-      : markColorFor(notable, selected);
+      : markColorFor(notable, selected, entry?.color);
   const unselected = radarUnselectedLabel(declutter);
   const showLabel = selected || unselected !== "none";
   const showLine2 = selected || unselected === "dense";
@@ -426,7 +442,11 @@ function updateAircraftEl(
       const line2 = tag.querySelector(".radar-ac-line2") as HTMLElement | null;
       const line3 = tag.querySelector(".radar-ac-line3") as HTMLElement | null;
       if (line1) {
-        line1.textContent = ac.callsign;
+        line1.textContent = tagLine1Display(
+          ac.callsign,
+          entry?.note,
+          tagPhase,
+        );
         line1.style.color = color;
       }
       if (line2) {
@@ -467,7 +487,8 @@ function updateAircraftEl(
 function makeAircraftEl(
   ac: AircraftPoint,
   onSelect: (ac: AircraftPoint) => void,
-  interestingRegs: readonly string[],
+  interestingEntries: readonly WatchlistEntry[],
+  tagPhase: 0 | 1,
 ): HTMLButtonElement {
   const el = document.createElement("button");
   el.type = "button";
@@ -485,7 +506,14 @@ function makeAircraftEl(
     e.stopPropagation();
     onSelect(ac);
   });
-  updateAircraftEl(el, ac, false, RADAR_DECLUTTER_DEFAULT, interestingRegs);
+  updateAircraftEl(
+    el,
+    ac,
+    false,
+    RADAR_DECLUTTER_DEFAULT,
+    interestingEntries,
+    tagPhase,
+  );
   return el;
 }
 
@@ -567,7 +595,8 @@ export function RadarMap() {
 
   const selectedHexRef = useRef<string | null>(null);
   const declutterRef = useRef<RadarDeclutterMode>(RADAR_DECLUTTER_DEFAULT);
-  const interestingRegsRef = useRef<string[]>([]);
+  const interestingEntriesRef = useRef<WatchlistEntry[]>([]);
+  const tagPhaseRef = useRef<0 | 1>(0);
 
   const [status, setStatus] = useState("Loading map…");
   const [aircraftCount, setAircraftCount] = useState(0);
@@ -605,8 +634,10 @@ export function RadarMap() {
     useState<AirportTrafficState>(null);
   const [declutterOpen, setDeclutterOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
-  const [watchlistRegs, setWatchlistRegs] = useState<string[]>([]);
-  const [watchlistDraft, setWatchlistDraft] = useState<string[]>([]);
+  const [watchlistEntries, setWatchlistEntries] = useState<WatchlistEntry[]>(
+    [],
+  );
+  const [watchlistDraft, setWatchlistDraft] = useState<WatchlistEntry[]>([]);
   const [watchlistAdd, setWatchlistAdd] = useState("");
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [watchlistSaving, setWatchlistSaving] = useState(false);
@@ -622,18 +653,28 @@ export function RadarMap() {
 
   const refreshAircraftLabels = useCallback(() => {
     const selectedHex = selectedHexRef.current;
-    const regs = interestingRegsRef.current;
+    const entries = interestingEntriesRef.current;
     const mode = declutterRef.current;
+    const tagPhase = tagPhaseRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
         entry.ac,
         hex === selectedHex,
         mode,
-        regs,
+        entries,
+        tagPhase,
       );
     }
   }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      tagPhaseRef.current = tagPhaseRef.current === 0 ? 1 : 0;
+      refreshAircraftLabels();
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [refreshAircraftLabels]);
 
   const setDeclutterMode = useCallback(
     (mode: RadarDeclutterMode) => {
@@ -678,15 +719,17 @@ export function RadarMap() {
   selectAircraftRef.current = (ac: AircraftPoint) => {
     selectedHexRef.current = ac.hex;
     setSelected(toFeatureProps(ac));
-    const regs = interestingRegsRef.current;
+    const entries = interestingEntriesRef.current;
     const mode = declutterRef.current;
+    const tagPhase = tagPhaseRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
         entry.ac,
         hex === ac.hex,
         mode,
-        regs,
+        entries,
+        tagPhase,
       );
     }
   };
@@ -709,7 +752,8 @@ export function RadarMap() {
     (map: MapLibreMap, ac: AircraftPoint) => {
       const declutterMode = declutterRef.current;
       const selectedHex = selectedHexRef.current;
-      const regs = interestingRegsRef.current;
+      const entries = interestingEntriesRef.current;
+      const tagPhase = tagPhaseRef.current;
       const existing = aircraftMarkersRef.current.get(ac.hex);
       if (existing) {
         existing.ac = ac;
@@ -724,7 +768,8 @@ export function RadarMap() {
           ac,
           ac.hex === selectedHex,
           declutterMode,
-          regs,
+          entries,
+          tagPhase,
         );
         if (ac.hex === selectedHex) {
           setSelected(toFeatureProps(ac));
@@ -734,14 +779,16 @@ export function RadarMap() {
       const el = makeAircraftEl(
         ac,
         (picked) => selectAircraftRef.current(picked),
-        regs,
+        entries,
+        tagPhase,
       );
       updateAircraftEl(
         el,
         ac,
         ac.hex === selectedHex,
         declutterMode,
-        regs,
+        entries,
+        tagPhase,
       );
       const marker = new Marker({ element: el, anchor: "center" })
         .setLngLat([ac.lon, ac.lat])
@@ -1590,15 +1637,17 @@ export function RadarMap() {
         }
         selectedHexRef.current = null;
         setSelected(null);
-        const regs = interestingRegsRef.current;
+        const entries = interestingEntriesRef.current;
         const mode = declutterRef.current;
+        const tagPhase = tagPhaseRef.current;
         for (const entry of aircraftMarkersRef.current.values()) {
           updateAircraftEl(
             entry.marker.getElement(),
             entry.ac,
             false,
             mode,
-            regs,
+            entries,
+            tagPhase,
           );
         }
       });
@@ -1620,11 +1669,13 @@ export function RadarMap() {
             cache: "no-store",
           });
           if (wlRes.ok) {
-            const data = (await wlRes.json()) as { regs?: string[] };
-            if (!cancelled && Array.isArray(data.regs)) {
-              interestingRegsRef.current = data.regs;
-              setWatchlistRegs(data.regs);
-              setWatchlistDraft(data.regs);
+            const data = (await wlRes.json()) as {
+              entries?: WatchlistEntry[];
+            };
+            if (!cancelled && Array.isArray(data.entries)) {
+              interestingEntriesRef.current = data.entries;
+              setWatchlistEntries(data.entries);
+              setWatchlistDraft(data.entries);
             }
           }
         } catch {
@@ -1763,20 +1814,23 @@ export function RadarMap() {
     [fetchTfrs, redrawOverlays],
   );
 
-  const applyWatchlistRegs = useCallback((regs: string[]) => {
-    interestingRegsRef.current = regs;
-    setWatchlistRegs(regs);
-    setWatchlistDraft(regs);
-    refreshAircraftLabels();
-  }, [refreshAircraftLabels]);
+  const applyWatchlistEntries = useCallback(
+    (entries: WatchlistEntry[]) => {
+      interestingEntriesRef.current = entries;
+      setWatchlistEntries(entries);
+      setWatchlistDraft(entries);
+      refreshAircraftLabels();
+    },
+    [refreshAircraftLabels],
+  );
 
   const openWatchlist = useCallback(() => {
     setDeclutterOpen(false);
-    setWatchlistDraft(watchlistRegs);
+    setWatchlistDraft(watchlistEntries);
     setWatchlistAdd("");
     setWatchlistError(null);
     setWatchlistOpen((open) => !open);
-  }, [watchlistRegs]);
+  }, [watchlistEntries]);
 
   const openDeclutter = useCallback(() => {
     setWatchlistOpen(false);
@@ -1786,18 +1840,48 @@ export function RadarMap() {
   const addWatchlistReg = useCallback(() => {
     const id = watchlistAdd.trim().toUpperCase().replace(/\s+/g, "");
     if (!id) return;
-    if (!/^[A-Z0-9-]{2,12}$/.test(id)) {
+    if (!isValidWatchlistReg(id)) {
       setWatchlistError("Use 2–12 letters/digits (e.g. N730CF)");
       return;
     }
     setWatchlistError(null);
-    setWatchlistDraft((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setWatchlistDraft((prev) =>
+      prev.some((e) => e.id === id) ? prev : [...prev, { id }],
+    );
     setWatchlistAdd("");
   }, [watchlistAdd]);
 
-  const removeWatchlistReg = useCallback((id: string) => {
-    setWatchlistDraft((prev) => prev.filter((r) => r !== id));
+  const removeWatchlistEntry = useCallback((id: string) => {
+    setWatchlistDraft((prev) => prev.filter((e) => e.id !== id));
   }, []);
+
+  const updateWatchlistDraftEntry = useCallback(
+    (
+      id: string,
+      patch: { note?: string | undefined; color?: WatchlistColor | undefined },
+    ) => {
+      setWatchlistDraft((prev) =>
+        prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          const next: WatchlistEntry = { id: entry.id };
+          const note =
+            "note" in patch
+              ? normalizeWatchlistNote(patch.note)
+              : entry.note;
+          const color =
+            "color" in patch
+              ? patch.color === "default" || patch.color == null
+                ? undefined
+                : patch.color
+              : entry.color;
+          if (note) next.note = note;
+          if (color) next.color = color;
+          return next;
+        }),
+      );
+    },
+    [],
+  );
 
   const saveWatchlist = useCallback(async () => {
     setWatchlistSaving(true);
@@ -1806,7 +1890,7 @@ export function RadarMap() {
       const res = await fetch("/api/radar/watchlist", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regs: watchlistDraft }),
+        body: JSON.stringify({ entries: watchlistDraft }),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => null)) as {
@@ -1815,15 +1899,15 @@ export function RadarMap() {
         setWatchlistError(err?.error ?? `Save failed (${res.status})`);
         return;
       }
-      const data = (await res.json()) as { regs: string[] };
-      applyWatchlistRegs(data.regs);
+      const data = (await res.json()) as { entries: WatchlistEntry[] };
+      applyWatchlistEntries(data.entries);
       setWatchlistOpen(false);
     } catch {
       setWatchlistError("Save failed");
     } finally {
       setWatchlistSaving(false);
     }
-  }, [applyWatchlistRegs, watchlistDraft]);
+  }, [applyWatchlistEntries, watchlistDraft]);
 
   const frameTime =
     rainFramesRef.current.frames[frameIndex]?.time != null
@@ -1833,6 +1917,14 @@ export function RadarMap() {
       : "—";
 
   const scopeActive = displayMode === "scope";
+
+  const selectedWatchlist = selected
+    ? findWatchlistEntry(
+        selected.registration,
+        selected.callsign,
+        watchlistEntries,
+      )
+    : undefined;
 
   return (
     <div
@@ -2050,10 +2142,10 @@ export function RadarMap() {
             className="rounded-lg bg-slate-900/85 px-2.5 py-1.5 text-sm shadow-lg backdrop-blur hover:bg-slate-800"
             title="Interesting aircraft watchlist"
           >
-            Watchlist ({watchlistRegs.length})
+            Watchlist ({watchlistEntries.length})
           </button>
           {watchlistOpen ? (
-            <div className="absolute left-0 top-full z-20 mt-1 w-72 rounded-lg bg-slate-900/95 p-3 shadow-xl ring-1 ring-slate-700 backdrop-blur">
+            <div className="absolute left-0 top-full z-20 mt-1 w-96 rounded-lg bg-slate-900/95 p-3 shadow-xl ring-1 ring-slate-700 backdrop-blur">
               <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
                 Interesting tails
               </div>
@@ -2082,26 +2174,75 @@ export function RadarMap() {
                   Add
                 </button>
               </form>
-              <ul className="mb-2 max-h-48 space-y-1 overflow-y-auto text-sm">
+              <ul className="mb-2 max-h-64 space-y-2 overflow-y-auto text-sm">
                 {watchlistDraft.length === 0 ? (
                   <li className="text-xs text-slate-500">No tails yet</li>
                 ) : (
-                  watchlistDraft.map((id) => (
-                    <li
-                      key={id}
-                      className="flex items-center justify-between gap-2 rounded bg-slate-800/80 px-2 py-1 font-mono"
-                    >
-                      <span>{id}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeWatchlistReg(id)}
-                        className="text-xs text-rose-400 hover:text-rose-300"
-                        aria-label={`Remove ${id}`}
+                  watchlistDraft.map((entry) => {
+                    const activeColor = entry.color ?? "default";
+                    return (
+                      <li
+                        key={entry.id}
+                        className="space-y-1.5 rounded bg-slate-800/80 px-2 py-1.5"
                       >
-                        Remove
-                      </button>
-                    </li>
-                  ))
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-sm">{entry.id}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeWatchlistEntry(entry.id)}
+                            className="text-xs text-rose-400 hover:text-rose-300"
+                            aria-label={`Remove ${entry.id}`}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={entry.note ?? ""}
+                          maxLength={12}
+                          placeholder="Note"
+                          aria-label={`Note for ${entry.id}`}
+                          onChange={(e) =>
+                            updateWatchlistDraftEntry(entry.id, {
+                              note: e.target.value,
+                            })
+                          }
+                          className="w-full rounded bg-slate-900 px-2 py-1 font-mono text-xs uppercase outline-none ring-sky-500/30 focus:ring"
+                        />
+                        <div
+                          className="flex items-center gap-1.5"
+                          role="group"
+                          aria-label={`Color for ${entry.id}`}
+                        >
+                          {WATCHLIST_COLORS.map((color) => {
+                            const selectedChip = activeColor === color;
+                            return (
+                              <button
+                                key={color}
+                                type="button"
+                                title={color}
+                                aria-label={`${color} color`}
+                                aria-pressed={selectedChip}
+                                onClick={() =>
+                                  updateWatchlistDraftEntry(entry.id, {
+                                    color,
+                                  })
+                                }
+                                className={`h-4 w-4 rounded-sm ${
+                                  selectedChip
+                                    ? "ring-2 ring-white ring-offset-1 ring-offset-slate-900"
+                                    : "ring-1 ring-slate-600"
+                                }`}
+                                style={{
+                                  backgroundColor: watchlistColorHex(color),
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      </li>
+                    );
+                  })
                 )}
               </ul>
               {watchlistError ? (
@@ -2111,7 +2252,7 @@ export function RadarMap() {
                 <button
                   type="button"
                   onClick={() => {
-                    setWatchlistDraft(watchlistRegs);
+                    setWatchlistDraft(watchlistEntries);
                     setWatchlistOpen(false);
                     setWatchlistError(null);
                   }}
@@ -2177,7 +2318,17 @@ export function RadarMap() {
           />
         ) : null}
 
-        {selected ? <SelectionAircraftCard selected={selected} /> : null}
+        {selected ? (
+          <SelectionAircraftCard
+            selected={selected}
+            watchlistNote={selectedWatchlist?.note}
+            watchlistNoteColor={
+              selectedWatchlist
+                ? watchlistColorHex(selectedWatchlist.color)
+                : undefined
+            }
+          />
+        ) : null}
 
         <div className="pointer-events-auto flex flex-wrap items-center gap-2 self-start rounded-lg bg-slate-900/85 px-3 py-1.5 text-xs text-slate-300 shadow-lg backdrop-blur">
           <span>{status}</span>

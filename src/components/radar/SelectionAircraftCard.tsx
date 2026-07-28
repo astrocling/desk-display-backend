@@ -12,8 +12,12 @@ import type { AircraftFeatureProps } from "./types";
 /** Layout C selection panel — denser than blip tags; free data only. */
 export function SelectionAircraftCard({
   selected,
+  watchlistNote,
+  watchlistNoteColor,
 }: {
   selected: AircraftFeatureProps;
+  watchlistNote?: string;
+  watchlistNoteColor?: string;
 }) {
   const route = formatSelectionRoute(selected.routeIcaos);
   const cities = formatSelectionCities(
@@ -38,6 +42,7 @@ export function SelectionAircraftCard({
     type: selected.type,
   });
   const hex = selected.hex?.trim().toUpperCase() ?? "";
+  const note = watchlistNote?.trim();
 
   return (
     <div className="pointer-events-auto max-w-sm rounded-lg bg-[#0B0F14]/90 px-3 py-2.5 text-sm shadow-lg backdrop-blur ring-1 ring-[#3D9CF0]/40">
@@ -51,6 +56,14 @@ export function SelectionAircraftCard({
           </div>
         ) : null}
       </div>
+      {note ? (
+        <div
+          className="mt-0.5 font-mono text-xs tracking-wide"
+          style={{ color: watchlistNoteColor ?? "#3D9CF0" }}
+        >
+          {note}
+        </div>
+      ) : null}
       {route ? (
         <div className="mt-2 font-mono text-xs text-[#C8D0D8]">{route}</div>
       ) : null}

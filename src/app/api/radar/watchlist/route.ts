@@ -5,9 +5,9 @@ import {
 
 export async function GET() {
   try {
-    const regs = await getRadarWatchlist();
+    const entries = await getRadarWatchlist();
     return Response.json(
-      { regs },
+      { entries },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -25,16 +25,16 @@ export async function PUT(request: Request) {
     return Response.json({ error: "invalid JSON" }, { status: 400 });
   }
 
-  if (!body || typeof body !== "object" || !("regs" in body)) {
-    return Response.json({ error: "missing regs" }, { status: 400 });
+  if (!body || typeof body !== "object" || !("entries" in body)) {
+    return Response.json({ error: "missing entries" }, { status: 400 });
   }
 
   try {
-    const regs = await setRadarWatchlist(
-      (body as { regs: unknown }).regs,
+    const entries = await setRadarWatchlist(
+      (body as { entries: unknown }).entries,
     );
     return Response.json(
-      { regs },
+      { entries },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

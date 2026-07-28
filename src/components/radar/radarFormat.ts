@@ -1,5 +1,9 @@
 /** Port of desk_display radar_format — ATC-lite tag strings. */
 
+import type { WatchlistColor, WatchlistEntry } from "@/lib/radar-watchlist";
+
+export type { WatchlistColor, WatchlistEntry };
+
 export const RADAR_FLIGHT_LEVEL_MIN_FT = 18000;
 export const RADAR_BARO_RATE_DEADBAND_FPM = 100;
 /** Device shows vectors/tags at ≤25 mi range (web declutter ignores this). */
@@ -32,7 +36,22 @@ export const COLORS = {
   tfr: "#E85D4C",
   ground: "#3D6B3D",
   scopeRing: "#1A4A1A",
+  watchlistGreen: "#3DCF8E",
+  watchlistViolet: "#A78BFA",
 } as const;
+
+const WATCHLIST_COLOR_HEX: Record<WatchlistColor, string> = {
+  default: COLORS.accent,
+  amber: COLORS.military,
+  alert: COLORS.alert,
+  green: COLORS.watchlistGreen,
+  violet: COLORS.watchlistViolet,
+};
+
+export function watchlistColorHex(color?: WatchlistColor): string {
+  if (!color || color === "default") return COLORS.accent;
+  return WATCHLIST_COLOR_HEX[color] ?? COLORS.accent;
+}
 
 export type RadarDisplayMode = "map" | "scope";
 export const RADAR_MODE_STORAGE_KEY = "desk-display.radar.mode";
@@ -164,10 +183,27 @@ function matchesInterestingReg(
   const reg = registration.trim().toUpperCase();
   const cs = callsign.trim().toUpperCase();
   for (const id of interestingRegs) {
-    if (reg && reg === id) return true;
-    if (cs && cs === id) return true;
+    const needle = id.trim().toUpperCase();
+    if (reg && reg === needle) return true;
+    if (cs && cs === needle) return true;
   }
   return false;
+}
+
+export function findWatchlistEntry(
+  registration: string,
+  callsign: string,
+  entries: readonly WatchlistEntry[] | undefined,
+): WatchlistEntry | undefined {
+  if (!entries || entries.length === 0) return undefined;
+  const reg = registration.trim().toUpperCase();
+  const cs = callsign.trim().toUpperCase();
+  for (const entry of entries) {
+    const id = entry.id.trim().toUpperCase();
+    if (reg && reg === id) return entry;
+    if (cs && cs === id) return entry;
+  }
+  return undefined;
 }
 
 export function classifyNotable(opts: {
@@ -177,6 +213,7 @@ export function classifyNotable(opts: {
   registration?: string;
   callsign?: string;
   interestingRegs?: readonly string[];
+  interestingEntries?: readonly WatchlistEntry[];
 }): AircraftNotable {
   if (
     opts.squawk === "7500" ||
@@ -189,14 +226,13 @@ export function classifyNotable(opts: {
   if ((opts.dbFlags & DB_FLAG_MILITARY) !== 0) {
     return "military";
   }
-  if (
-    (opts.dbFlags & DB_FLAG_INTERESTING) !== 0 ||
-    matchesInterestingReg(
-      opts.registration ?? "",
-      opts.callsign ?? "",
-      opts.interestingRegs,
-    )
-  ) {
+  const registration = opts.registration ?? "";
+  const callsign = opts.callsign ?? "";
+  const onWatchlist = opts.interestingEntries
+    ? findWatchlistEntry(registration, callsign, opts.interestingEntries) !=
+      null
+    : matchesInterestingReg(registration, callsign, opts.interestingRegs);
+  if ((opts.dbFlags & DB_FLAG_INTERESTING) !== 0 || onWatchlist) {
     return "interesting";
   }
   return "none";
@@ -206,6 +242,7 @@ export function classifyNotable(opts: {
 export function markColorFor(
   notable: AircraftNotable,
   selected: boolean,
+  watchlistColor?: WatchlistColor,
 ): string {
   if (selected) return COLORS.selected;
   switch (notable) {
@@ -214,10 +251,26 @@ export function markColorFor(
     case "military":
       return COLORS.military;
     case "interesting":
-      return COLORS.accent;
+      return watchlistColorHex(watchlistColor);
     default:
       return COLORS.aircraft;
   }
+}
+
+/** Line-1 label with optional 2s callsign/note rotation. */
+export function tagLine1Display(
+  callsign: string,
+  note: string | undefined,
+  phase: 0 | 1,
+): string {
+  const trimmedNote = note?.trim() ?? "";
+  if (
+    !trimmedNote ||
+    trimmedNote.toUpperCase() === callsign.trim().toUpperCase()
+  ) {
+    return callsign;
+  }
+  return phase === 1 ? trimmedNote : callsign;
 }
 
 /** Velocity vector length in px — device: clamp(gs * 0.04, 8, 28). */

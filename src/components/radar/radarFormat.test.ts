@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   classifyNotable,
+  findWatchlistEntry,
   formatRadarAltitude,
   formatRadarSpeed,
   formatRadarTagLine2,
@@ -11,7 +12,9 @@ import {
   radarDeclutterShortLabel,
   radarTrendFromRate,
   radarUnselectedLabel,
+  tagLine1Display,
   vectorLengthPx,
+  watchlistColorHex,
 } from "./radarFormat";
 
 describe("radarFormat", () => {
@@ -99,10 +102,64 @@ describe("radarFormat", () => {
     ).toBe("none");
   });
 
+  it("classifies watchlist entries as interesting", () => {
+    expect(
+      classifyNotable({
+        squawk: "1200",
+        emergency: "none",
+        dbFlags: 0,
+        registration: "N730CF",
+        callsign: "N730CF",
+        interestingEntries: [{ id: "N730CF", color: "amber" }],
+      }),
+    ).toBe("interesting");
+    expect(
+      classifyNotable({
+        squawk: "1200",
+        emergency: "none",
+        dbFlags: 0,
+        registration: "N999XX",
+        callsign: "N999XX",
+        interestingEntries: [{ id: "N730CF" }],
+      }),
+    ).toBe("none");
+  });
+
+  it("maps watchlistColorHex tokens", () => {
+    expect(watchlistColorHex(undefined)).toBe("#3D9CF0");
+    expect(watchlistColorHex("default")).toBe("#3D9CF0");
+    expect(watchlistColorHex("amber")).toBe("#C4A35A");
+    expect(watchlistColorHex("alert")).toBe("#E85D4C");
+    expect(watchlistColorHex("green")).toBe("#3DCF8E");
+    expect(watchlistColorHex("violet")).toBe("#A78BFA");
+  });
+
+  it("findWatchlistEntry matches registration or callsign", () => {
+    const entries = [
+      { id: "N730CF", note: "CareFlight", color: "amber" as const },
+      { id: "SWA123", color: "violet" as const },
+    ];
+    expect(findWatchlistEntry("n730cf", "N730CF", entries)?.id).toBe("N730CF");
+    expect(findWatchlistEntry("", "swa123", entries)?.id).toBe("SWA123");
+    expect(findWatchlistEntry("N999XX", "UAL1", entries)).toBeUndefined();
+  });
+
   it("maps mark colors", () => {
     expect(markColorFor("none", false)).toBe("#00FF00");
     expect(markColorFor("none", true)).toBe("#FFFFFF");
     expect(markColorFor("emergency", false)).toBe("#E85D4C");
+    expect(markColorFor("interesting", false)).toBe("#3D9CF0");
+    expect(markColorFor("interesting", false, "amber")).toBe("#C4A35A");
+    expect(markColorFor("interesting", false, "green")).toBe("#3DCF8E");
+    expect(markColorFor("emergency", false, "violet")).toBe("#E85D4C");
+  });
+
+  it("rotates tagLine1Display between callsign and note", () => {
+    expect(tagLine1Display("N730CF", "CareFlight", 0)).toBe("N730CF");
+    expect(tagLine1Display("N730CF", "CareFlight", 1)).toBe("CareFlight");
+    expect(tagLine1Display("N730CF", undefined, 1)).toBe("N730CF");
+    expect(tagLine1Display("N730CF", "", 1)).toBe("N730CF");
+    expect(tagLine1Display("N730CF", "n730cf", 1)).toBe("N730CF");
   });
 
   it("trends and vector length", () => {
