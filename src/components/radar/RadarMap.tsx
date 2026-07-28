@@ -66,6 +66,11 @@ import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import { SelectionAirportCard } from "./SelectionAirportCard";
 import { useAtcRadio } from "./useAtcRadio";
 import { useCommsPresets } from "./useCommsPresets";
+import {
+  aircraftMatchesIdent,
+  normalizeIdentQuery,
+  pickBestIdentMatch,
+} from "./identMatch";
 import { visibleAircraftFor } from "./visibleAircraft";
 import type {
   AirportDetailResponse,
@@ -384,6 +389,7 @@ function updateAircraftEl(
   declutter: RadarDeclutterMode,
   interestingEntries: readonly WatchlistEntry[],
   tagPhase: 0 | 1,
+  identMatched: boolean,
 ) {
   const entry = findWatchlistEntry(
     ac.registration,
@@ -392,10 +398,18 @@ function updateAircraftEl(
   );
   const notable = notableFor(ac, interestingEntries);
   const onGround = ac.onGround === true;
-  const color =
-    !selected && onGround && notable === "none"
-      ? COLORS.ground
-      : markColorFor(notable, selected, entry?.color);
+  let color: string;
+  if (selected) {
+    color = COLORS.selected;
+  } else if (notable === "emergency") {
+    color = COLORS.alert;
+  } else if (identMatched) {
+    color = COLORS.ident;
+  } else if (onGround && notable === "none") {
+    color = COLORS.ground;
+  } else {
+    color = markColorFor(notable, false, entry?.color);
+  }
   const unselected = radarUnselectedLabel(declutter);
   const showLabel = selected || unselected !== "none";
   const showLine2 = selected || unselected === "dense";
@@ -489,6 +503,7 @@ function makeAircraftEl(
   onSelect: (ac: AircraftPoint) => void,
   interestingEntries: readonly WatchlistEntry[],
   tagPhase: 0 | 1,
+  identMatched: boolean,
 ): HTMLButtonElement {
   const el = document.createElement("button");
   el.type = "button";
@@ -513,6 +528,7 @@ function makeAircraftEl(
     RADAR_DECLUTTER_DEFAULT,
     interestingEntries,
     tagPhase,
+    identMatched,
   );
   return el;
 }
@@ -597,6 +613,7 @@ export function RadarMap() {
   const declutterRef = useRef<RadarDeclutterMode>(RADAR_DECLUTTER_DEFAULT);
   const interestingEntriesRef = useRef<WatchlistEntry[]>([]);
   const tagPhaseRef = useRef<0 | 1>(0);
+  const identQueryRef = useRef("");
 
   const [status, setStatus] = useState("Loading map…");
   const [aircraftCount, setAircraftCount] = useState(0);
@@ -641,6 +658,11 @@ export function RadarMap() {
   const [watchlistAdd, setWatchlistAdd] = useState("");
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [watchlistSaving, setWatchlistSaving] = useState(false);
+  const [identQuery, setIdentQuery] = useState("");
+
+  useEffect(() => {
+    identQueryRef.current = identQuery;
+  }, [identQuery]);
 
   useEffect(() => {
     const stored = readStoredDeclutter();
@@ -656,6 +678,7 @@ export function RadarMap() {
     const entries = interestingEntriesRef.current;
     const mode = declutterRef.current;
     const tagPhase = tagPhaseRef.current;
+    const identQ = identQueryRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
@@ -664,6 +687,7 @@ export function RadarMap() {
         mode,
         entries,
         tagPhase,
+        aircraftMatchesIdent(entry.ac, identQ),
       );
     }
   }, []);
@@ -722,6 +746,7 @@ export function RadarMap() {
     const entries = interestingEntriesRef.current;
     const mode = declutterRef.current;
     const tagPhase = tagPhaseRef.current;
+    const identQ = identQueryRef.current;
     for (const [hex, entry] of aircraftMarkersRef.current) {
       updateAircraftEl(
         entry.marker.getElement(),
@@ -730,6 +755,7 @@ export function RadarMap() {
         mode,
         entries,
         tagPhase,
+        aircraftMatchesIdent(entry.ac, identQ),
       );
     }
   };
@@ -748,12 +774,29 @@ export function RadarMap() {
     airportMarkersRef.current.clear();
   }, []);
 
+  const applyIdentSelection = useCallback(
+    (map: MapLibreMap, visible: AircraftPoint[]) => {
+      const q = identQueryRef.current;
+      if (!normalizeIdentQuery(q)) return;
+      const matches = visible.filter((a) => aircraftMatchesIdent(a, q));
+      const center = map.getCenter();
+      const best = pickBestIdentMatch(
+        matches,
+        { lat: center.lat, lon: center.lng },
+        q,
+      );
+      if (best) selectAircraftRef.current(best);
+    },
+    [],
+  );
+
   const upsertAircraftMarker = useCallback(
     (map: MapLibreMap, ac: AircraftPoint) => {
       const declutterMode = declutterRef.current;
       const selectedHex = selectedHexRef.current;
       const entries = interestingEntriesRef.current;
       const tagPhase = tagPhaseRef.current;
+      const identMatched = aircraftMatchesIdent(ac, identQueryRef.current);
       const existing = aircraftMarkersRef.current.get(ac.hex);
       if (existing) {
         existing.ac = ac;
@@ -770,6 +813,7 @@ export function RadarMap() {
           declutterMode,
           entries,
           tagPhase,
+          identMatched,
         );
         if (ac.hex === selectedHex) {
           setSelected(toFeatureProps(ac));
@@ -781,6 +825,7 @@ export function RadarMap() {
         (picked) => selectAircraftRef.current(picked),
         entries,
         tagPhase,
+        identMatched,
       );
       updateAircraftEl(
         el,
@@ -789,6 +834,7 @@ export function RadarMap() {
         declutterMode,
         entries,
         tagPhase,
+        identMatched,
       );
       const marker = new Marker({ element: el, anchor: "center" })
         .setLngLat([ac.lon, ac.lat])
@@ -827,9 +873,10 @@ export function RadarMap() {
           removeAircraftMarker(hex);
         }
       }
+      applyIdentSelection(map, visible);
       return visible;
     },
-    [removeAircraftMarker, upsertAircraftMarker],
+    [applyIdentSelection, removeAircraftMarker, upsertAircraftMarker],
   );
 
   /**
@@ -904,11 +951,17 @@ export function RadarMap() {
         }
       }
       setAircraftCount(aircraftMarkersRef.current.size);
+      applyIdentSelection(map, visible);
       return;
     }
     const visible = syncAircraftMarkers(map, lastAircraftRef.current);
     setAircraftCount(visible.length);
-  }, [removeAircraftMarker, syncAircraftMarkers, upsertAircraftMarker]);
+  }, [
+    applyIdentSelection,
+    removeAircraftMarker,
+    syncAircraftMarkers,
+    upsertAircraftMarker,
+  ]);
 
   const setShowGroundTargets = useCallback(
     (next: boolean) => {
@@ -1158,6 +1211,7 @@ export function RadarMap() {
       if (displayModeRef.current === "scope") {
         // Source only — markers update when the sweep crosses each target.
         setAircraftCount(aircraftMarkersRef.current.size);
+        applyIdentSelection(map, visible);
       } else {
         syncAircraftMarkers(map, aircraft);
         setAircraftCount(visible.length);
@@ -1179,6 +1233,7 @@ export function RadarMap() {
     fetchRoutes,
     overlaysActive,
     readViewport,
+    applyIdentSelection,
     syncAircraftMarkers,
   ]);
 
@@ -1640,6 +1695,7 @@ export function RadarMap() {
         const entries = interestingEntriesRef.current;
         const mode = declutterRef.current;
         const tagPhase = tagPhaseRef.current;
+        const identQ = identQueryRef.current;
         for (const entry of aircraftMarkersRef.current.values()) {
           updateAircraftEl(
             entry.marker.getElement(),
@@ -1648,6 +1704,7 @@ export function RadarMap() {
             mode,
             entries,
             tagPhase,
+            aircraftMatchesIdent(entry.ac, identQ),
           );
         }
       });

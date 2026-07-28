@@ -38,6 +38,7 @@ export const COLORS = {
   scopeRing: "#1A4A1A",
   watchlistGreen: "#3DCF8E",
   watchlistViolet: "#A78BFA",
+  ident: "#22D3EE",
 } as const;
 
 const WATCHLIST_COLOR_HEX: Record<WatchlistColor, string> = {
