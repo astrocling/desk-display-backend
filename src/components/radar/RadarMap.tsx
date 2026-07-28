@@ -561,6 +561,7 @@ export function RadarMap() {
   /** Guards against a stale traffic response landing after focus changed/cleared. */
   const airportTrafficGenerationRef = useRef(0);
   const groundModeRef = useRef(false);
+  const showGroundTargetsRef = useRef(false);
   const displayModeRef = useRef<RadarDisplayMode>(RADAR_MODE_DEFAULT);
   const tfrsOnRef = useRef(true);
 
@@ -588,6 +589,7 @@ export function RadarMap() {
   const [tfrsOn, setTfrsOn] = useState(true);
   const [tfrCount, setTfrCount] = useState(0);
   const [groundMode, setGroundMode] = useState(false);
+  const [showGroundTargets, setShowGroundTargetsState] = useState(false);
   const [focusedIcao, setFocusedIcao] = useState<string | null>(null);
   const [airportDetail, setAirportDetail] =
     useState<AirportDetailResponse | null>(null);
@@ -766,7 +768,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         aircraft,
         groundModeRef.current ? focusedAirportRef.current : null,
-        true,
+        showGroundTargetsRef.current,
       );
       const seen = new Set<string>();
       for (const ac of visible) {
@@ -796,7 +798,7 @@ export function RadarMap() {
       const source = visibleAircraftFor(
         lastAircraftRef.current,
         groundModeRef.current ? focusedAirportRef.current : null,
-        true,
+        showGroundTargetsRef.current,
       );
       const sourceByHex = new Map(source.map((ac) => [ac.hex, ac]));
 
@@ -840,7 +842,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         lastAircraftRef.current,
         groundModeRef.current ? focusedAirportRef.current : null,
-        true,
+        showGroundTargetsRef.current,
       );
       const visibleHex = new Set(visible.map((ac) => ac.hex));
       for (const hex of [...aircraftMarkersRef.current.keys()]) {
@@ -860,6 +862,16 @@ export function RadarMap() {
     const visible = syncAircraftMarkers(map, lastAircraftRef.current);
     setAircraftCount(visible.length);
   }, [removeAircraftMarker, syncAircraftMarkers, upsertAircraftMarker]);
+
+  const setShowGroundTargets = useCallback(
+    (next: boolean) => {
+      if (next === showGroundTargetsRef.current) return;
+      showGroundTargetsRef.current = next;
+      setShowGroundTargetsState(next);
+      resyncAircraft();
+    },
+    [resyncAircraft],
+  );
 
   syncAircraftMarkersRef.current = syncAircraftMarkers;
 
@@ -981,6 +993,8 @@ export function RadarMap() {
     if (next === groundModeRef.current) return;
     groundModeRef.current = next;
     setGroundMode(next);
+    showGroundTargetsRef.current = next;
+    setShowGroundTargetsState(next);
     if (map) applyBasemapForGround(map, next);
     redrawOverlays();
     resyncAircraft();
@@ -1090,7 +1104,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         aircraft,
         groundModeRef.current ? focusedAirportRef.current : null,
-        true,
+        showGroundTargetsRef.current,
       );
       if (displayModeRef.current === "scope") {
         // Source only — markers update when the sweep crosses each target.
