@@ -1245,6 +1245,17 @@ export function RadarMap() {
     }, OVERLAY_DEBOUNCE_MS);
   }, [fetchOverlays]);
 
+  /** Chip click on the airport card: select the aircraft if it's currently known, else no-op. */
+  const selectAirportTrafficHex = useCallback((hex: string) => {
+    const entry = aircraftMarkersRef.current.get(hex);
+    if (entry) {
+      selectAircraftRef.current(entry.ac);
+      return;
+    }
+    const ac = lastAircraftRef.current.find((candidate) => candidate.hex === hex);
+    if (ac) selectAircraftRef.current(ac);
+  }, []);
+
   const clearAirportFocus = useCallback(() => {
     focusedAirportRef.current = null;
     runwaysRef.current = [];
@@ -2096,7 +2107,8 @@ export function RadarMap() {
             onClose={clearAirportFocus}
             onEnterGround={enterGroundView}
             onExitGround={exitGroundView}
-            traffic={null}
+            traffic={airportTraffic}
+            onSelectTrafficHex={selectAirportTrafficHex}
           />
         ) : null}
 
