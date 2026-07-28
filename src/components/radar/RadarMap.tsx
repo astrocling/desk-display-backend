@@ -993,6 +993,8 @@ export function RadarMap() {
     if (next === groundModeRef.current) return;
     groundModeRef.current = next;
     setGroundMode(next);
+    // Auto: enter → on, leave → off (overwrites manual override).
+    // Ref+state set directly (not setShowGroundTargets) so resyncAircraft() below is the single resync.
     showGroundTargetsRef.current = next;
     setShowGroundTargetsState(next);
     if (map) applyBasemapForGround(map, next);

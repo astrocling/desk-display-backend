@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { visibleAircraftFor } from "./visibleAircraft";
+import { haversineMiles } from "./geo";
+import {
+  GROUND_MAX_ALT_FT,
+  GROUND_NEAR_MI,
+  visibleAircraftFor,
+} from "./visibleAircraft";
 
 type Ac = {
   hex: string;
@@ -59,5 +64,43 @@ describe("visibleAircraftFor", () => {
   it("ground mode + ground targets off: near low airborne only", () => {
     const out = visibleAircraftFor(all, FIELD, false);
     expect(out.map((a) => a.hex)).toEqual(["low1"]);
+  });
+
+  it("ground mode: altFt === GROUND_MAX_ALT_FT is not low (< is exclusive)", () => {
+    const atMaxAlt = ac({
+      hex: "maxAlt",
+      onGround: false,
+      altFt: GROUND_MAX_ALT_FT,
+    });
+    const out = visibleAircraftFor([atMaxAlt, lowNear], FIELD, true);
+    expect(out.map((a) => a.hex)).toEqual(["low1"]);
+  });
+
+  it("ground mode: distance === GROUND_NEAR_MI is included (<= is inclusive)", () => {
+    let lo = FIELD.lat;
+    let hi = FIELD.lat + 0.2;
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      const d = haversineMiles(FIELD.lat, FIELD.lon, mid, FIELD.lon);
+      if (d <= GROUND_NEAR_MI) lo = mid;
+      else hi = mid;
+    }
+    const atBoundary = ac({
+      hex: "bound6",
+      onGround: false,
+      altFt: 100,
+      lat: lo,
+      lon: FIELD.lon,
+    });
+    const dist = haversineMiles(
+      FIELD.lat,
+      FIELD.lon,
+      atBoundary.lat,
+      atBoundary.lon,
+    );
+    expect(dist).toBeLessThanOrEqual(GROUND_NEAR_MI);
+    expect(dist).toBeCloseTo(GROUND_NEAR_MI, 2);
+    const out = visibleAircraftFor([atBoundary], FIELD, true);
+    expect(out.map((a) => a.hex)).toEqual(["bound6"]);
   });
 });
