@@ -56,6 +56,7 @@ import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import { SelectionAirportCard } from "./SelectionAirportCard";
 import { useAtcRadio } from "./useAtcRadio";
 import { useCommsPresets } from "./useCommsPresets";
+import { visibleAircraftFor } from "./visibleAircraft";
 import type {
   AirportDetailResponse,
   AirportRunway,
@@ -146,8 +147,6 @@ const DEFAULT_MAP_ZOOM = 10;
 
 /** Ground mode engages once a focused airport fills the viewport. */
 const GROUND_ZOOM_MIN = 12.5;
-const GROUND_NEAR_MI = 6;
-const GROUND_MAX_ALT_FT = 500;
 const GROUND_VIEW_ZOOM = 13.5;
 
 /** Bulk route lookup guard (API caps at 80 per request). */
@@ -339,22 +338,6 @@ function notableFor(
     registration: ac.registration,
     callsign: ac.callsign,
     interestingRegs,
-  });
-}
-
-/** Ground mode narrows traffic to surface/low targets around the focused field. */
-function visibleAircraftFor(
-  aircraft: AircraftPoint[],
-  ground: FocusedAirport | null,
-): AircraftPoint[] {
-  if (!ground) return aircraft;
-  return aircraft.filter((ac) => {
-    const low =
-      ac.onGround === true ||
-      (ac.altFt != null && ac.altFt < GROUND_MAX_ALT_FT);
-    if (!low) return false;
-    return haversineMiles(ground.lat, ground.lon, ac.lat, ac.lon) <=
-      GROUND_NEAR_MI;
   });
 }
 
@@ -783,6 +766,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         aircraft,
         groundModeRef.current ? focusedAirportRef.current : null,
+        true,
       );
       const seen = new Set<string>();
       for (const ac of visible) {
@@ -812,6 +796,7 @@ export function RadarMap() {
       const source = visibleAircraftFor(
         lastAircraftRef.current,
         groundModeRef.current ? focusedAirportRef.current : null,
+        true,
       );
       const sourceByHex = new Map(source.map((ac) => [ac.hex, ac]));
 
@@ -855,6 +840,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         lastAircraftRef.current,
         groundModeRef.current ? focusedAirportRef.current : null,
+        true,
       );
       const visibleHex = new Set(visible.map((ac) => ac.hex));
       for (const hex of [...aircraftMarkersRef.current.keys()]) {
@@ -1104,6 +1090,7 @@ export function RadarMap() {
       const visible = visibleAircraftFor(
         aircraft,
         groundModeRef.current ? focusedAirportRef.current : null,
+        true,
       );
       if (displayModeRef.current === "scope") {
         // Source only — markers update when the sweep crosses each target.
