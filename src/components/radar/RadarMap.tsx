@@ -614,6 +614,7 @@ export function RadarMap() {
   const interestingEntriesRef = useRef<WatchlistEntry[]>([]);
   const tagPhaseRef = useRef<0 | 1>(0);
   const identQueryRef = useRef("");
+  const identInputRef = useRef<HTMLInputElement>(null);
 
   const [status, setStatus] = useState("Loading map…");
   const [aircraftCount, setAircraftCount] = useState(0);
@@ -658,11 +659,7 @@ export function RadarMap() {
   const [watchlistAdd, setWatchlistAdd] = useState("");
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
   const [watchlistSaving, setWatchlistSaving] = useState(false);
-  const [identQuery, setIdentQuery] = useState("");
-
-  useEffect(() => {
-    identQueryRef.current = identQuery;
-  }, [identQuery]);
+  const [identQuery, setIdentQueryState] = useState("");
 
   useEffect(() => {
     const stored = readStoredDeclutter();
@@ -713,6 +710,29 @@ export function RadarMap() {
     },
     [refreshAircraftLabels],
   );
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t instanceof HTMLElement) {
+        const tag = t.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          t.isContentEditable
+        ) {
+          return;
+        }
+      }
+      e.preventDefault();
+      identInputRef.current?.focus();
+      identInputRef.current?.select();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const syncAircraftMarkersRef = useRef<
     (map: MapLibreMap, aircraft: AircraftPoint[]) => AircraftPoint[]
@@ -788,6 +808,25 @@ export function RadarMap() {
       if (best) selectAircraftRef.current(best);
     },
     [],
+  );
+
+  const setIdentQuery = useCallback(
+    (raw: string) => {
+      identQueryRef.current = raw;
+      setIdentQueryState(raw);
+      refreshAircraftLabels();
+      if (!raw) return;
+      const map = mapRef.current;
+      if (map) {
+        const visible = visibleAircraftFor(
+          lastAircraftRef.current,
+          groundModeRef.current ? focusedAirportRef.current : null,
+          showGroundTargetsRef.current,
+        );
+        applyIdentSelection(map, visible);
+      }
+    },
+    [applyIdentSelection, refreshAircraftLabels],
   );
 
   const upsertAircraftMarker = useCallback(
@@ -2122,6 +2161,44 @@ export function RadarMap() {
             />
             TFRs{tfrsOn && tfrCount > 0 ? ` (${tfrCount})` : ""}
           </label>
+        </div>
+
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg bg-slate-900/85 px-2 py-1 shadow-lg backdrop-blur">
+          <label
+            htmlFor="radar-ident"
+            className="text-xs font-medium uppercase tracking-wide text-slate-400"
+          >
+            Ident
+          </label>
+          <input
+            ref={identInputRef}
+            id="radar-ident"
+            type="text"
+            value={identQuery}
+            onChange={(e) => setIdentQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setIdentQuery("");
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="squawk / callsign"
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="Ident squawk or callsign"
+            className="w-36 rounded bg-slate-800 px-2 py-1 font-mono text-sm uppercase outline-none ring-cyan-500/40 focus:ring"
+          />
+          {identQuery ? (
+            <button
+              type="button"
+              onClick={() => setIdentQuery("")}
+              className="text-xs text-slate-400 hover:text-slate-200"
+              aria-label="Clear Ident"
+            >
+              ×
+            </button>
+          ) : null}
         </div>
 
         <div className="pointer-events-auto relative">
