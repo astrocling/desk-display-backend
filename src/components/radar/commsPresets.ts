@@ -1,4 +1,8 @@
-import { isCatalogIcao } from "@/lib/atc/feeds";
+import {
+  defaultFeedForIcao,
+  getFeedById,
+  isCatalogIcao,
+} from "@/lib/atc/feeds";
 
 export const COMMS_PRESETS_STORAGE_KEY = "desk-display.commsPresets.v1";
 
@@ -11,6 +15,7 @@ export type CommsPresetEntry = {
 export type CommsPresetsStored = {
   pinnedIcaos: string[];
   expanded: boolean;
+  lastFeedByIcao: Record<string, string>;
 };
 
 export function normalizeCatalogIcao(icao: string): string | null {
@@ -50,12 +55,44 @@ export function mergeCommsEntries(
   return entries;
 }
 
+export function sanitizeLastFeedByIcao(raw: unknown): Record<string, string> {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const icao = normalizeCatalogIcao(key);
+    if (!icao || typeof value !== "string") continue;
+    const feed = getFeedById(value);
+    if (feed?.icao === icao) {
+      result[icao] = feed.id;
+    }
+  }
+  return result;
+}
+
+export function resolvedFeedIdForIcao(
+  icao: string,
+  lastFeedByIcao: Record<string, string>,
+): string | undefined {
+  const code = normalizeCatalogIcao(icao);
+  if (!code) return undefined;
+  const remembered = lastFeedByIcao[code];
+  if (remembered) {
+    const feed = getFeedById(remembered);
+    if (feed?.icao === code) return feed.id;
+  }
+  return defaultFeedForIcao(code)?.id;
+}
+
 export function parseCommsPresetsStored(raw: string | null): CommsPresetsStored {
   if (raw == null || raw === "") {
-    return { pinnedIcaos: [], expanded: false };
+    return { pinnedIcaos: [], expanded: false, lastFeedByIcao: {} };
   }
   try {
-    const parsed = JSON.parse(raw) as Partial<CommsPresetsStored>;
+    const parsed = JSON.parse(raw) as Partial<CommsPresetsStored> & {
+      lastFeedByIcao?: unknown;
+    };
     const pinnedIcaos = Array.isArray(parsed.pinnedIcaos)
       ? parsed.pinnedIcaos
           .map((x) => normalizeCatalogIcao(String(x)))
@@ -71,9 +108,10 @@ export function parseCommsPresetsStored(raw: string | null): CommsPresetsStored 
     return {
       pinnedIcaos: unique,
       expanded: parsed.expanded === true,
+      lastFeedByIcao: sanitizeLastFeedByIcao(parsed.lastFeedByIcao),
     };
   } catch {
-    return { pinnedIcaos: [], expanded: false };
+    return { pinnedIcaos: [], expanded: false, lastFeedByIcao: {} };
   }
 }
 
@@ -82,5 +120,6 @@ export function serializeCommsPresetsStored(data: CommsPresetsStored): string {
   return JSON.stringify({
     pinnedIcaos,
     expanded: data.expanded === true,
+    lastFeedByIcao: sanitizeLastFeedByIcao(data.lastFeedByIcao),
   });
 }
