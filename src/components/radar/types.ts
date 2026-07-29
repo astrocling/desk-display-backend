@@ -1,10 +1,24 @@
-export interface ToweredAirport {
+export interface MapAirport {
   icao: string;
+  ident: string;
   name: string;
   lat: number;
   lon: number;
+  towered: boolean;
+  publicUse: boolean;
+  pavedRunwayFt: number | null;
   /** Longest runway true heading (degrees) for glyph orientation. */
   primaryRunwayHeadingDeg?: number | null;
+}
+
+/** @deprecated Use MapAirport — alias kept to reduce call-site churn. */
+export type ToweredAirport = MapAirport;
+
+export interface FacilityBoundary {
+  id: string;
+  name: string;
+  kind: "artcc" | "app_dep";
+  points: [number, number][];
 }
 
 export interface AirspaceRing {
@@ -20,9 +34,11 @@ export interface HighwayPolyline {
 }
 
 export interface MapContextResponse {
-  airports: ToweredAirport[];
+  airports: MapAirport[];
   rings: AirspaceRing[];
   highways: HighwayPolyline[];
+  artcc: FacilityBoundary[];
+  appDep: FacilityBoundary[];
 }
 
 export interface AirportRunway {

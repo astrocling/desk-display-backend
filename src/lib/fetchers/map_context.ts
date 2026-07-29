@@ -9,6 +9,22 @@ export const TOWERED_AIRPORTS_PATH = path.join(
   MAP_DATA_DIR,
   "towered-airports.json",
 );
+export const AIRPORTS_CATALOG_PATH = path.join(
+  MAP_DATA_DIR,
+  "airports-catalog.json",
+);
+export const AIRPORT_DESIGNATORS_PATH = path.join(
+  MAP_DATA_DIR,
+  "airport-designators.json",
+);
+export const ARTCC_BOUNDARIES_PATH = path.join(
+  MAP_DATA_DIR,
+  "artcc-boundaries.json",
+);
+export const APP_DEP_BOUNDARIES_PATH = path.join(
+  MAP_DATA_DIR,
+  "app-dep-boundaries.json",
+);
 export const AIRSPACE_RINGS_PATH = path.join(MAP_DATA_DIR, "airspace-rings.json");
 export const HIGHWAYS_PATH = path.join(MAP_DATA_DIR, "highways.json");
 
@@ -35,13 +51,27 @@ const MAX_RING_VERTS = 60;
 const MAX_HIGHWAY_VERTS = 80;
 const MAX_HIGHWAYS_RESPONSE = 12;
 
-export interface ToweredAirport {
+export interface MapAirport {
   icao: string;
+  ident: string;
   name: string;
   lat: number;
   lon: number;
+  towered: boolean;
+  publicUse: boolean;
+  pavedRunwayFt: number | null;
   /** Longest runway true heading (degrees) for glyph orientation. */
   primaryRunwayHeadingDeg?: number | null;
+}
+
+/** @deprecated Use MapAirport — alias kept to reduce call-site churn. */
+export type ToweredAirport = MapAirport;
+
+export interface FacilityBoundary {
+  id: string;
+  name: string;
+  kind: "artcc" | "app_dep";
+  points: [number, number][];
 }
 
 export interface AirspaceRing {
@@ -57,9 +87,11 @@ export interface HighwayPolyline {
 }
 
 export interface MapContextResponse {
-  airports: ToweredAirport[];
+  airports: MapAirport[];
   rings: AirspaceRing[];
   highways: HighwayPolyline[];
+  artcc: FacilityBoundary[];
+  appDep: FacilityBoundary[];
 }
 
 function looksLikeIcao(code: string): boolean {
@@ -76,6 +108,260 @@ function resolveIcao(ident: string, icaoCode: string): string | null {
   }
 
   return null;
+}
+
+function resolveCatalogIcao(ident: string, icaoCode: string): string {
+  return resolveIcao(ident, icaoCode) ?? ident.trim().toUpperCase();
+}
+
+const PUBLIC_AIRPORT_TYPES = new Set([
+  "large_airport",
+  "medium_airport",
+  "small_airport",
+  "heliport",
+]);
+
+const PAVED_SURFACE_RE = /asp|con|pem|bit|tar|concrete|asphalt/i;
+
+function isPublicAirportType(type: string): boolean {
+  return PUBLIC_AIRPORT_TYPES.has(type.trim().toLowerCase());
+}
+
+type RunwaySummary = {
+  lengthFt: number | null;
+  surface: string;
+};
+
+function buildRunwaysByAirportRefFromCsv(
+  runwaysCsv: string,
+): Map<string, RunwaySummary[]> {
+  const records = parseCsvRecords(runwaysCsv);
+  if (records.length === 0) {
+    return new Map();
+  }
+
+  const header = records[0].map((column) => column.trim().toLowerCase());
+  const airportRefIndex = header.indexOf("airport_ref");
+  const lengthIndex = header.indexOf("length_ft");
+  const surfaceIndex = header.indexOf("surface");
+  const closedIndex = header.indexOf("closed");
+
+  if (airportRefIndex === -1) {
+    return new Map();
+  }
+
+  const byRef = new Map<string, RunwaySummary[]>();
+
+  for (const row of records.slice(1)) {
+    const airportRef = row[airportRefIndex]?.trim() ?? "";
+    if (!airportRef) {
+      continue;
+    }
+    if (closedIndex !== -1 && row[closedIndex]?.trim() === "1") {
+      continue;
+    }
+
+    const lengthRaw = lengthIndex === -1 ? "" : (row[lengthIndex]?.trim() ?? "");
+    const lengthFt = lengthRaw === "" ? null : Number(lengthRaw);
+    const runway: RunwaySummary = {
+      lengthFt: Number.isFinite(lengthFt) ? lengthFt : null,
+      surface: surfaceIndex === -1 ? "" : (row[surfaceIndex]?.trim() ?? ""),
+    };
+
+    const existing = byRef.get(airportRef) ?? [];
+    existing.push(runway);
+    byRef.set(airportRef, existing);
+  }
+
+  return byRef;
+}
+
+function maxPavedRunwayFt(runways: RunwaySummary[] | undefined): number | null {
+  if (!runways?.length) {
+    return null;
+  }
+
+  let max: number | null = null;
+  for (const runway of runways) {
+    if (!PAVED_SURFACE_RE.test(runway.surface)) {
+      continue;
+    }
+    if (runway.lengthFt == null) {
+      continue;
+    }
+    max = max == null ? runway.lengthFt : Math.max(max, runway.lengthFt);
+  }
+  return max;
+}
+
+function buildToweredAirportIdSet(frequenciesCsv: string): Set<string> {
+  const frequencyRecords = parseCsvRecords(frequenciesCsv);
+  if (frequencyRecords.length === 0) {
+    return new Set();
+  }
+
+  const frequencyHeader = frequencyRecords[0].map((column) =>
+    column.trim().toLowerCase(),
+  );
+  const airportRefIndex = frequencyHeader.indexOf("airport_ref");
+  const frequencyTypeIndex = frequencyHeader.indexOf("type");
+
+  if (airportRefIndex === -1 || frequencyTypeIndex === -1) {
+    throw new Error("OurAirports frequencies CSV missing required columns");
+  }
+
+  const toweredAirportIds = new Set<string>();
+
+  for (const row of frequencyRecords.slice(1)) {
+    const type = row[frequencyTypeIndex]?.trim().toUpperCase() ?? "";
+    if (!type.includes("TWR")) {
+      continue;
+    }
+
+    const airportRef = row[airportRefIndex]?.trim();
+    if (airportRef) {
+      toweredAirportIds.add(airportRef);
+    }
+  }
+
+  return toweredAirportIds;
+}
+
+function parseAirportCsvHeader(airportsCsv: string): {
+  records: string[][];
+  airportIdIndex: number;
+  identIndex: number;
+  nameIndex: number;
+  typeIndex: number;
+  icaoIndex: number;
+  localCodeIndex: number;
+  latIndex: number;
+  lonIndex: number;
+} {
+  const airportRecords = parseCsvRecords(airportsCsv);
+  if (airportRecords.length === 0) {
+    throw new Error("OurAirports airports CSV missing required columns");
+  }
+
+  const airportHeader = airportRecords[0].map((column) =>
+    column.trim().toLowerCase(),
+  );
+  const airportIdIndex = airportHeader.indexOf("id");
+  const identIndex = airportHeader.indexOf("ident");
+  const nameIndex = airportHeader.indexOf("name");
+  const typeIndex = airportHeader.indexOf("type");
+  const icaoIndex = airportHeader.indexOf("icao_code");
+  const localCodeIndex = airportHeader.indexOf("local_code");
+  const latIndex = airportHeader.indexOf("latitude_deg");
+  const lonIndex = airportHeader.indexOf("longitude_deg");
+
+  if (
+    airportIdIndex === -1 ||
+    identIndex === -1 ||
+    nameIndex === -1 ||
+    latIndex === -1 ||
+    lonIndex === -1
+  ) {
+    throw new Error("OurAirports airports CSV missing required columns");
+  }
+
+  return {
+    records: airportRecords,
+    airportIdIndex,
+    identIndex,
+    nameIndex,
+    typeIndex,
+    icaoIndex,
+    localCodeIndex,
+    latIndex,
+    lonIndex,
+  };
+}
+
+export function buildAirportCatalogFromCsv(
+  airportsCsv: string,
+  frequenciesCsv: string,
+  runwaysInput: string | Map<string, RunwaySummary[]>,
+): MapAirport[] {
+  const {
+    records: airportRecords,
+    airportIdIndex,
+    identIndex,
+    nameIndex,
+    typeIndex,
+    icaoIndex,
+    latIndex,
+    lonIndex,
+  } = parseAirportCsvHeader(airportsCsv);
+
+  const toweredAirportIds = buildToweredAirportIdSet(frequenciesCsv);
+  const runwaysByAirportRef =
+    typeof runwaysInput === "string"
+      ? buildRunwaysByAirportRefFromCsv(runwaysInput)
+      : runwaysInput;
+
+  const airports: MapAirport[] = [];
+
+  for (const row of airportRecords.slice(1)) {
+    const airportId = row[airportIdIndex]?.trim() ?? "";
+    const ident = row[identIndex]?.trim() ?? "";
+    if (!ident) {
+      continue;
+    }
+
+    const icaoCode = icaoIndex === -1 ? "" : (row[icaoIndex]?.trim() ?? "");
+    const icao = resolveCatalogIcao(ident, icaoCode);
+
+    const lat = Number(row[latIndex]);
+    const lon = Number(row[lonIndex]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      continue;
+    }
+
+    const type = typeIndex === -1 ? "" : (row[typeIndex]?.trim() ?? "");
+
+    airports.push({
+      icao,
+      ident,
+      name: row[nameIndex]?.trim() ?? icao,
+      lat,
+      lon,
+      towered: toweredAirportIds.has(airportId),
+      publicUse: isPublicAirportType(type),
+      pavedRunwayFt: maxPavedRunwayFt(runwaysByAirportRef.get(airportId)),
+    });
+  }
+
+  airports.sort((a, b) => a.ident.localeCompare(b.ident));
+  return airports;
+}
+
+export function buildDesignatorIndex(
+  airports: MapAirport[],
+  localCodesByIdent: Record<string, string> = {},
+): Record<string, string> {
+  const index: Record<string, string> = {};
+
+  for (const airport of airports) {
+    const ident = airport.ident.trim();
+    if (!ident) {
+      continue;
+    }
+
+    index[ident.toUpperCase()] = ident;
+
+    const icao = airport.icao.trim().toUpperCase();
+    if (icao) {
+      index[icao] = ident;
+    }
+
+    const localCode = localCodesByIdent[ident]?.trim().toUpperCase();
+    if (localCode) {
+      index[localCode] = ident;
+    }
+  }
+
+  return index;
 }
 
 function parseCsvRecords(text: string): string[][] {
@@ -140,59 +426,20 @@ function parseCsvRecords(text: string): string[][] {
 export function buildToweredAirportsFromCsv(
   airportsCsv: string,
   frequenciesCsv: string,
-): ToweredAirport[] {
-  const airportRecords = parseCsvRecords(airportsCsv);
-  const frequencyRecords = parseCsvRecords(frequenciesCsv);
+): MapAirport[] {
+  const {
+    records: airportRecords,
+    airportIdIndex,
+    identIndex,
+    nameIndex,
+    typeIndex,
+    icaoIndex,
+    latIndex,
+    lonIndex,
+  } = parseAirportCsvHeader(airportsCsv);
+  const toweredAirportIds = buildToweredAirportIdSet(frequenciesCsv);
 
-  if (airportRecords.length === 0 || frequencyRecords.length === 0) {
-    return [];
-  }
-
-  const airportHeader = airportRecords[0].map((column) =>
-    column.trim().toLowerCase(),
-  );
-  const airportIdIndex = airportHeader.indexOf("id");
-  const identIndex = airportHeader.indexOf("ident");
-  const nameIndex = airportHeader.indexOf("name");
-  const icaoIndex = airportHeader.indexOf("icao_code");
-  const latIndex = airportHeader.indexOf("latitude_deg");
-  const lonIndex = airportHeader.indexOf("longitude_deg");
-
-  if (
-    airportIdIndex === -1 ||
-    identIndex === -1 ||
-    nameIndex === -1 ||
-    latIndex === -1 ||
-    lonIndex === -1
-  ) {
-    throw new Error("OurAirports airports CSV missing required columns");
-  }
-
-  const frequencyHeader = frequencyRecords[0].map((column) =>
-    column.trim().toLowerCase(),
-  );
-  const airportRefIndex = frequencyHeader.indexOf("airport_ref");
-  const frequencyTypeIndex = frequencyHeader.indexOf("type");
-
-  if (airportRefIndex === -1 || frequencyTypeIndex === -1) {
-    throw new Error("OurAirports frequencies CSV missing required columns");
-  }
-
-  const toweredAirportIds = new Set<string>();
-
-  for (const row of frequencyRecords.slice(1)) {
-    const type = row[frequencyTypeIndex]?.trim().toUpperCase() ?? "";
-    if (!type.includes("TWR")) {
-      continue;
-    }
-
-    const airportRef = row[airportRefIndex]?.trim();
-    if (airportRef) {
-      toweredAirportIds.add(airportRef);
-    }
-  }
-
-  const airports: ToweredAirport[] = [];
+  const airports: MapAirport[] = [];
 
   for (const row of airportRecords.slice(1)) {
     const airportId = row[airportIdIndex]?.trim() ?? "";
@@ -213,11 +460,17 @@ export function buildToweredAirportsFromCsv(
       continue;
     }
 
+    const type = typeIndex === -1 ? "" : (row[typeIndex]?.trim() ?? "");
+
     airports.push({
       icao,
+      ident,
       name: row[nameIndex]?.trim() ?? icao,
       lat,
       lon,
+      towered: true,
+      publicUse: isPublicAirportType(type),
+      pavedRunwayFt: null,
     });
   }
 
@@ -343,6 +596,91 @@ function ringIdFromProperties(
 
 function lonLatRingToLatLon(ring: number[][]): [number, number][] {
   return ring.map((coord) => [coord[1], coord[0]] as [number, number]);
+}
+
+function facilityProperty(
+  properties: Record<string, unknown>,
+  keys: string[],
+): string {
+  for (const key of keys) {
+    const value = properties[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+export function buildFacilityBoundariesFromGeoJson(
+  geojson: unknown,
+  kind: FacilityBoundary["kind"],
+): FacilityBoundary[] {
+  if (!geojson || typeof geojson !== "object") {
+    return [];
+  }
+
+  const root = geojson as {
+    type?: string;
+    features?: Array<{
+      properties?: Record<string, unknown>;
+      geometry?: {
+        type?: string;
+        coordinates?: unknown;
+      };
+    }>;
+  };
+
+  const features =
+    root.type === "FeatureCollection" && Array.isArray(root.features)
+      ? root.features
+      : root.type === "Feature"
+        ? [
+            root as {
+              properties?: Record<string, unknown>;
+              geometry?: { type?: string; coordinates?: unknown };
+            },
+          ]
+        : [];
+
+  const boundaries: FacilityBoundary[] = [];
+
+  features.forEach((feature, index) => {
+    const properties = feature.properties ?? {};
+    const geometry = feature.geometry;
+    if (!geometry?.type || !geometry.coordinates) {
+      return;
+    }
+
+    let exterior: number[][] | null = null;
+
+    if (geometry.type === "Polygon") {
+      const coords = geometry.coordinates as number[][][];
+      exterior = coords[0] ?? null;
+    } else if (geometry.type === "MultiPolygon") {
+      const coords = geometry.coordinates as number[][][][];
+      exterior = coords[0]?.[0] ?? null;
+    }
+
+    if (!exterior || exterior.length < 3) {
+      return;
+    }
+
+    const id =
+      facilityProperty(properties, ["id", "ID"]) || `${kind}_${index}`;
+    const name =
+      facilityProperty(properties, ["name", "NAME"]) || id;
+    const latLonPoints = lonLatRingToLatLon(exterior);
+    const simplified = simplifyRing(latLonPoints, MAX_RING_VERTS);
+
+    boundaries.push({
+      id,
+      name,
+      kind,
+      points: simplified,
+    });
+  });
+
+  return boundaries;
 }
 
 export function buildAirspaceRingsFromFeatures(
@@ -643,11 +981,13 @@ export function filterMapContext(
   lat: number,
   lon: number,
   radiusMi: number,
-  towered: ToweredAirport[],
+  airportsInput: MapAirport[],
   rings: AirspaceRing[],
   highways: HighwayPolyline[] = [],
+  artcc: FacilityBoundary[] = [],
+  appDep: FacilityBoundary[] = [],
 ): MapContextResponse {
-  const airports = towered
+  const airports = airportsInput
     .map((airport) => ({
       airport,
       distanceMi: haversineMiles(lat, lon, airport.lat, airport.lon),
@@ -658,6 +998,14 @@ export function filterMapContext(
 
   const filteredRings = rings.filter((ring) =>
     ringIntersectsRadius(ring.points, lat, lon, radiusMi),
+  );
+
+  const filteredArtcc = artcc.filter((boundary) =>
+    ringIntersectsRadius(boundary.points, lat, lon, radiusMi),
+  );
+
+  const filteredAppDep = appDep.filter((boundary) =>
+    ringIntersectsRadius(boundary.points, lat, lon, radiusMi),
   );
 
   const filteredHighways = highways
@@ -674,7 +1022,13 @@ export function filterMapContext(
     .slice(0, MAX_HIGHWAYS_RESPONSE)
     .map(({ highway }) => highway);
 
-  return { airports, rings: filteredRings, highways: filteredHighways };
+  return {
+    airports,
+    rings: filteredRings,
+    highways: filteredHighways,
+    artcc: filteredArtcc,
+    appDep: filteredAppDep,
+  };
 }
 
 async function fetchWithTimeout(url: string): Promise<string> {
@@ -727,7 +1081,7 @@ export async function fetchOurAirportsCsvs(): Promise<{
   }
 }
 
-export async function buildToweredAirports(): Promise<ToweredAirport[]> {
+export async function buildToweredAirports(): Promise<MapAirport[]> {
   const { airportsCsv, frequenciesCsv } = await fetchOurAirportsCsvs();
   return buildToweredAirportsFromCsv(airportsCsv, frequenciesCsv);
 }
@@ -786,7 +1140,7 @@ export async function seedMapContextToRedis(): Promise<{
     readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
   ]);
 
-  const towered = JSON.parse(toweredText) as ToweredAirport[];
+  const towered = normalizeMapAirports(JSON.parse(toweredText) as Partial<MapAirport>[]);
   const rings = JSON.parse(ringsText) as AirspaceRing[];
   const highways = JSON.parse(highwaysText) as HighwayPolyline[];
 
@@ -797,7 +1151,14 @@ export async function seedMapContextToRedis(): Promise<{
     redis.set(REDIS_KEYS.mapHighways, highways),
   ]);
 
-  cachedMapData = { towered, rings, highways };
+  cachedMapData = {
+    towered,
+    designators: {},
+    rings,
+    highways,
+    artcc: [],
+    appDep: [],
+  };
 
   return {
     toweredCount: towered.length,
@@ -807,23 +1168,89 @@ export async function seedMapContextToRedis(): Promise<{
 }
 
 type MapDataBlobs = {
-  towered: ToweredAirport[];
+  towered: MapAirport[];
+  designators: Record<string, string>;
   rings: AirspaceRing[];
   highways: HighwayPolyline[];
+  artcc: FacilityBoundary[];
+  appDep: FacilityBoundary[];
 };
 
 let cachedMapData: MapDataBlobs | null = null;
 
-async function readMapDataFromDisk(): Promise<MapDataBlobs> {
-  const [toweredText, ringsText, highwaysText] = await Promise.all([
-    readFile(TOWERED_AIRPORTS_PATH, "utf8"),
-    readFile(AIRSPACE_RINGS_PATH, "utf8"),
-    readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
-  ]);
+function normalizeMapAirport(raw: Partial<MapAirport> & {
+  icao: string;
+  name: string;
+  lat: number;
+  lon: number;
+}): MapAirport {
   return {
-    towered: JSON.parse(toweredText) as ToweredAirport[],
+    icao: raw.icao,
+    ident: raw.ident ?? raw.icao,
+    name: raw.name,
+    lat: raw.lat,
+    lon: raw.lon,
+    towered: raw.towered ?? true,
+    publicUse: raw.publicUse ?? false,
+    pavedRunwayFt: raw.pavedRunwayFt ?? null,
+    primaryRunwayHeadingDeg: raw.primaryRunwayHeadingDeg ?? null,
+  };
+}
+
+function normalizeMapAirports(raw: Partial<MapAirport>[]): MapAirport[] {
+  return raw
+    .filter(
+      (airport): airport is Partial<MapAirport> & {
+        icao: string;
+        name: string;
+        lat: number;
+        lon: number;
+      } =>
+        typeof airport.icao === "string" &&
+        typeof airport.name === "string" &&
+        typeof airport.lat === "number" &&
+        typeof airport.lon === "number",
+    )
+    .map((airport) => normalizeMapAirport(airport));
+}
+
+async function readOptionalJsonFile<T>(filePath: string, fallback: T): Promise<T> {
+  try {
+    const text = await readFile(filePath, "utf8");
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function readAirportsFromDisk(): Promise<MapAirport[]> {
+  try {
+    const catalogText = await readFile(AIRPORTS_CATALOG_PATH, "utf8");
+    return normalizeMapAirports(JSON.parse(catalogText) as Partial<MapAirport>[]);
+  } catch {
+    const toweredText = await readFile(TOWERED_AIRPORTS_PATH, "utf8");
+    return normalizeMapAirports(JSON.parse(toweredText) as Partial<MapAirport>[]);
+  }
+}
+
+async function readMapDataFromDisk(): Promise<MapDataBlobs> {
+  const [towered, designators, ringsText, highwaysText, artcc, appDep] =
+    await Promise.all([
+      readAirportsFromDisk(),
+      readOptionalJsonFile<Record<string, string>>(AIRPORT_DESIGNATORS_PATH, {}),
+      readFile(AIRSPACE_RINGS_PATH, "utf8"),
+      readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
+      readOptionalJsonFile<FacilityBoundary[]>(ARTCC_BOUNDARIES_PATH, []),
+      readOptionalJsonFile<FacilityBoundary[]>(APP_DEP_BOUNDARIES_PATH, []),
+    ]);
+
+  return {
+    towered,
+    designators,
     rings: JSON.parse(ringsText) as AirspaceRing[],
     highways: JSON.parse(highwaysText) as HighwayPolyline[],
+    artcc,
+    appDep,
   };
 }
 
@@ -831,7 +1258,7 @@ async function readMapDataFromRedis(): Promise<MapDataBlobs | null> {
   try {
     const redis = getRedis();
     const [towered, rings, highways] = await Promise.all([
-      redis.get<ToweredAirport[]>(REDIS_KEYS.mapTowered),
+      redis.get<MapAirport[]>(REDIS_KEYS.mapTowered),
       redis.get<AirspaceRing[]>(REDIS_KEYS.mapAirspace),
       redis.get<HighwayPolyline[]>(REDIS_KEYS.mapHighways),
     ]);
@@ -839,16 +1266,19 @@ async function readMapDataFromRedis(): Promise<MapDataBlobs | null> {
       return null;
     }
     return {
-      towered,
+      towered: normalizeMapAirports(towered),
+      designators: {},
       rings,
       highways: Array.isArray(highways) ? highways : [],
+      artcc: [],
+      appDep: [],
     };
   } catch {
     return null;
   }
 }
 
-/** Load towered + airspace + highway blobs once per warm isolate (Redis, then disk). */
+/** Load map context blobs once per warm isolate (Redis, then disk). */
 export async function loadMapContextData(): Promise<MapDataBlobs> {
   if (cachedMapData) {
     return cachedMapData;
