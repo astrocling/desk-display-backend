@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "DAY",
+        "name": "Dayton Approach"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.35, 40.0],
+            [-84.1, 40.0],
+            [-84.1, 39.8],
+            [-84.35, 39.8],
+            [-84.35, 40.0]
+          ]
+        ]
+      }
+    }
+  ]
+}

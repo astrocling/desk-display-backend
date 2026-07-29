@@ -1,0 +1,6 @@
+"id","airport_ref","airport_ident","length_ft","width_ft","surface","closed"
+1,"3622","KDAY",10000,150,"ASP",0
+2,"3630","KFFO",12000,200,"CON",0
+3,"4048","KCVG",11000,150,"ASP",0
+4,"4164","KCLE",9000,150,"ASP",0
+5,"9999","00AA",4500,60,"CON",0

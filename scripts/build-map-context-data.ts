@@ -12,16 +12,29 @@
  *
  *   Default ingest uses data/map/fixtures/airspace.geojson (Dayton-area sample).
  *   Replace that file with NASR-derived GeoJSON for a full national refresh.
+ *
+ * ARTCC / APP-DEP boundaries:
+ *   Fixture GeoJSON in data/map/fixtures/artcc.geojson and app-dep.geojson.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  AIRPORTS_CATALOG_PATH,
+  AIRPORT_DESIGNATORS_PATH,
   AIRSPACE_RINGS_PATH,
+  APP_DEP_BOUNDARIES_PATH,
+  ARTCC_BOUNDARIES_PATH,
+  buildAirportCatalogFromCsv,
   buildAirspaceRings,
+  buildArtccBoundaries,
+  buildAppDepBoundaries,
+  buildDesignatorIndex,
   buildHighways,
+  buildLocalCodesByIdentFromCsv,
   buildToweredAirportsFromCsv,
   fetchOurAirportsCsvs,
+  fetchOurAirportsRunwaysCsv,
   HIGHWAYS_PATH,
   MAP_DATA_DIR,
   TOWERED_AIRPORTS_PATH,
@@ -33,7 +46,6 @@ import {
   buildFrequenciesFromCsv,
   buildRunwaysFromCsv,
   FREQUENCIES_PATH,
-  OURAIRPORTS_RUNWAYS_URL,
   RUNWAYS_PATH,
   type AirportFrequency,
   type AirportIdentity,
@@ -42,13 +54,9 @@ import {
 
 async function buildRunwaysForTowered(
   toweredIcaos: Set<string>,
+  runwaysCsv: string,
 ): Promise<{ filtered: Record<string, AirportRunway[]>; count: number }> {
-  const res = await fetch(OURAIRPORTS_RUNWAYS_URL);
-  if (!res.ok) {
-    throw new Error(`runways csv download failed: ${res.status}`);
-  }
-  const csv = await res.text();
-  const all = buildRunwaysFromCsv(csv);
+  const all = buildRunwaysFromCsv(runwaysCsv);
   const filtered: Record<string, AirportRunway[]> = {};
   let count = 0;
   for (const [icao, rwys] of Object.entries(all)) {
@@ -97,17 +105,35 @@ function buildIdentityAndFrequenciesForTowered(
 async function main() {
   await mkdir(MAP_DATA_DIR, { recursive: true });
 
-  const [{ airportsCsv, frequenciesCsv }, rings, highways] = await Promise.all([
+  const [
+    { airportsCsv, frequenciesCsv },
+    runwaysCsv,
+    rings,
+    highways,
+    artcc,
+    appDep,
+  ] = await Promise.all([
     fetchOurAirportsCsvs(),
+    fetchOurAirportsRunwaysCsv(),
     buildAirspaceRings(),
     buildHighways(),
+    buildArtccBoundaries(),
+    buildAppDepBoundaries(),
   ]);
+
+  const catalog = buildAirportCatalogFromCsv(
+    airportsCsv,
+    frequenciesCsv,
+    runwaysCsv,
+  );
+  const localCodesByIdent = buildLocalCodesByIdentFromCsv(airportsCsv);
+  const designators = buildDesignatorIndex(catalog, localCodesByIdent);
 
   const toweredRaw = buildToweredAirportsFromCsv(airportsCsv, frequenciesCsv);
   const toweredIcaos = new Set(toweredRaw.map((a) => a.icao));
 
   const { filtered: runwaysByIcao, count: runwayCount } =
-    await buildRunwaysForTowered(toweredIcaos);
+    await buildRunwaysForTowered(toweredIcaos, runwaysCsv);
   const towered = attachPrimaryRunwayHeadings(toweredRaw, runwaysByIcao);
 
   const { identity, frequencies, identityCount, frequencyCount } =
@@ -117,6 +143,10 @@ async function main() {
       frequenciesCsv,
     );
 
+  const catalogJson = `${JSON.stringify(catalog)}\n`;
+  const designatorsJson = `${JSON.stringify(designators)}\n`;
+  const artccJson = `${JSON.stringify(artcc)}\n`;
+  const appDepJson = `${JSON.stringify(appDep)}\n`;
   const toweredJson = `${JSON.stringify(towered)}\n`;
   const ringsJson = `${JSON.stringify(rings)}\n`;
   const highwaysJson = `${JSON.stringify(highways)}\n`;
@@ -124,6 +154,10 @@ async function main() {
   const frequenciesJson = `${JSON.stringify(frequencies)}\n`;
 
   await Promise.all([
+    writeFile(AIRPORTS_CATALOG_PATH, catalogJson, "utf8"),
+    writeFile(AIRPORT_DESIGNATORS_PATH, designatorsJson, "utf8"),
+    writeFile(ARTCC_BOUNDARIES_PATH, artccJson, "utf8"),
+    writeFile(APP_DEP_BOUNDARIES_PATH, appDepJson, "utf8"),
     writeFile(TOWERED_AIRPORTS_PATH, toweredJson, "utf8"),
     writeFile(AIRSPACE_RINGS_PATH, ringsJson, "utf8"),
     writeFile(HIGHWAYS_PATH, highwaysJson, "utf8"),
@@ -131,6 +165,10 @@ async function main() {
     writeFile(FREQUENCIES_PATH, frequenciesJson, "utf8"),
   ]);
 
+  const catalogKb = Math.round(Buffer.byteLength(catalogJson) / 1024);
+  const designatorsKb = Math.round(Buffer.byteLength(designatorsJson) / 1024);
+  const artccKb = Math.round(Buffer.byteLength(artccJson) / 1024);
+  const appDepKb = Math.round(Buffer.byteLength(appDepJson) / 1024);
   const toweredKb = Math.round(Buffer.byteLength(toweredJson) / 1024);
   const ringsKb = Math.round(Buffer.byteLength(ringsJson) / 1024);
   const highwaysKb = Math.round(Buffer.byteLength(highwaysJson) / 1024);
@@ -140,6 +178,12 @@ async function main() {
     (a) => a.primaryRunwayHeadingDeg != null,
   ).length;
 
+  console.log(`Wrote ${catalog.length} airports to ${AIRPORTS_CATALOG_PATH}`);
+  console.log(
+    `Wrote ${Object.keys(designators).length} designator entries to ${AIRPORT_DESIGNATORS_PATH}`,
+  );
+  console.log(`Wrote ${artcc.length} ARTCC boundaries to ${ARTCC_BOUNDARIES_PATH}`);
+  console.log(`Wrote ${appDep.length} APP/DEP boundaries to ${APP_DEP_BOUNDARIES_PATH}`);
   console.log(`Wrote ${towered.length} towered airports to ${TOWERED_AIRPORTS_PATH}`);
   console.log(`  (${withHeading} with primary runway heading)`);
   console.log(`Wrote ${rings.length} airspace rings to ${AIRSPACE_RINGS_PATH}`);
@@ -152,7 +196,7 @@ async function main() {
     `Wrote frequencies for ${Object.keys(frequencies).length} towered airports (${frequencyCount} entries) to ${FREQUENCIES_PATH}`,
   );
   console.log(
-    `Output sizes: towered=${toweredKb} KiB, rings=${ringsKb} KiB, highways=${highwaysKb} KiB, identity=${identityKb} KiB, frequencies=${frequenciesKb} KiB (${path.relative(process.cwd(), MAP_DATA_DIR)}/)`,
+    `Output sizes: catalog=${catalogKb} KiB, designators=${designatorsKb} KiB, artcc=${artccKb} KiB, appDep=${appDepKb} KiB, towered=${toweredKb} KiB, rings=${ringsKb} KiB, highways=${highwaysKb} KiB, identity=${identityKb} KiB, frequencies=${frequenciesKb} KiB (${path.relative(process.cwd(), MAP_DATA_DIR)}/)`,
   );
 }
 

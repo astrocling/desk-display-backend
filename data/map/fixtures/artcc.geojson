@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ZID",
+        "name": "Indianapolis"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.5, 40.1],
+            [-84.0, 40.1],
+            [-84.0, 39.7],
+            [-84.5, 39.7],
+            [-84.5, 40.1]
+          ]
+        ]
+      }
+    }
+  ]
+}

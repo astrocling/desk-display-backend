@@ -35,7 +35,10 @@ const FIXTURE_FREQUENCIES_CSV = path.join(
   "airport-frequencies.csv",
 );
 const FIXTURE_AIRSPACE_GEOJSON = path.join(FIXTURES_DIR, "airspace.geojson");
+const FIXTURE_ARTCC_GEOJSON = path.join(FIXTURES_DIR, "artcc.geojson");
+const FIXTURE_APP_DEP_GEOJSON = path.join(FIXTURES_DIR, "app-dep.geojson");
 const FIXTURE_HIGHWAYS_GEOJSON = path.join(FIXTURES_DIR, "highways.geojson");
+const FIXTURE_RUNWAYS_CSV = path.join(FIXTURES_DIR, "runways.csv");
 
 export const OURAIRPORTS_AIRPORTS_URL =
   "https://davidmegginson.github.io/ourairports-data/airports.csv";
@@ -334,6 +337,27 @@ export function buildAirportCatalogFromCsv(
 
   airports.sort((a, b) => a.ident.localeCompare(b.ident));
   return airports;
+}
+
+export function buildLocalCodesByIdentFromCsv(
+  airportsCsv: string,
+): Record<string, string> {
+  const { records, identIndex, localCodeIndex } = parseAirportCsvHeader(airportsCsv);
+  const localCodesByIdent: Record<string, string> = {};
+
+  if (localCodeIndex === -1) {
+    return localCodesByIdent;
+  }
+
+  for (const row of records.slice(1)) {
+    const ident = row[identIndex]?.trim() ?? "";
+    const localCode = row[localCodeIndex]?.trim() ?? "";
+    if (ident && localCode) {
+      localCodesByIdent[ident] = localCode;
+    }
+  }
+
+  return localCodesByIdent;
 }
 
 export function buildDesignatorIndex(
@@ -1050,12 +1074,36 @@ async function readFixtureText(filePath: string): Promise<string> {
   return readFile(filePath, "utf8");
 }
 
+async function readOptionalJsonFile<T>(filePath: string, fallback: T): Promise<T> {
+  try {
+    const text = await readFile(filePath, "utf8");
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Fetches the OurAirports airports + frequencies CSVs, falling back to the
  * committed fixture CSVs (with a loud warning) when the live download
  * fails. Shared by tower detection and by the airport identity/frequency
  * builders so the build script only pays for one round-trip.
  */
+export const OURAIRPORTS_RUNWAYS_URL =
+  "https://davidmegginson.github.io/ourairports-data/runways.csv";
+
+export async function fetchOurAirportsRunwaysCsv(): Promise<string> {
+  try {
+    return await fetchWithTimeout(OURAIRPORTS_RUNWAYS_URL);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `OurAirports runways download failed (${message}); using fixture CSV from ${FIXTURE_RUNWAYS_CSV}`,
+    );
+    return readFixtureText(FIXTURE_RUNWAYS_CSV);
+  }
+}
+
 export async function fetchOurAirportsCsvs(): Promise<{
   airportsCsv: string;
   frequenciesCsv: string;
@@ -1100,6 +1148,39 @@ export async function buildAirspaceRings(): Promise<AirspaceRing[]> {
   }
 }
 
+async function buildFacilityBoundariesFromFixture(
+  fixturePath: string,
+  outputPath: string,
+  kind: FacilityBoundary["kind"],
+): Promise<FacilityBoundary[]> {
+  try {
+    const geojsonText = await readFixtureText(fixturePath);
+    return buildFacilityBoundariesFromGeoJson(JSON.parse(geojsonText), kind);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `${kind} fixture ingest failed (${message}); keeping committed ${outputPath}`,
+    );
+    return readOptionalJsonFile<FacilityBoundary[]>(outputPath, []);
+  }
+}
+
+export async function buildArtccBoundaries(): Promise<FacilityBoundary[]> {
+  return buildFacilityBoundariesFromFixture(
+    FIXTURE_ARTCC_GEOJSON,
+    ARTCC_BOUNDARIES_PATH,
+    "artcc",
+  );
+}
+
+export async function buildAppDepBoundaries(): Promise<FacilityBoundary[]> {
+  return buildFacilityBoundariesFromFixture(
+    FIXTURE_APP_DEP_GEOJSON,
+    APP_DEP_BOUNDARIES_PATH,
+    "app_dep",
+  );
+}
+
 export async function buildHighways(): Promise<HighwayPolyline[]> {
   try {
     const geojsonText = await fetchWithTimeout(INTERSTATE_HIGHWAYS_URL);
@@ -1131,39 +1212,69 @@ export async function buildHighways(): Promise<HighwayPolyline[]> {
 
 export async function seedMapContextToRedis(): Promise<{
   toweredCount: number;
+  catalogCount: number;
+  designatorCount: number;
   ringCount: number;
   highwayCount: number;
+  artccCount: number;
+  appDepCount: number;
 }> {
-  const [toweredText, ringsText, highwaysText] = await Promise.all([
+  const [
+    toweredText,
+    catalogText,
+    designatorsText,
+    ringsText,
+    highwaysText,
+    artccText,
+    appDepText,
+  ] = await Promise.all([
     readFile(TOWERED_AIRPORTS_PATH, "utf8"),
+    readFile(AIRPORTS_CATALOG_PATH, "utf8").catch(() => null),
+    readFile(AIRPORT_DESIGNATORS_PATH, "utf8").catch(() => "{}"),
     readFile(AIRSPACE_RINGS_PATH, "utf8"),
     readFile(HIGHWAYS_PATH, "utf8").catch(() => "[]"),
+    readFile(ARTCC_BOUNDARIES_PATH, "utf8").catch(() => "[]"),
+    readFile(APP_DEP_BOUNDARIES_PATH, "utf8").catch(() => "[]"),
   ]);
 
   const towered = normalizeMapAirports(JSON.parse(toweredText) as Partial<MapAirport>[]);
+  const catalog = catalogText
+    ? normalizeMapAirports(JSON.parse(catalogText) as Partial<MapAirport>[])
+    : towered;
+  const designators = JSON.parse(designatorsText) as Record<string, string>;
   const rings = JSON.parse(ringsText) as AirspaceRing[];
   const highways = JSON.parse(highwaysText) as HighwayPolyline[];
+  const artcc = JSON.parse(artccText) as FacilityBoundary[];
+  const appDep = JSON.parse(appDepText) as FacilityBoundary[];
 
   const redis = getRedis();
   await Promise.all([
     redis.set(REDIS_KEYS.mapTowered, towered),
+    redis.set(REDIS_KEYS.mapCatalog, catalog),
+    redis.set(REDIS_KEYS.mapDesignators, designators),
     redis.set(REDIS_KEYS.mapAirspace, rings),
     redis.set(REDIS_KEYS.mapHighways, highways),
+    redis.set(REDIS_KEYS.mapArtcc, artcc),
+    redis.set(REDIS_KEYS.mapAppDep, appDep),
   ]);
 
   cachedMapData = {
-    towered,
-    designators: {},
+    towered: catalog,
+    designators,
     rings,
     highways,
-    artcc: [],
-    appDep: [],
+    artcc,
+    appDep,
   };
 
   return {
     toweredCount: towered.length,
+    catalogCount: catalog.length,
+    designatorCount: Object.keys(designators).length,
     ringCount: rings.length,
     highwayCount: highways.length,
+    artccCount: artcc.length,
+    appDepCount: appDep.length,
   };
 }
 
@@ -1214,15 +1325,6 @@ function normalizeMapAirports(raw: Partial<MapAirport>[]): MapAirport[] {
     .map((airport) => normalizeMapAirport(airport));
 }
 
-async function readOptionalJsonFile<T>(filePath: string, fallback: T): Promise<T> {
-  try {
-    const text = await readFile(filePath, "utf8");
-    return JSON.parse(text) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 async function readAirportsFromDisk(): Promise<MapAirport[]> {
   try {
     const catalogText = await readFile(AIRPORTS_CATALOG_PATH, "utf8");
@@ -1257,21 +1359,30 @@ async function readMapDataFromDisk(): Promise<MapDataBlobs> {
 async function readMapDataFromRedis(): Promise<MapDataBlobs | null> {
   try {
     const redis = getRedis();
-    const [towered, rings, highways] = await Promise.all([
-      redis.get<MapAirport[]>(REDIS_KEYS.mapTowered),
-      redis.get<AirspaceRing[]>(REDIS_KEYS.mapAirspace),
-      redis.get<HighwayPolyline[]>(REDIS_KEYS.mapHighways),
-    ]);
+    const [towered, catalog, designators, rings, highways, artcc, appDep] =
+      await Promise.all([
+        redis.get<MapAirport[]>(REDIS_KEYS.mapTowered),
+        redis.get<MapAirport[]>(REDIS_KEYS.mapCatalog),
+        redis.get<Record<string, string>>(REDIS_KEYS.mapDesignators),
+        redis.get<AirspaceRing[]>(REDIS_KEYS.mapAirspace),
+        redis.get<HighwayPolyline[]>(REDIS_KEYS.mapHighways),
+        redis.get<FacilityBoundary[]>(REDIS_KEYS.mapArtcc),
+        redis.get<FacilityBoundary[]>(REDIS_KEYS.mapAppDep),
+      ]);
     if (!Array.isArray(towered) || !Array.isArray(rings)) {
       return null;
     }
+    const airports = Array.isArray(catalog)
+      ? normalizeMapAirports(catalog)
+      : normalizeMapAirports(towered);
     return {
-      towered: normalizeMapAirports(towered),
-      designators: {},
+      towered: airports,
+      designators:
+        designators && typeof designators === "object" ? designators : {},
       rings,
       highways: Array.isArray(highways) ? highways : [],
-      artcc: [],
-      appDep: [],
+      artcc: Array.isArray(artcc) ? artcc : [],
+      appDep: Array.isArray(appDep) ? appDep : [],
     };
   } catch {
     return null;
