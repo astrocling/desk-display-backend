@@ -1121,10 +1121,14 @@ export function RadarMap() {
     const ground = groundModeRef.current;
     paintMapOverlays(map, svg, {
       highways: highwaysRef.current,
+      artcc: [],
+      appDep: [],
       rings: ringsRef.current,
       tfrs: tfrsRef.current,
       runways: runwaysRef.current,
       showHighways: !ground,
+      showArtcc: false,
+      showAppDep: false,
       // Ground mode is an airport-surface view; airspace shelves add nothing.
       showAirspace: !ground,
       showTfrs: tfrsOnRef.current,

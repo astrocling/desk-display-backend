@@ -7,9 +7,87 @@ import { SCOPE_TRAIL_ARC_DEG, SCOPE_TRAIL_SLICES } from "./radarScope";
 import type {
   AirspaceRing,
   AirportRunway,
+  FacilityBoundary,
   HighwayPolyline,
   TfrPolygon,
 } from "./types";
+
+const FACILITY_LABEL_MIN_ZOOM: Record<FacilityBoundary["kind"], number> = {
+  artcc: 6,
+  app_dep: 8,
+};
+
+export function shouldShowFacilityLabel(
+  zoom: number,
+  kind: FacilityBoundary["kind"],
+): boolean {
+  return zoom >= FACILITY_LABEL_MIN_ZOOM[kind];
+}
+
+function isOnCanvas(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): boolean {
+  return x >= 0 && x <= width && y >= 0 && y <= height;
+}
+
+function paintFacilityBoundaries(
+  map: MapLibreMap,
+  svg: SVGSVGElement,
+  boundaries: FacilityBoundary[],
+  canvas: { width: number; height: number },
+) {
+  const zoom = map.getZoom();
+
+  for (const boundary of boundaries) {
+    if (boundary.points.length < 3) continue;
+
+    const projected = boundary.points.map(([lat, lon]) =>
+      map.project([lon, lat]),
+    );
+    const pointsAttr = projected.map((p) => `${p.x},${p.y}`).join(" ");
+
+    const poly = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "polygon",
+    );
+    const isArtcc = boundary.kind === "artcc";
+    const color = isArtcc ? COLORS.artcc : COLORS.appDep;
+    poly.setAttribute("points", pointsAttr);
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", color);
+    poly.setAttribute("stroke-width", isArtcc ? "1" : "0.75");
+    poly.setAttribute("stroke-opacity", isArtcc ? "0.32" : "0.55");
+    svg.appendChild(poly);
+
+    if (!shouldShowFacilityLabel(zoom, boundary.kind) || !boundary.id) {
+      continue;
+    }
+
+    const cx =
+      projected.reduce((sum, p) => sum + p.x, 0) / projected.length;
+    const cy =
+      projected.reduce((sum, p) => sum + p.y, 0) / projected.length;
+    if (!isOnCanvas(cx, cy, canvas.width, canvas.height)) continue;
+
+    const label = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text",
+    );
+    label.setAttribute("x", String(cx));
+    label.setAttribute("y", String(cy));
+    label.setAttribute("text-anchor", "middle");
+    label.setAttribute("dominant-baseline", "middle");
+    label.setAttribute("fill", color);
+    label.setAttribute("fill-opacity", isArtcc ? "0.45" : "0.7");
+    label.setAttribute("font-size", isArtcc ? "9" : "8");
+    label.setAttribute("font-family", "ui-monospace, monospace");
+    label.textContent = boundary.id;
+    svg.appendChild(label);
+  }
+}
 
 function projectPoints(
   map: MapLibreMap,
@@ -41,10 +119,14 @@ export function paintMapOverlays(
   svg: SVGSVGElement,
   opts: {
     highways: HighwayPolyline[];
+    artcc: FacilityBoundary[];
+    appDep: FacilityBoundary[];
     rings: AirspaceRing[];
     tfrs: TfrPolygon[];
     runways: AirportRunway[];
     showHighways: boolean;
+    showArtcc: boolean;
+    showAppDep: boolean;
     showAirspace: boolean;
     showTfrs: boolean;
     showRunways: boolean;
@@ -53,7 +135,7 @@ export function paintMapOverlays(
   while (svg.firstChild) {
     svg.removeChild(svg.firstChild);
   }
-  sizeSvgToMap(map, svg);
+  const canvas = sizeSvgToMap(map, svg);
 
   if (opts.showHighways) {
     for (const hwy of opts.highways) {
@@ -69,6 +151,14 @@ export function paintMapOverlays(
       line.setAttribute("stroke-opacity", "0.9");
       svg.appendChild(line);
     }
+  }
+
+  if (opts.showArtcc) {
+    paintFacilityBoundaries(map, svg, opts.artcc, canvas);
+  }
+
+  if (opts.showAppDep) {
+    paintFacilityBoundaries(map, svg, opts.appDep, canvas);
   }
 
   if (opts.showAirspace) {

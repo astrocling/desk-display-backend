@@ -31,6 +31,10 @@ export const COLORS = {
   airspaceB: "#3A6AA8",
   airspaceC: "#A83A7A",
   airspaceD: "#3A6AA8",
+  /** ARTCC boundaries — muted, lower contrast than class airspace. */
+  artcc: "#5C6773",
+  /** TRACON APP/DEP boundaries — distinct from class rings. */
+  appDep: "#6B9080",
   highway: "#2A323C",
   runway: "#C8D0D8",
   tfr: "#E85D4C",
