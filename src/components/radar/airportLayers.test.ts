@@ -100,4 +100,24 @@ describe("softCapAirports", () => {
     expect(airports).toHaveLength(3);
     expect(capped).toBe(true);
   });
+
+  it("keeps all pinned when over cap", () => {
+    const list = ["a", "b", "c", "pin1", "pin2", "pin3"];
+    const pinned = new Set(["pin1", "pin2", "pin3"]);
+    const { airports, capped } = softCapAirports(list, 3, (id) =>
+      pinned.has(id),
+    );
+    expect(airports).toEqual(["pin1", "pin2", "pin3"]);
+    expect(capped).toBe(true);
+  });
+
+  it("fills remaining capacity with non-pinned after pinned", () => {
+    const list = ["a", "b", "c", "d", "pin1", "pin2"];
+    const pinned = new Set(["pin1", "pin2"]);
+    const { airports, capped } = softCapAirports(list, 4, (id) =>
+      pinned.has(id),
+    );
+    expect(airports).toEqual(["pin1", "pin2", "a", "b"]);
+    expect(capped).toBe(true);
+  });
 });

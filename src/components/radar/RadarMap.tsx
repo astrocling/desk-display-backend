@@ -1130,7 +1130,11 @@ export function RadarMap() {
         airportPresetRef.current,
         pinnedSet,
       );
-      const { airports, capped } = softCapAirports(filtered);
+      const { airports, capped } = softCapAirports(
+        filtered,
+        undefined,
+        (airport) => airportIsPinned(airport as MapAirport, pinnedSet),
+      );
       setAirportsCapped(capped);
       syncAirportMarkers(map, airports as MapAirport[], pinnedSet);
     },

@@ -54,11 +54,31 @@ export function filterAirportsForDisplay(
 export function softCapAirports<T>(
   airports: T[],
   cap: number = AIRPORT_MARKER_SOFT_CAP,
+  isPinned?: (airport: T) => boolean,
 ): { airports: T[]; capped: boolean } {
-  if (airports.length <= cap) {
-    return { airports, capped: false };
+  if (!isPinned) {
+    if (airports.length <= cap) {
+      return { airports, capped: false };
+    }
+    return { airports: airports.slice(0, cap), capped: true };
   }
-  return { airports: airports.slice(0, cap), capped: true };
+
+  const pinned: T[] = [];
+  const nonPinned: T[] = [];
+  for (const airport of airports) {
+    if (isPinned(airport)) {
+      pinned.push(airport);
+    } else {
+      nonPinned.push(airport);
+    }
+  }
+
+  const remainingCapacity = Math.max(0, cap - pinned.length);
+  const keptNonPinned = nonPinned.slice(0, remainingCapacity);
+  const capped =
+    airports.length > cap || keptNonPinned.length < nonPinned.length;
+
+  return { airports: [...pinned, ...keptNonPinned], capped };
 }
 
 export function normalizeDesignator(raw: string): string {
