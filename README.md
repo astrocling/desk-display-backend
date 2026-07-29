@@ -25,7 +25,7 @@ Read endpoints return whatever is in cache. Until a cron has run successfully, t
 | Sunrise / sunset by city | sunrise-sunset.org | daily at 06:00 UTC |
 | MLB + Flagstand scores | MLB Stats API, Neon (Flagstand) | every 15 minutes |
 | Airport lat/lon by ICAO | OurAirports (seeded once) | manual / seed cron |
-| Radar map context (towered + B/C/D rings) | Committed `data/map/*.json` (+ optional Redis seed) | build script / manual seed |
+| Radar map context (airport catalog, B/C/D, ARTCC/APP/DEP, highways) | Committed `data/map/*.json` (+ optional Redis seed) | build script / manual seed |
 
 ## Quick start
 
@@ -43,7 +43,9 @@ npm run seed:airports
 npm run build:map-context   # refresh data/map JSON (OurAirports + NASR airspace + interstates)
 ```
 
-`GET /api/map/context` reads committed `data/map/*.json` (or Redis after seed). It does **not** download or simplify GIS per request. Airspace comes from `@squawk/airspace-data` (FAA NASR-derived Class B/C/D shelves); interstates from the National Transportation Atlas.
+`GET /api/map/context` reads committed `data/map/*.json` (or Redis after seed). It does **not** download or simplify GIS per request. Responses include a viewport-filtered airport catalog, Class B/C/D shelves (`@squawk/airspace-data`), ARTCC and APP/DEP facility boundaries, and interstates (National Transportation Atlas). Pin validation uses `GET /api/map/airport-lookup?q=`.
+
+The web radar map (`/radar`) exposes a **Layers** panel for airport presets, Class B/C/D, ARTCC, APP/DEP, TFRs, and highways. **Weather** controls remain separate from Layers. When the airport soft-cap applies, the panel shows “Zoom in for more airports.”
 ## Environment variables
 
 | Variable | Required | Purpose |
@@ -71,7 +73,8 @@ Missing required vars throw at request time: `Missing required environment varia
 | `GET /api/timezones` | Cached sunrise/sunset by IANA zone |
 | `GET /api/scores` | Cached MLB + Flagstand |
 | `GET /api/airport?code=` | Airport lat/lon by ICAO (e.g. `KDAY`) |
-| `GET /api/map/context?lat=&lon=&radiusMi=` | Nearby towered airports + Class B/C/D shelves + interstates (long CDN cache) |
+| `GET /api/map/context?lat=&lon=&radiusMi=` | Viewport airports + Class B/C/D + ARTCC/APP/DEP + interstates (long CDN cache) |
+| `GET /api/map/airport-lookup?q=` | Designator lookup for pin validation (ICAO or local code) |
 
 ### Cron (Bearer auth)
 
