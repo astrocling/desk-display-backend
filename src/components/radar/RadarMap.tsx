@@ -61,7 +61,17 @@ import {
   isValidWatchlistReg,
   normalizeWatchlistNote,
 } from "@/lib/radar-watchlist";
+import {
+  addPinnedDesignator,
+  filterAirportsForDisplay,
+  normalizeDesignator,
+  readPinnedDesignators,
+  softCapAirports,
+  writePinnedDesignators,
+  type AirportPreset,
+} from "./airportLayers";
 import { CommsPanel } from "./CommsPanel";
+import { LayersPanel } from "./LayersPanel";
 import { SelectionAircraftCard } from "./SelectionAircraftCard";
 import { SelectionAirportCard } from "./SelectionAirportCard";
 import { useAtcRadio } from "./useAtcRadio";
@@ -77,14 +87,15 @@ import type {
   AirportRunway,
   AirspaceRing,
   AircraftFeatureProps,
+  FacilityBoundary,
   HighwayPolyline,
   HomeResponse,
+  MapAirport,
   MapContextResponse,
   RainViewerMaps,
   RouteLookupResponse,
   TfrPolygon,
   TfrResponse,
-  ToweredAirport,
 } from "./types";
 
 const DECLUTTER_MODES: RadarDeclutterMode[] = ["target", "callsign", "tag"];
@@ -533,9 +544,30 @@ function makeAircraftEl(
   return el;
 }
 
+function airportIsPinned(airport: MapAirport, pinned: Set<string>): boolean {
+  const icao = normalizeDesignator(airport.icao);
+  if (pinned.has(icao)) return true;
+  if (airport.ident != null) {
+    return pinned.has(normalizeDesignator(airport.ident));
+  }
+  return false;
+}
+
+function applyAirportGlyph(
+  el: HTMLElement,
+  airport: MapAirport,
+  pinned: Set<string>,
+) {
+  el.classList.toggle("is-nontowered", !airport.towered);
+  el.classList.toggle("is-pinned", airportIsPinned(airport, pinned));
+  const label = el.querySelector(".radar-airport-label");
+  if (label) label.textContent = airport.icao;
+}
+
 function makeAirportEl(
-  airport: ToweredAirport,
-  onSelect: (airport: ToweredAirport) => void,
+  airport: MapAirport,
+  pinned: Set<string>,
+  onSelect: (airport: MapAirport) => void,
 ): HTMLButtonElement {
   const el = document.createElement("button");
   el.type = "button";
@@ -547,8 +579,7 @@ function makeAirportEl(
     <span class="radar-airport-plus" aria-hidden="true">+</span>
     <span class="radar-airport-label"></span>
   `;
-  const label = el.querySelector(".radar-airport-label");
-  if (label) label.textContent = airport.icao;
+  applyAirportGlyph(el, airport, pinned);
   el.addEventListener("click", (e) => {
     e.stopPropagation();
     onSelect(airport);
@@ -575,6 +606,9 @@ export function RadarMap() {
   const scopeSvgRef = useRef<SVGSVGElement | null>(null);
   const ringsRef = useRef<AirspaceRing[]>([]);
   const highwaysRef = useRef<HighwayPolyline[]>([]);
+  const artccRef = useRef<FacilityBoundary[]>([]);
+  const appDepRef = useRef<FacilityBoundary[]>([]);
+  const airportsContextRef = useRef<MapAirport[]>([]);
   const tfrsRef = useRef<TfrPolygon[]>([]);
   const runwaysRef = useRef<AirportRunway[]>([]);
   const homeRef = useRef<{ lat: number; lon: number }>({
@@ -595,7 +629,7 @@ export function RadarMap() {
   const airportMarkersRef = useRef(new Map<string, Marker>());
   const airportHeadingsRef = useRef(new Map<string, number>());
   const selectAircraftRef = useRef<(ac: AircraftPoint) => void>(() => {});
-  const selectAirportRef = useRef<(airport: ToweredAirport) => void>(() => {});
+  const selectAirportRef = useRef<(airport: MapAirport) => void>(() => {});
   const lastAircraftRef = useRef<AircraftPoint[]>([]);
   const arrivalCacheRef = useRef(new Map<string, RouteCacheEntry>());
   const routeInflightRef = useRef(new Set<string>());
@@ -608,6 +642,12 @@ export function RadarMap() {
   const showGroundTargetsRef = useRef(false);
   const displayModeRef = useRef<RadarDisplayMode>(RADAR_MODE_DEFAULT);
   const tfrsOnRef = useRef(true);
+  const showClassAirspaceRef = useRef(true);
+  const showArtccRef = useRef(false);
+  const showAppDepRef = useRef(false);
+  const showHighwaysRef = useRef(true);
+  const airportPresetRef = useRef<AirportPreset>("towered");
+  const pinnedRef = useRef<string[]>([]);
 
   const selectedHexRef = useRef<string | null>(null);
   const declutterRef = useRef<RadarDeclutterMode>(RADAR_DECLUTTER_DEFAULT);
@@ -636,6 +676,15 @@ export function RadarMap() {
   );
   const [tfrsOn, setTfrsOn] = useState(true);
   const [tfrCount, setTfrCount] = useState(0);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [airportPreset, setAirportPreset] = useState<AirportPreset>("towered");
+  const [pinned, setPinned] = useState<string[]>([]);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [showClassAirspace, setShowClassAirspace] = useState(true);
+  const [showArtcc, setShowArtcc] = useState(false);
+  const [showAppDep, setShowAppDep] = useState(false);
+  const [showHighways, setShowHighways] = useState(true);
+  const [airportsCapped, setAirportsCapped] = useState(false);
   const [groundMode, setGroundMode] = useState(false);
   const [showGroundTargets, setShowGroundTargetsState] = useState(false);
   const [focusedIcao, setFocusedIcao] = useState<string | null>(null);
@@ -665,6 +714,9 @@ export function RadarMap() {
     const storedMode = readStoredDisplayMode();
     displayModeRef.current = storedMode;
     setDisplayMode(storedMode);
+    const pins = readPinnedDesignators();
+    pinnedRef.current = pins;
+    setPinned(pins);
   }, []);
 
   const refreshAircraftLabels = useCallback(() => {
@@ -1023,7 +1075,11 @@ export function RadarMap() {
   syncAircraftMarkersRef.current = syncAircraftMarkers;
 
   const syncAirportMarkers = useCallback(
-    (map: MapLibreMap, airports: ToweredAirport[]) => {
+    (
+      map: MapLibreMap,
+      airports: MapAirport[],
+      pinned: Set<string>,
+    ) => {
       const seen = new Set<string>();
       for (const airport of airports) {
         seen.add(airport.icao);
@@ -1042,8 +1098,9 @@ export function RadarMap() {
         if (existing) {
           existing.setLngLat([airport.lon, airport.lat]);
           applyAirportHeading(existing.getElement(), heading);
+          applyAirportGlyph(existing.getElement(), airport, pinned);
         } else {
-          const el = makeAirportEl(airport, (picked) =>
+          const el = makeAirportEl(airport, pinned, (picked) =>
             selectAirportRef.current(picked),
           );
           applyAirportHeading(el, heading);
@@ -1061,6 +1118,23 @@ export function RadarMap() {
       }
     },
     [],
+  );
+
+  const resyncAirportMarkersFromContext = useCallback(
+    (map: MapLibreMap) => {
+      const pinnedSet = new Set(
+        pinnedRef.current.map((d) => normalizeDesignator(d)),
+      );
+      const filtered = filterAirportsForDisplay(
+        airportsContextRef.current,
+        airportPresetRef.current,
+        pinnedSet,
+      );
+      const { airports, capped } = softCapAirports(filtered);
+      setAirportsCapped(capped);
+      syncAirportMarkers(map, airports as MapAirport[], pinnedSet);
+    },
+    [syncAirportMarkers],
   );
 
   const readViewport = useCallback(() => {
@@ -1113,7 +1187,7 @@ export function RadarMap() {
     });
   }, [readViewport]);
 
-  /** Single SVG for map overlays; paint order highways → airspace → TFRs → runways. */
+  /** Single SVG for map overlays; paint order highways → artcc → appDep → airspace → TFRs → runways. */
   const redrawOverlays = useCallback(() => {
     const map = mapRef.current;
     const svg = overlaySvgRef.current;
@@ -1121,16 +1195,16 @@ export function RadarMap() {
     const ground = groundModeRef.current;
     paintMapOverlays(map, svg, {
       highways: highwaysRef.current,
-      artcc: [],
-      appDep: [],
+      artcc: artccRef.current,
+      appDep: appDepRef.current,
       rings: ringsRef.current,
       tfrs: tfrsRef.current,
       runways: runwaysRef.current,
-      showHighways: !ground,
-      showArtcc: false,
-      showAppDep: false,
+      showHighways: showHighwaysRef.current && !ground,
+      showArtcc: showArtccRef.current && !ground,
+      showAppDep: showAppDepRef.current && !ground,
       // Ground mode is an airport-surface view; airspace shelves add nothing.
-      showAirspace: !ground,
+      showAirspace: showClassAirspaceRef.current && !ground,
       showTfrs: tfrsOnRef.current,
       showRunways: ground && runwaysRef.current.length > 0,
     });
@@ -1391,16 +1465,23 @@ export function RadarMap() {
         return;
       }
       const ctx = (await res.json()) as MapContextResponse;
-      const airports = ctx.airports ?? [];
-      syncAirportMarkers(map, airports);
+      airportsContextRef.current = ctx.airports ?? [];
       ringsRef.current = ctx.rings ?? [];
       highwaysRef.current = ctx.highways ?? [];
+      artccRef.current = ctx.artcc ?? [];
+      appDepRef.current = ctx.appDep ?? [];
+      resyncAirportMarkersFromContext(map);
       redrawOverlays();
     } catch {
       // keep last-good overlays
     }
     void fetchTfrs();
-  }, [fetchTfrs, readViewport, redrawOverlays, syncAirportMarkers]);
+  }, [
+    fetchTfrs,
+    readViewport,
+    redrawOverlays,
+    resyncAirportMarkersFromContext,
+  ]);
 
   const scheduleOverlays = useCallback(() => {
     if (overlayTimerRef.current) {
@@ -1435,7 +1516,7 @@ export function RadarMap() {
   }, [redrawOverlays, syncGroundMode]);
 
   const openAirportDetail = useCallback(
-    async (airport: ToweredAirport) => {
+    async (airport: MapAirport) => {
       setWatchlistOpen(false);
       setDeclutterOpen(false);
       setAirportError(null);
@@ -1490,10 +1571,15 @@ export function RadarMap() {
   );
 
   useEffect(() => {
-    selectAirportRef.current = (airport: ToweredAirport) => {
+    selectAirportRef.current = (airport: MapAirport) => {
       void openAirportDetail(airport);
     };
   }, [openAirportDetail]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) resyncAirportMarkersFromContext(map);
+  }, [airportPreset, pinned, resyncAirportMarkersFromContext]);
 
   const enterGroundView = useCallback(() => {
     const map = mapRef.current;
@@ -1908,6 +1994,89 @@ export function RadarMap() {
     [fetchTfrs, redrawOverlays],
   );
 
+  const onAirportPresetChange = useCallback((preset: AirportPreset) => {
+    airportPresetRef.current = preset;
+    setAirportPreset(preset);
+  }, []);
+
+  const onShowClassAirspaceChange = useCallback(
+    (v: boolean) => {
+      showClassAirspaceRef.current = v;
+      setShowClassAirspace(v);
+      redrawOverlays();
+    },
+    [redrawOverlays],
+  );
+
+  const onShowArtccChange = useCallback(
+    (v: boolean) => {
+      showArtccRef.current = v;
+      setShowArtcc(v);
+      redrawOverlays();
+    },
+    [redrawOverlays],
+  );
+
+  const onShowAppDepChange = useCallback(
+    (v: boolean) => {
+      showAppDepRef.current = v;
+      setShowAppDep(v);
+      redrawOverlays();
+    },
+    [redrawOverlays],
+  );
+
+  const onShowHighwaysChange = useCallback(
+    (v: boolean) => {
+      showHighwaysRef.current = v;
+      setShowHighways(v);
+      redrawOverlays();
+    },
+    [redrawOverlays],
+  );
+
+  const handleAddPin = useCallback(
+    async (raw: string): Promise<"ok" | "not_found" | "duplicate"> => {
+      setPinError(null);
+      try {
+        const res = await fetch(
+          `/api/map/airport-lookup?q=${encodeURIComponent(raw.trim())}`,
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          ident?: string;
+        };
+        if (!res.ok || !data.ok || !data.ident) {
+          setPinError("Airport not found");
+          return "not_found";
+        }
+        const ident = normalizeDesignator(data.ident);
+        if (pinnedRef.current.includes(ident)) {
+          setPinError("Already pinned");
+          return "duplicate";
+        }
+        const next = addPinnedDesignator(pinnedRef.current, ident);
+        pinnedRef.current = next;
+        writePinnedDesignators(next);
+        setPinned(next);
+        return "ok";
+      } catch {
+        setPinError("Lookup failed");
+        return "not_found";
+      }
+    },
+    [],
+  );
+
+  const handleRemovePin = useCallback((code: string) => {
+    const normalized = normalizeDesignator(code);
+    const next = pinnedRef.current.filter((d) => d !== normalized);
+    pinnedRef.current = next;
+    writePinnedDesignators(next);
+    setPinned(next);
+    setPinError(null);
+  }, []);
+
   const applyWatchlistEntries = useCallback(
     (entries: WatchlistEntry[]) => {
       interestingEntriesRef.current = entries;
@@ -2125,6 +2294,29 @@ export function RadarMap() {
           ) : null}
         </div>
 
+        <LayersPanel
+          open={layersOpen}
+          onOpenChange={setLayersOpen}
+          airportPreset={airportPreset}
+          onAirportPresetChange={onAirportPresetChange}
+          pinned={pinned}
+          onAddPin={handleAddPin}
+          onRemovePin={handleRemovePin}
+          pinError={pinError}
+          showClassAirspace={showClassAirspace}
+          onShowClassAirspaceChange={onShowClassAirspaceChange}
+          showArtcc={showArtcc}
+          onShowArtccChange={onShowArtccChange}
+          showAppDep={showAppDep}
+          onShowAppDepChange={onShowAppDepChange}
+          showTfrs={tfrsOn}
+          onShowTfrsChange={toggleTfrs}
+          tfrCount={tfrCount}
+          showHighways={showHighways}
+          onShowHighwaysChange={onShowHighwaysChange}
+          airportsCapped={airportsCapped}
+        />
+
         <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-slate-900/85 p-1.5 shadow-lg backdrop-blur">
           <div
             className="flex overflow-hidden rounded ring-1 ring-slate-700"
@@ -2150,15 +2342,6 @@ export function RadarMap() {
               );
             })}
           </div>
-          <label className="flex cursor-pointer items-center gap-1.5 px-1 text-sm">
-            <input
-              type="checkbox"
-              checked={tfrsOn}
-              onChange={(e) => toggleTfrs(e.target.checked)}
-              className="accent-rose-500"
-            />
-            TFRs{tfrsOn && tfrCount > 0 ? ` (${tfrCount})` : ""}
-          </label>
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg bg-slate-900/85 px-2 py-1 shadow-lg backdrop-blur">
