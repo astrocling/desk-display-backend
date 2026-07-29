@@ -643,10 +643,6 @@ export function RadarMap() {
     useState<AirportDetailResponse | null>(null);
   const [airportLoading, setAirportLoading] = useState(false);
   const [airportError, setAirportError] = useState<string | null>(null);
-  /** Towered airports from last map-context fetch (resolves Comms row taps to a map airport). */
-  const [onScreenAirports, setOnScreenAirports] = useState<ToweredAirport[]>(
-    [],
-  );
   const atcRadio = useAtcRadio();
   const commsPresets = useCommsPresets();
   const [airportTraffic, setAirportTraffic] =
@@ -1392,7 +1388,6 @@ export function RadarMap() {
       }
       const ctx = (await res.json()) as MapContextResponse;
       const airports = ctx.airports ?? [];
-      setOnScreenAirports(airports);
       syncAirportMarkers(map, airports);
       ringsRef.current = ctx.rings ?? [];
       highwaysRef.current = ctx.highways ?? [];
@@ -1488,19 +1483,6 @@ export function RadarMap() {
       }
     },
     [redrawOverlays, syncGroundMode],
-  );
-
-  const selectCommsAirport = useCallback(
-    (icao: string) => {
-      const code = icao.trim().toUpperCase();
-      const airport = onScreenAirports.find(
-        (a) => a.icao.toUpperCase() === code,
-      );
-      if (airport) {
-        void openAirportDetail(airport);
-      }
-    },
-    [onScreenAirports, openAirportDetail],
   );
 
   useEffect(() => {
@@ -2424,7 +2406,6 @@ export function RadarMap() {
           focusedIcao={focusedIcao}
           radio={atcRadio}
           presets={commsPresets}
-          onSelectAirport={selectCommsAirport}
         />
       </aside>
 

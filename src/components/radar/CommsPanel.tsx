@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { feedsForIcao, isCatalogIcao } from "@/lib/atc/feeds";
+import { decideCommsTune } from "./commsTune";
 import type { AtcRadio } from "./useAtcRadio";
 import type { CommsPresets } from "./useCommsPresets";
 
@@ -14,14 +15,39 @@ export function CommsPanel({
   focusedIcao,
   radio,
   presets,
-  onSelectAirport,
 }: {
   focusedIcao: string | null;
   radio: AtcRadio;
   presets: CommsPresets;
-  onSelectAirport: (icao: string) => void;
 }) {
   const { entries, expanded, setExpanded, togglePin } = presets;
+
+  const handleTune = (icao: string) => {
+    const action = decideCommsTune({
+      targetIcao: icao,
+      activeIcao: radio.activeIcao,
+      status: radio.status,
+      lastFeedByIcao: presets.lastFeedByIcao,
+    });
+    if (!action) return;
+    if (action.type === "stop") {
+      radio.stop();
+      return;
+    }
+    presets.rememberFeed(action.icao, action.feedId);
+    radio.selectAirport(action.icao, action.feedId);
+    void radio.play();
+  };
+
+  const handleFeedChip = (feedId: string) => {
+    const wasLive =
+      radio.status === "playing" || radio.status === "loading";
+    if (radio.activeIcao) {
+      presets.rememberFeed(radio.activeIcao, feedId);
+    }
+    radio.selectFeed(feedId);
+    if (wasLive) void radio.play();
+  };
 
   // Idle auto-select: only when the focused airport is already on the rack.
   // Map focus alone must never grow the rack, expand the panel, or start audio.
@@ -86,11 +112,7 @@ export function CommsPanel({
                   <button
                     type="button"
                     title={entry.icao}
-                    onClick={() => {
-                      radio.selectAirport(entry.icao);
-                      onSelectAirport(entry.icao);
-                      setExpanded(true);
-                    }}
+                    onClick={() => handleTune(entry.icao)}
                     className={`flex flex-col items-center gap-0.5 rounded px-1 py-0.5 font-mono text-[9px] leading-none ${
                       isActive
                         ? "text-[#3D9CF0]"
@@ -200,10 +222,7 @@ export function CommsPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      radio.selectAirport(entry.icao);
-                      onSelectAirport(entry.icao);
-                    }}
+                    onClick={() => handleTune(entry.icao)}
                     className={`flex-1 truncate text-left font-mono text-[11px] font-semibold tracking-wide ${
                       isActive
                         ? "text-[#3D9CF0]"
@@ -222,25 +241,26 @@ export function CommsPanel({
       )}
 
       {activeFeeds.length > 1 ? (
-        <div className="mt-2 border-t border-[#3D9CF0]/20 pt-1.5">
-          <label className="flex items-center gap-2 text-[11px] text-[#6B7280]">
-            <span className="shrink-0">Feed</span>
-            <select
-              value={radio.activeFeedId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (id) radio.selectFeed(id);
-              }}
-              className="min-w-0 flex-1 rounded bg-slate-800/80 px-1.5 py-1 font-mono text-[11px] text-[#C8D0D8] outline-none ring-1 ring-[#3D9CF0]/20 focus:ring-[#3D9CF0]/50"
-              aria-label="ATC feed"
-            >
-              {activeFeeds.map((feed) => (
-                <option key={feed.id} value={feed.id}>
-                  {feed.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-[#3D9CF0]/20 pt-1.5">
+          <span className="shrink-0 text-[11px] text-[#6B7280]">Feed</span>
+          {activeFeeds.map((feed) => {
+            const isActive = radio.activeFeedId === feed.id;
+            return (
+              <button
+                key={feed.id}
+                type="button"
+                onClick={() => handleFeedChip(feed.id)}
+                aria-pressed={isActive}
+                className={`rounded px-1.5 py-1 font-mono text-[11px] ${
+                  isActive
+                    ? "bg-[#3D9CF0]/20 text-[#3D9CF0]"
+                    : "bg-slate-800/80 text-[#C8D0D8] hover:bg-slate-700/80"
+                }`}
+              >
+                {feed.label}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
