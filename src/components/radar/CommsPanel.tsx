@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { feedsForIcao, isCatalogIcao } from "@/lib/atc/feeds";
+import { resolvedFeedIdForIcao } from "./commsPresets";
 import { decideCommsTune } from "./commsTune";
 import type { AtcRadio } from "./useAtcRadio";
 import type { CommsPresets } from "./useCommsPresets";
@@ -59,7 +60,8 @@ export function CommsPanel({
     if (!entries.some((entry) => entry.icao === focused)) return;
     if (radio.activeIcao === focused && radio.activeFeedId != null) return;
 
-    radio.selectAirport(focused);
+    const feedId = resolvedFeedIdForIcao(focused, presets.lastFeedByIcao);
+    radio.selectAirport(focused, feedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- track primitive radio fields, not the object identity
   }, [
     focusedIcao,
@@ -68,6 +70,7 @@ export function CommsPanel({
     radio.activeFeedId,
     radio.status,
     radio.selectAirport,
+    presets.lastFeedByIcao,
   ]);
 
   const isPlaying = radio.status === "playing" || radio.status === "loading";
@@ -79,7 +82,8 @@ export function CommsPanel({
         focused && entries.some((entry) => entry.icao === focused)
           ? focused
           : entries[0]!.icao;
-      radio.selectAirport(preferred);
+      const feedId = resolvedFeedIdForIcao(preferred, presets.lastFeedByIcao);
+      radio.selectAirport(preferred, feedId);
     }
     void radio.toggle();
   };
@@ -226,55 +230,60 @@ export function CommsPanel({
         <div className="mt-2 text-[11px] text-[#6B7280]">
           Listen from an airport card or pin a preset.
         </div>
-      ) : (
+      ) : null}
+
+      {isPlaying || canPlay ? (
         <div className="mt-2 flex items-stretch gap-2">
-          <ul className="grid flex-1 grid-cols-2 gap-1.5">
-            {entries.map((entry) => {
-              const isActive = radio.activeIcao === entry.icao;
-              const isFocused = focusedIcao?.toUpperCase() === entry.icao;
-              const isLiveActive = isActive && isPlaying;
-              return (
-                <li key={entry.icao} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => handleTune(entry.icao)}
-                    className={`flex h-9 w-full items-center justify-center rounded border font-mono text-[11px] font-bold tracking-wide transition-colors ${
-                      isLiveActive
-                        ? "border-[#3D9CF0] bg-[#3D9CF0]/15 text-[#3D9CF0] shadow-[0_0_8px_1px_rgba(61,156,240,0.35)]"
-                        : isFocused
-                          ? "border-[#3D9CF0]/40 text-[#C8D0D8] hover:border-[#3D9CF0]/60"
-                          : "border-[#2A3138] text-[#C8D0D8]/80 hover:border-[#3D9CF0]/30"
-                    }`}
-                  >
-                    {railLabel(entry.icao)}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={
-                      entry.pinned ? `Unpin ${entry.icao}` : `Pin ${entry.icao}`
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePin(entry.icao);
-                    }}
-                    className={`absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#0B0F14] text-[9px] leading-none ${
-                      entry.pinned ? "text-[#3D9CF0]" : "text-[#4B5563]"
-                    }`}
-                  >
-                    {entry.pinned ? "★" : "☆"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {entries.length > 0 ? (
+            <ul className="grid flex-1 grid-cols-2 gap-1.5">
+              {entries.map((entry) => {
+                const isActive = radio.activeIcao === entry.icao;
+                const isFocused = focusedIcao?.toUpperCase() === entry.icao;
+                const isLiveActive = isActive && isPlaying;
+                return (
+                  <li key={entry.icao} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => handleTune(entry.icao)}
+                      className={`flex h-9 w-full items-center justify-center rounded border font-mono text-[11px] font-bold tracking-wide transition-colors ${
+                        isLiveActive
+                          ? "border-[#3D9CF0] bg-[#3D9CF0]/15 text-[#3D9CF0] shadow-[0_0_8px_1px_rgba(61,156,240,0.35)]"
+                          : isFocused
+                            ? "border-[#3D9CF0]/40 text-[#C8D0D8] hover:border-[#3D9CF0]/60"
+                            : "border-[#2A3138] text-[#C8D0D8]/80 hover:border-[#3D9CF0]/30"
+                      }`}
+                    >
+                      {railLabel(entry.icao)}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={
+                        entry.pinned
+                          ? `Unpin ${entry.icao}`
+                          : `Pin ${entry.icao}`
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(entry.icao);
+                      }}
+                      className={`absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#0B0F14] text-[9px] leading-none ${
+                        entry.pinned ? "text-[#3D9CF0]" : "text-[#4B5563]"
+                      }`}
+                    >
+                      {entry.pinned ? "★" : "☆"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
 
           <button
             type="button"
-            disabled={!canPlay && !isPlaying}
             onClick={handleTogglePlay}
             aria-label={isPlaying ? "Stop ATC radio" : "Play ATC radio"}
             title={playLabel}
-            className={`flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch rounded-full border-2 transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+            className={`flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch rounded-full border-2 transition-colors ${
               isPlaying
                 ? "border-[#3D9CF0] bg-[#3D9CF0]/15 text-[#3D9CF0] shadow-[0_0_10px_1px_rgba(61,156,240,0.4)]"
                 : "border-[#3D9CF0]/40 text-[#C8D0D8] hover:border-[#3D9CF0]/70"
@@ -288,7 +297,7 @@ export function CommsPanel({
             </span>
           </button>
         </div>
-      )}
+      ) : null}
 
       {isPlaying && radio.listenUrl ? (
         <div className="mt-2 border-t border-[#3D9CF0]/20 pt-1.5">

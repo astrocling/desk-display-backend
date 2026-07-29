@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getFeedById, defaultFeedForIcao } from "@/lib/atc/feeds";
+import { defaultFeedForIcao } from "@/lib/atc/feeds";
 import {
   COMMS_PRESETS_STORAGE_KEY,
   mergeCommsEntries,
