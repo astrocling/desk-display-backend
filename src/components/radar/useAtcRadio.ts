@@ -26,8 +26,8 @@ export type AtcRadio = {
   streamUrl: string | null;
   /** External LiveATC page (new tab). */
   listenUrl: string | null;
-  /** Set active ICAO + default feed; does not auto-play. */
-  selectAirport: (icao: string) => void;
+  /** Set active ICAO + feed; does not auto-play. */
+  selectAirport: (icao: string, preferredFeedId?: string) => void;
   selectFeed: (feedId: string) => void;
   play: () => Promise<void>;
   stop: () => void;
@@ -73,7 +73,7 @@ export function useAtcRadio(): AtcRadio {
   }, []);
 
   const selectAirport = useCallback(
-    (icao: string) => {
+    (icao: string, preferredFeedId?: string) => {
       const upper = icao.trim().toUpperCase();
       if (!isCatalogIcao(upper)) return;
 
@@ -81,7 +81,14 @@ export function useAtcRadio(): AtcRadio {
         statusRef.current === "playing" || statusRef.current === "loading";
       if (wasPlaying) stop();
 
-      const feed = defaultFeedForIcao(upper);
+      const preferred = preferredFeedId
+        ? getFeedById(preferredFeedId)
+        : undefined;
+      const feed =
+        preferred && preferred.icao === upper
+          ? preferred
+          : defaultFeedForIcao(upper);
+
       feedIdRef.current = feed?.id ?? null;
       setActiveIcao(upper);
       setActiveFeedId(feed?.id ?? null);
