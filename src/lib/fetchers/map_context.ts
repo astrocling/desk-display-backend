@@ -1010,6 +1010,7 @@ export function filterMapContext(
   highways: HighwayPolyline[] = [],
   artcc: FacilityBoundary[] = [],
   appDep: FacilityBoundary[] = [],
+  opts: { toweredOnly?: boolean } = {},
 ): MapContextResponse {
   const airports = airportsInput
     .map((airport) => ({
@@ -1017,6 +1018,7 @@ export function filterMapContext(
       distanceMi: haversineMiles(lat, lon, airport.lat, airport.lon),
     }))
     .filter(({ distanceMi }) => distanceMi <= radiusMi)
+    .filter(({ airport }) => (opts.toweredOnly ? airport.towered : true))
     .sort((a, b) => a.distanceMi - b.distanceMi)
     .map(({ airport }) => airport);
 

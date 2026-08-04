@@ -11,8 +11,9 @@ import {
   MAP_CONTEXT_MIN_MI,
 } from "@/components/radar/geo";
 
+// Short edge cache so airspace/airport bake updates reach Dial quickly.
 const CACHE_CONTROL =
-  "public, s-maxage=86400, max-age=3600, stale-while-revalidate=86400";
+  "public, s-maxage=60, max-age=60, stale-while-revalidate=300";
 
 function parseNumber(value: string | null): number | null {
   if (value == null || value.trim() === "") {
@@ -50,6 +51,8 @@ export async function GET(request: Request) {
   }
 
   const radiusMi = clampRadiusMi(radiusRaw ?? 25);
+  // Dial sends toweredOnly=1; browser omits it and keeps full catalog presets.
+  const toweredOnly = searchParams.get("toweredOnly") === "1";
 
   try {
     const [{ towered, rings, highways, artcc, appDep }, runwaysByIcao] =
@@ -63,6 +66,7 @@ export async function GET(request: Request) {
       highways,
       artcc,
       appDep,
+      { toweredOnly },
     );
     body.airports = attachPrimaryRunwayHeadings(body.airports, runwaysByIcao);
     return Response.json(body, {

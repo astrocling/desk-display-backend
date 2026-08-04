@@ -298,6 +298,30 @@ describe("filterMapContext", () => {
     expect(result.airports[0].icao).toBe("KDAY");
   });
 
+  it("toweredOnly drops non-towered airports but keeps rings", () => {
+    const mixed: MapAirport[] = [
+      ...airports,
+      {
+        icao: "1WF",
+        ident: "1WF",
+        name: "Helipad",
+        lat: 39.91,
+        lon: -84.21,
+        towered: false,
+        publicUse: true,
+        pavedRunwayFt: null,
+        primaryRunwayHeadingDeg: null,
+      },
+    ];
+    const all = filterMapContext(39.9, -84.22, 30, mixed, rings, highways);
+    const towered = filterMapContext(39.9, -84.22, 30, mixed, rings, highways, [], [], {
+      toweredOnly: true,
+    });
+    expect(all.airports.length).toBeGreaterThan(towered.airports.length);
+    expect(towered.airports.every((a) => a.towered)).toBe(true);
+    expect(towered.rings).toHaveLength(1);
+  });
+
   it("includes rings that intersect the radius", () => {
     const result = filterMapContext(
       39.9,
