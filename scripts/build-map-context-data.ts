@@ -10,8 +10,9 @@
  *   FAA NASR 28-day Class B/C/D shapefiles (authoritative):
  *   https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/
  *
- *   Default ingest uses data/map/fixtures/airspace.geojson (Dayton-area sample).
- *   Replace that file with NASR-derived GeoJSON for a full national refresh.
+ *   Committed data/map/airspace-rings.json is the national bake (preferred).
+ *   data/map/fixtures/airspace.geojson is only a tiny Dayton sample for tests —
+ *   buildAirspaceRings keeps the national JSON when present (>100 rings).
  *
  * ARTCC / APP-DEP boundaries:
  *   Fixture GeoJSON in data/map/fixtures/artcc.geojson and app-dep.geojson.

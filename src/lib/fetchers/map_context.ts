@@ -1135,6 +1135,19 @@ export async function buildToweredAirports(): Promise<MapAirport[]> {
 }
 
 export async function buildAirspaceRings(): Promise<AirspaceRing[]> {
+  // Prefer previously baked national rings. fixtures/airspace.geojson is only a
+  // tiny Dayton sample for unit tests — regenerating from it must not clobber
+  // the NASR-derived airspace-rings.json (see commit 4edae70).
+  try {
+    const existingText = await readFile(AIRSPACE_RINGS_PATH, "utf8");
+    const existing = JSON.parse(existingText) as AirspaceRing[];
+    if (Array.isArray(existing) && existing.length > 100) {
+      return existing;
+    }
+  } catch {
+    // fall through to fixture ingest
+  }
+
   try {
     const geojsonText = await readFixtureText(FIXTURE_AIRSPACE_GEOJSON);
     return buildAirspaceRingsFromGeoJson(JSON.parse(geojsonText));
