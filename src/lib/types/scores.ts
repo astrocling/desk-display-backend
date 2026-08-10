@@ -91,8 +91,39 @@ export interface FlagstandScores {
   nextRace: FlagstandNextRace | null;
 }
 
+export type WpblGameStatus = "scheduled" | "live" | "final";
+
+export interface WpblGame {
+  status: WpblGameStatus;
+  inning: string | null;
+  awayAbbr: string;
+  homeAbbr: string;
+  awayName: string | null;
+  homeName: string | null;
+  awayRuns: number | null;
+  homeRuns: number | null;
+  whenEt: string | null;
+  /** ISO start for refresh gating; null if unknown. */
+  startIso: string | null;
+}
+
+export interface WpblStanding {
+  abbr: string;
+  name: string;
+  w: number;
+  l: number;
+  pct: string | null;
+  gb: string | null;
+}
+
+export interface WpblScores {
+  games: WpblGame[];
+  standings: WpblStanding[];
+}
+
 export interface ScoresBlob {
   mlb: MlbScores;
   flagstand: FlagstandScores;
+  wpbl: WpblScores;
   updatedAt: string;
 }

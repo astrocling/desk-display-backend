@@ -41,6 +41,7 @@ function makeBlob(
   return {
     mlb: { ...emptyMlb, ...mlb },
     flagstand: { lastResult: null, nextRace: null },
+    wpbl: { games: [], standings: [] },
     updatedAt,
   };
 }

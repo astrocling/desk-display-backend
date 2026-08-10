@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     const blob: ScoresBlob = {
       mlb,
       flagstand,
+      wpbl: { games: [], standings: [] },
       updatedAt: new Date().toISOString(),
     };
 
