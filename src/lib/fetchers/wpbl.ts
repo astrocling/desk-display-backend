@@ -3,270 +3,235 @@ import type {
   WpblGame,
   WpblGameStatus,
   WpblScores,
-  WpblStanding,
 } from "@/lib/types/scores";
 
-export type WpblFetchResult = WpblScores & { error?: string };
-
 const WPBL_HOMEPAGE_URL = "https://stats.womensprobaseballleague.com/";
+const EASTERN_TIME_ZONE = "America/New_York";
 
-const TEAM_BY_FULL_NAME: Record<string, { abbr: string; name: string }> = {
+const TEAMS: Record<string, { abbr: string; name: string }> = {
   "Los Angeles Queens": { abbr: "LA", name: "Queens" },
   "New York Heights": { abbr: "NY", name: "Heights" },
   "San Francisco Firebells": { abbr: "SF", name: "Firebells" },
   "Boston Hunters": { abbr: "BOS", name: "Hunters" },
 };
 
-function etCalendarDayKey(date: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
+const MONTHS: Record<string, number> = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
+
+export type WpblFetchResult = WpblScores & { error?: string };
+
+function decodeHtml(value: string): string {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&mdash;|&#8212;/gi, "—")
+    .replace(/&ndash;|&#8211;/gi, "–")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code: string) =>
+      String.fromCodePoint(Number(code)),
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function classContent(html: string, className: string): string | null {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(
+    new RegExp(
+      `<([a-z][\\w:-]*)\\b[^>]*class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/\\1>`,
+      "i",
+    ),
+  );
+  return match ? decodeHtml(match[2]) : null;
+}
+
+function taggedBlocks(html: string, tagPattern: string, className: string): string[] {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `<(${tagPattern})\\b[^>]*class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/\\1>`,
+    "gi",
+  );
+  return Array.from(html.matchAll(pattern), (match) => match[2]);
+}
+
+function easternDateKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: EASTERN_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function easternYear(date: Date): number {
+  const year = new Intl.DateTimeFormat("en-US", {
+    timeZone: EASTERN_TIME_ZONE,
+    year: "numeric",
   }).format(date);
+  return Number(year);
 }
 
-function parseUtcMeta(meta: string, now: Date): string | null {
-  // e.g. "Wed, Aug 12 · 10:30 PM UTC"
+function parseUtcMeta(meta: string | null, year: number): string | null {
+  if (!meta) return null;
   const match = meta.match(
-    /([A-Za-z]+),\s+([A-Za-z]+)\s+(\d{1,2})\s*[·•]\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*UTC/i,
+    /(?:[A-Z][a-z]{2},\s*)?([A-Z][a-z]{2})\s+(\d{1,2})\s*·\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*UTC/i,
   );
-  if (!match) {
-    return null;
-  }
+  if (!match) return null;
 
-  const [, , monthName, dayStr, hourStr, minuteStr, ampm] = match;
-  const months: Record<string, number> = {
-    jan: 0,
-    february: 1,
-    feb: 1,
-    mar: 2,
-    march: 2,
-    apr: 3,
-    april: 3,
-    may: 4,
-    jun: 5,
-    june: 5,
-    jul: 6,
-    july: 6,
-    aug: 7,
-    august: 7,
-    sep: 8,
-    sept: 8,
-    september: 8,
-    oct: 9,
-    october: 9,
-    nov: 10,
-    november: 10,
-    dec: 11,
-    december: 11,
-  };
-  const month = months[monthName.toLowerCase()];
-  if (month === undefined) {
-    return null;
-  }
-
-  let hour = Number(hourStr);
-  const minute = Number(minuteStr);
-  const day = Number(dayStr);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute) || !Number.isFinite(day)) {
-    return null;
-  }
-
-  const upper = ampm.toUpperCase();
-  if (upper === "PM" && hour < 12) {
-    hour += 12;
-  }
-  if (upper === "AM" && hour === 12) {
-    hour = 0;
-  }
-
-  const year = now.getUTCFullYear();
-  const iso = new Date(Date.UTC(year, month, day, hour, minute, 0)).toISOString();
-  return iso;
+  const month = MONTHS[match[1].toLowerCase()];
+  if (month === undefined) return null;
+  const day = Number(match[2]);
+  let hour = Number(match[3]) % 12;
+  if (match[5].toUpperCase() === "PM") hour += 12;
+  const minute = Number(match[4]);
+  const date = new Date(Date.UTC(year, month, day, hour, minute));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function badgeStatus(badgeClass: string, badgeText: string): WpblGameStatus {
-  const hay = `${badgeClass} ${badgeText}`.toLowerCase();
-  if (/\blive\b/.test(hay)) {
-    return "live";
-  }
-  if (/\bfinal\b/.test(hay)) {
-    return "final";
-  }
-  return "scheduled";
+function parseStatus(block: string): WpblGameStatus | null {
+  const badgeTag = block.match(
+    /<[^>]*class=["'][^"']*\bbadge\b[^"']*["'][^>]*>/i,
+  )?.[0];
+  if (badgeTag && /\blive\b/i.test(badgeTag)) return "live";
+  if (badgeTag && /\bfinal\b/i.test(badgeTag)) return "final";
+  if (badgeTag && /\bscheduled\b/i.test(badgeTag)) return "scheduled";
+
+  const badge = classContent(block, "badge");
+  if (badge && /\blive\b/i.test(badge)) return "live";
+  if (badge && /\bfinal\b/i.test(badge)) return "final";
+  if (badge && /\b(upcoming|scheduled)\b/i.test(badge)) return "scheduled";
+  return null;
 }
 
-function parseStandings(html: string): WpblStanding[] {
-  const tableMatch = html.match(
-    /<table[^>]*class="[^"]*standings-table[^"]*"[^>]*>([\s\S]*?)<\/table>/i,
-  );
-  if (!tableMatch) {
-    return [];
-  }
+function parseScore(score: string | null): [number | null, number | null] {
+  const match = score?.match(/(\d+)\s*-\s*(\d+)/);
+  return match ? [Number(match[1]), Number(match[2])] : [null, null];
+}
 
-  const bodyMatch = tableMatch[1].match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
-  const body = bodyMatch?.[1] ?? tableMatch[1];
-  const rows = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  const standings: WpblStanding[] = [];
+function parseStandings(html: string): WpblScores["standings"] {
+  const table = taggedBlocks(html, "[a-z][\\w:-]*", "standings-table")[0];
+  if (!table) return [];
+  const body = table.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/i)?.[1] ?? table;
 
-  for (const row of rows) {
-    const cells = [...row[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(
-      (m) => m[1].replace(/<[^>]+>/g, "").trim(),
-    );
-    if (cells.length < 7) {
-      continue;
-    }
-    // Team, Rank, W, L, T, PCT, GB
-    const team = TEAM_BY_FULL_NAME[cells[0]];
-    if (!team) {
-      continue;
-    }
-    const w = Number(cells[2]);
-    const l = Number(cells[3]);
-    if (!Number.isFinite(w) || !Number.isFinite(l)) {
-      continue;
-    }
-    standings.push({
-      abbr: team.abbr,
-      name: team.name,
-      w,
-      l,
-      pct: cells[5] || null,
-      gb: cells[6] || null,
-    });
-  }
-
-  return standings;
+  return Array.from(body.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi))
+    .map((row) =>
+      Array.from(row[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi), (cell) =>
+        decodeHtml(cell[1]),
+      ),
+    )
+    .map((cells) => {
+      const team = TEAMS[cells[0]];
+      const w = Number(cells[2]);
+      const l = Number(cells[3]);
+      if (!team || !Number.isFinite(w) || !Number.isFinite(l)) return null;
+      return {
+        ...team,
+        w,
+        l,
+        pct: cells[5] || null,
+        gb: cells[6] || null,
+      };
+    })
+    .filter((standing): standing is WpblScores["standings"][number] =>
+      Boolean(standing),
+    )
+    .slice(0, 4);
 }
 
 function parseGames(html: string, now: Date): WpblGame[] {
-  const blocks = [
-    ...html.matchAll(/<a[^>]*class="[^"]*\bgame\b[^"]*"[^>]*>([\s\S]*?)<\/a>/gi),
-  ];
-  const games: WpblGame[] = [];
+  const today = easternDateKey(now);
+  const year = easternYear(now);
 
-  for (const block of blocks) {
-    const inner = block[1];
-    const badgeMatch = inner.match(
-      /class="([^"]*\bbadge\b[^"]*)"[^>]*>([\s\S]*?)<\//i,
-    );
-    const teamsMatch = inner.match(
-      /class="[^"]*\bteams\b[^"]*"[^>]*>([\s\S]*?)<\//i,
-    );
-    const metaMatch = inner.match(
-      /class="[^"]*\bmeta\b[^"]*"[^>]*>([\s\S]*?)<\//i,
-    );
-    const scoreMatch = inner.match(
-      /class="[^"]*\bscore\b[^"]*"[^>]*>([\s\S]*?)<\//i,
-    );
-    const inningMatch = inner.match(
-      /class="[^"]*\binning\b[^"]*"[^>]*>([\s\S]*?)<\//i,
-    );
+  return taggedBlocks(html, "[a-z][\\w:-]*", "game")
+    .map((block): WpblGame | null => {
+      const status = parseStatus(block);
+      const teams = classContent(block, "teams")?.split(/\s+at\s+/i);
+      if (!status || teams?.length !== 2) return null;
+      const away = TEAMS[teams[0].trim()];
+      const home = TEAMS[teams[1].trim()];
+      if (!away || !home) return null;
 
-    if (!teamsMatch) {
-      continue;
-    }
+      const startIso = parseUtcMeta(classContent(block, "meta"), year);
+      const [awayRuns, homeRuns] =
+        status === "scheduled"
+          ? [null, null]
+          : parseScore(classContent(block, "score"));
 
-    const teamsText = teamsMatch[1].replace(/<[^>]+>/g, "").trim();
-    const parts = teamsText.split(/\s+at\s+/i);
-    if (parts.length !== 2) {
-      continue;
-    }
-    const awayTeam = TEAM_BY_FULL_NAME[parts[0].trim()];
-    const homeTeam = TEAM_BY_FULL_NAME[parts[1].trim()];
-    if (!awayTeam || !homeTeam) {
-      continue;
-    }
-
-    const status = badgeStatus(
-      badgeMatch?.[1] ?? "",
-      (badgeMatch?.[2] ?? "").replace(/<[^>]+>/g, "").trim(),
-    );
-
-    const metaText = (metaMatch?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
-    const startIso = parseUtcMeta(metaText, now);
-
-    let awayRuns: number | null = null;
-    let homeRuns: number | null = null;
-    const scoreText = (scoreMatch?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
-    const scoreParts = scoreText.match(/^(\d+)\s*-\s*(\d+)/);
-    if (scoreParts && status !== "scheduled") {
-      awayRuns = Number(scoreParts[1]);
-      homeRuns = Number(scoreParts[2]);
-    }
-
-    const inningRaw = (inningMatch?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
-    const inning =
-      status === "live" && inningRaw
-        ? inningRaw
-        : null;
-
-    games.push({
-      status,
-      inning,
-      awayAbbr: awayTeam.abbr,
-      homeAbbr: homeTeam.abbr,
-      awayName: awayTeam.name,
-      homeName: homeTeam.name,
-      awayRuns,
-      homeRuns,
-      whenEt:
-        status === "scheduled" && startIso ? formatWhenEt(startIso) : null,
-      startIso,
-    });
-  }
-
-  return games;
+      return {
+        status,
+        inning: status === "live" ? classContent(block, "inning") : null,
+        awayAbbr: away.abbr,
+        homeAbbr: home.abbr,
+        awayName: away.name,
+        homeName: home.name,
+        awayRuns,
+        homeRuns,
+        whenEt: status === "scheduled" && startIso ? formatWhenEt(startIso) : null,
+        startIso,
+      };
+    })
+    .filter((game): game is WpblGame => Boolean(game))
+    .filter(
+      (game) =>
+        game.status === "live" ||
+        (game.startIso !== null &&
+          easternDateKey(new Date(game.startIso)) === today),
+    )
+    .sort((a, b) => {
+      if (a.status === "live" && b.status !== "live") return -1;
+      if (a.status !== "live" && b.status === "live") return 1;
+      return (
+        (a.startIso ? Date.parse(a.startIso) : Number.MAX_SAFE_INTEGER) -
+        (b.startIso ? Date.parse(b.startIso) : Number.MAX_SAFE_INTEGER)
+      );
+    })
+    .slice(0, 4);
 }
 
 export function parseWpblHomepageHtml(
   html: string,
-  now: Date = new Date(),
+  now = new Date(),
 ): WpblScores {
-  const standings = parseStandings(html);
-  const allGames = parseGames(html, now);
-  const todayEt = etCalendarDayKey(now);
-
-  const filtered = allGames.filter((game) => {
-    if (game.status === "live") {
-      return true;
-    }
-    if (!game.startIso) {
-      return false;
-    }
-    return etCalendarDayKey(new Date(game.startIso)) === todayEt;
-  });
-
-  filtered.sort((a, b) => {
-    const aMs = a.startIso ? Date.parse(a.startIso) : Number.POSITIVE_INFINITY;
-    const bMs = b.startIso ? Date.parse(b.startIso) : Number.POSITIVE_INFINITY;
-    return aMs - bMs;
-  });
-
   return {
-    games: filtered.slice(0, 4),
-    standings,
+    games: parseGames(html, now),
+    standings: parseStandings(html),
   };
 }
 
-export async function fetchWpbl(now: Date = new Date()): Promise<WpblFetchResult> {
+export async function fetchWpbl(now = new Date()): Promise<WpblFetchResult> {
   try {
     const response = await fetch(WPBL_HOMEPAGE_URL, {
-      headers: { "Accept-Encoding": "identity" },
+      headers: {
+        Accept: "text/html",
+        "Accept-Encoding": "identity",
+      },
     });
     if (!response.ok) {
-      return {
-        games: [],
-        standings: [],
-        error: `WPBL homepage request failed: ${response.status}`,
-      };
+      throw new Error(`WPBL homepage request failed: ${response.status}`);
     }
-    const html = await response.text();
-    return parseWpblHomepageHtml(html, now);
+    return parseWpblHomepageHtml(await response.text(), now);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "WPBL homepage fetch failed";
-    return { games: [], standings: [], error: message };
+    return {
+      games: [],
+      standings: [],
+      error: error instanceof Error ? error.message : "WPBL fetch failed",
+    };
   }
 }

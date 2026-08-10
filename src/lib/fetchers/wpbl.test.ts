@@ -57,6 +57,11 @@ describe("parseWpblHomepageHtml", () => {
 
     expect(parsed.games).toEqual([
       expect.objectContaining({
+        status: "live",
+        awayAbbr: "BOS",
+        homeAbbr: "LA",
+      }),
+      expect.objectContaining({
         status: "final",
         awayAbbr: "NY",
         homeAbbr: "BOS",
@@ -65,11 +70,6 @@ describe("parseWpblHomepageHtml", () => {
         awayRuns: 7,
         homeRuns: 6,
         whenEt: null,
-      }),
-      expect.objectContaining({
-        status: "live",
-        awayAbbr: "BOS",
-        homeAbbr: "LA",
       }),
     ]);
   });
