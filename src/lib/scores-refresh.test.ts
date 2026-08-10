@@ -80,4 +80,52 @@ describe("shouldRefreshLiveScores", () => {
     );
     expect(shouldRefreshLiveScores(b, now)).toBe(false);
   });
+
+  it("refreshes when a WPBL game is live and TTL expired", () => {
+    const b = makeBlob(
+      new Date(now.getTime() - SCORES_LIVE_TTL_MS - 1_000).toISOString(),
+    );
+    b.wpbl = {
+      games: [
+        {
+          status: "live",
+          inning: "Top 3",
+          awayAbbr: "BOS",
+          homeAbbr: "LA",
+          awayName: "Hunters",
+          homeName: "Queens",
+          awayRuns: 1,
+          homeRuns: 2,
+          whenEt: null,
+          startIso: "2026-07-24T19:00:00.000Z",
+        },
+      ],
+      standings: [],
+    };
+    expect(shouldRefreshLiveScores(b, now)).toBe(true);
+  });
+
+  it("refreshes when a WPBL scheduled startIso is due", () => {
+    const b = makeBlob(
+      new Date(now.getTime() - SCORES_LIVE_TTL_MS - 1_000).toISOString(),
+    );
+    b.wpbl = {
+      games: [
+        {
+          status: "scheduled",
+          inning: null,
+          awayAbbr: "LA",
+          homeAbbr: "SF",
+          awayName: "Queens",
+          homeName: "Firebells",
+          awayRuns: null,
+          homeRuns: null,
+          whenEt: "Fri 7/24 4:00 PM",
+          startIso: "2026-07-24T20:00:00.000Z",
+        },
+      ],
+      standings: [],
+    };
+    expect(shouldRefreshLiveScores(b, now)).toBe(true);
+  });
 });
