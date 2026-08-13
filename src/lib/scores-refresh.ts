@@ -5,7 +5,7 @@ export const SCORES_LIVE_TTL_MS = 45_000;
 
 /**
  * Refresh when the blob is older than TTL and either already live or the
- * scheduled nextGame start is at or before `now` (game may have started).
+ * scheduled nextGame / WPBL start is at or before `now` (game may have started).
  */
 export function shouldRefreshLiveScores(
   blob: ScoresBlob,
@@ -27,6 +27,18 @@ export function shouldRefreshLiveScores(
     const startMs = Date.parse(blob.mlb.nextGame);
     if (Number.isFinite(startMs) && startMs <= now.getTime()) {
       return true;
+    }
+  }
+
+  for (const game of blob.wpbl?.games ?? []) {
+    if (game.status === "live") {
+      return true;
+    }
+    if (game.startIso) {
+      const startMs = Date.parse(game.startIso);
+      if (Number.isFinite(startMs) && startMs <= now.getTime()) {
+        return true;
+      }
     }
   }
 

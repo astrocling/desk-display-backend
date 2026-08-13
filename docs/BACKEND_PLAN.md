@@ -96,7 +96,7 @@ Sunrise and sunset for fixed timezone cities (see `TIMEZONE_CITIES` in `src/lib/
 
 Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAGUE_IDS`).
 
-**Response** `200` — Redis key `scores`. While a game may be live (cached `live` or `nextGame` ≤ now), the handler may refresh ESPN if `updatedAt` is older than ~45s, then rewrite Redis. On ESPN failure it returns the last good blob.
+**Response** `200` — Redis key `scores`. While an MLB or WPBL game may be live (cached live flags / `nextGame` / WPBL `startIso` ≤ now), the handler may refresh MLB (ESPN) and WPBL if `updatedAt` is older than ~45s, then rewrite Redis. On ESPN failure it returns the last good blob; WPBL soft-fails independently and keeps last-good `wpbl` when present.
 
 ```json
 {
@@ -134,6 +134,25 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
       "status": "SCHEDULED"
     }
   },
+  "wpbl": {
+    "games": [
+      {
+        "status": "live",
+        "inning": "Top 5",
+        "awayAbbr": "BOS",
+        "homeAbbr": "LA",
+        "awayName": "Hunters",
+        "homeName": "Queens",
+        "awayRuns": 2,
+        "homeRuns": 4,
+        "whenEt": null,
+        "startIso": "2026-08-10T23:00:00.000Z"
+      }
+    ],
+    "standings": [
+      { "abbr": "LA", "name": "Queens", "w": 3, "l": 1, "pct": ".750", "gb": "—" }
+    ]
+  },
   "updatedAt": "2026-07-23T12:00:00.000Z"
 }
 ```
@@ -168,10 +187,13 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `flagstand.*.seasonName` | string | Season label (`Season.name`) |
 | `flagstand.*.seriesName` | string \| null | Series name (`Series.name`); null when season has no series |
 | `flagstand.nextRace.status` | string | e.g. `SCHEDULED`, `ACTIVE` |
+| `wpbl.games` | array | Today’s WPBL slate (≤4); `status` `scheduled`\|`live`\|`final` |
+| `wpbl.games[].startIso` | string \| null | ISO tip for refresh gating |
+| `wpbl.games[].whenEt` | string \| null | ET display for scheduled games |
+| `wpbl.standings` | array | Ranked 4-team table (≤4) |
 | `updatedAt` | string | ISO timestamp when cache was written |
 
-Flagstand fields are `null` when `DATABASE_URL` is unset or queries fail (scores cron still succeeds for MLB).
-
+Flagstand fields are `null` when `DATABASE_URL` is unset or queries fail (scores cron still succeeds for MLB). Flagstand may still be populated; dial Sports UI shows MLB ↔ WPBL (Flagstand dormant on device). WPBL is ingested from the official stats homepage and soft-fails to empty/last-good arrays.
 **Error** `503`: `{ "error": "scores not ready" }`
 
 ### `GET /api/airport?code=<ICAO>`
