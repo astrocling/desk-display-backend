@@ -155,52 +155,92 @@ function parseStandings(html: string): WpblScores["standings"] {
     .slice(0, 4);
 }
 
+function statusRank(status: WpblGameStatus): number {
+  switch (status) {
+    case "live":
+      return 0;
+    case "final":
+      return 1;
+    case "scheduled":
+      return 2;
+  }
+}
+
+function matchupDayKey(game: WpblGame): string {
+  const day =
+    game.startIso !== null
+      ? easternDateKey(new Date(game.startIso))
+      : "unknown";
+  return `${game.awayAbbr}@${game.homeAbbr}|${day}`;
+}
+
+function startMs(game: WpblGame): number {
+  return game.startIso ? Date.parse(game.startIso) : Number.MAX_SAFE_INTEGER;
+}
+
+/** Prefer live > final > scheduled; among scheduled prefer latest tip (ghost slots are earlier). */
+function preferGame(a: WpblGame, b: WpblGame): WpblGame {
+  const rankDiff = statusRank(a.status) - statusRank(b.status);
+  if (rankDiff !== 0) return rankDiff < 0 ? a : b;
+  return startMs(a) >= startMs(b) ? a : b;
+}
+
+function collapseDuplicateMatchups(games: WpblGame[]): WpblGame[] {
+  const byMatchup = new Map<string, WpblGame>();
+  for (const game of games) {
+    const key = matchupDayKey(game);
+    const existing = byMatchup.get(key);
+    byMatchup.set(key, existing ? preferGame(existing, game) : game);
+  }
+  return Array.from(byMatchup.values());
+}
+
 function parseGames(html: string, now: Date): WpblGame[] {
   const today = easternDateKey(now);
   const year = easternYear(now);
 
-  return taggedBlocks(html, "[a-z][\\w:-]*", "game")
-    .map((block): WpblGame | null => {
-      const status = parseStatus(block);
-      const teams = classContent(block, "teams")?.split(/\s+at\s+/i);
-      if (!status || teams?.length !== 2) return null;
-      const away = TEAMS[teams[0].trim()];
-      const home = TEAMS[teams[1].trim()];
-      if (!away || !home) return null;
+  return collapseDuplicateMatchups(
+    taggedBlocks(html, "[a-z][\\w:-]*", "game")
+      .map((block): WpblGame | null => {
+        const status = parseStatus(block);
+        const teams = classContent(block, "teams")?.split(/\s+at\s+/i);
+        if (!status || teams?.length !== 2) return null;
+        const away = TEAMS[teams[0].trim()];
+        const home = TEAMS[teams[1].trim()];
+        if (!away || !home) return null;
 
-      const startIso = parseUtcMeta(classContent(block, "meta"), year);
-      const [awayRuns, homeRuns] =
-        status === "scheduled"
-          ? [null, null]
-          : parseScore(classContent(block, "score"));
+        const startIso = parseUtcMeta(classContent(block, "meta"), year);
+        const [awayRuns, homeRuns] =
+          status === "scheduled"
+            ? [null, null]
+            : parseScore(classContent(block, "score"));
 
-      return {
-        status,
-        inning: status === "live" ? classContent(block, "inning") : null,
-        awayAbbr: away.abbr,
-        homeAbbr: home.abbr,
-        awayName: away.name,
-        homeName: home.name,
-        awayRuns,
-        homeRuns,
-        whenEt: status === "scheduled" && startIso ? formatWhenEt(startIso) : null,
-        startIso,
-      };
-    })
-    .filter((game): game is WpblGame => Boolean(game))
-    .filter(
-      (game) =>
-        game.status === "live" ||
-        (game.startIso !== null &&
-          easternDateKey(new Date(game.startIso)) === today),
-    )
+        return {
+          status,
+          inning: status === "live" ? classContent(block, "inning") : null,
+          awayAbbr: away.abbr,
+          homeAbbr: home.abbr,
+          awayName: away.name,
+          homeName: home.name,
+          awayRuns,
+          homeRuns,
+          whenEt:
+            status === "scheduled" && startIso ? formatWhenEt(startIso) : null,
+          startIso,
+        };
+      })
+      .filter((game): game is WpblGame => Boolean(game))
+      .filter(
+        (game) =>
+          game.status === "live" ||
+          (game.startIso !== null &&
+            easternDateKey(new Date(game.startIso)) === today),
+      ),
+  )
     .sort((a, b) => {
       if (a.status === "live" && b.status !== "live") return -1;
       if (a.status !== "live" && b.status === "live") return 1;
-      return (
-        (a.startIso ? Date.parse(a.startIso) : Number.MAX_SAFE_INTEGER) -
-        (b.startIso ? Date.parse(b.startIso) : Number.MAX_SAFE_INTEGER)
-      );
+      return startMs(a) - startMs(b);
     })
     .slice(0, 4);
 }

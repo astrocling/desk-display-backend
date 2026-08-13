@@ -91,6 +91,77 @@ describe("parseWpblHomepageHtml", () => {
       whenEt: "Wed 8/12 6:30 PM",
     });
   });
+
+  it("collapses duplicate same-matchup scheduled slots to the latest tip", () => {
+    const html = `
+      <a class="game game-link" href="/games/a">
+        <span class="badge scheduled">Upcoming</span>
+        <div class="teams">Boston Hunters at New York Heights</div>
+        <div class="meta">Thu, Aug 13 · 10:30 PM UTC</div>
+        <div class="score">0-0</div>
+      </a>
+      <a class="game game-link" href="/games/b">
+        <span class="badge scheduled">Upcoming</span>
+        <div class="teams">Boston Hunters at New York Heights</div>
+        <div class="meta">Thu, Aug 13 · 11:30 PM UTC</div>
+        <div class="score">0-0</div>
+      </a>
+      <a class="game game-link" href="/games/c">
+        <span class="badge scheduled">Upcoming</span>
+        <div class="teams">Boston Hunters at New York Heights</div>
+        <div class="meta">Thu, Aug 13 · 11:30 PM UTC</div>
+        <div class="score">0-0</div>
+      </a>
+    `;
+
+    const parsed = parseWpblHomepageHtml(
+      html,
+      new Date("2026-08-13T16:00:00Z"),
+    );
+
+    expect(parsed.games).toEqual([
+      expect.objectContaining({
+        status: "scheduled",
+        awayAbbr: "BOS",
+        homeAbbr: "NY",
+        startIso: "2026-08-13T23:30:00.000Z",
+        whenEt: "Thu 8/13 7:30 PM",
+      }),
+    ]);
+  });
+
+  it("prefers a final over a ghost scheduled slot for the same matchup", () => {
+    const html = `
+      <a class="game game-link" href="/games/ghost">
+        <span class="badge scheduled">Upcoming</span>
+        <div class="teams">New York Heights at Boston Hunters</div>
+        <div class="meta">Sun, Aug 9 · 10:30 PM UTC</div>
+        <div class="score">0-0</div>
+      </a>
+      <a class="game game-link" href="/games/real">
+        <span class="badge final">final - 8 innings</span>
+        <div class="teams">New York Heights at Boston Hunters</div>
+        <div class="meta">Sun, Aug 9 · 11:30 PM UTC</div>
+        <div class="score">7-6</div>
+      </a>
+    `;
+
+    const parsed = parseWpblHomepageHtml(
+      html,
+      new Date("2026-08-09T23:00:00Z"),
+    );
+
+    expect(parsed.games).toEqual([
+      expect.objectContaining({
+        status: "final",
+        awayAbbr: "NY",
+        homeAbbr: "BOS",
+        awayRuns: 7,
+        homeRuns: 6,
+        startIso: "2026-08-09T23:30:00.000Z",
+      }),
+    ]);
+  });
 });
 
 describe("fetchWpbl", () => {
