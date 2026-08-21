@@ -49,30 +49,36 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
     <li>
       <Link
         href={`/wpbl/games/${game.id}`}
-        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
       >
-        <StatusBadge status={game.status} />
-        <span className="min-w-[5.5rem] text-xs tabular-nums text-slate-500">
-          {game.whenEt ?? "TBD"}
-        </span>
-        <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <span className="inline-flex items-center gap-2 font-medium">
-            <TeamLogo abbr={game.awayAbbr} size="md" />
-            {game.awayAbbr}
+        <div className="flex flex-col items-start gap-1 self-center">
+          <StatusBadge status={game.status} />
+          <span className="text-[11px] tabular-nums text-slate-500">
+            {game.whenEt ?? "TBD"}
           </span>
-          <span className="text-slate-400">@</span>
-          <span className="inline-flex items-center gap-2 font-medium">
-            <TeamLogo abbr={game.homeAbbr} size="md" />
-            {game.homeAbbr}
-          </span>
-          <span className="text-slate-500">
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            <span className="inline-flex items-center gap-1.5">
+              <TeamLogo abbr={game.awayAbbr} size="md" />
+              {game.awayAbbr}
+            </span>
+            <span className="text-slate-400" aria-hidden>
+              @
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <TeamLogo abbr={game.homeAbbr} size="md" />
+              {game.homeAbbr}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-slate-500">
             {game.awayName} at {game.homeName}
-          </span>
+            {game.venue ? ` · ${game.venue}` : ""}
+          </p>
+        </div>
+        <span className="self-center font-mono text-sm tabular-nums">
+          {scoreLine(game)}
         </span>
-        <span className="font-mono text-sm tabular-nums">{scoreLine(game)}</span>
-        {game.venue ? (
-          <span className="w-full text-xs text-slate-500 sm:w-auto">{game.venue}</span>
-        ) : null}
       </Link>
     </li>
   );
