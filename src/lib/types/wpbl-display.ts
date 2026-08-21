@@ -69,11 +69,28 @@ export interface WpblLeaderEntry {
   sortValue: number; // for stable ranking
 }
 
+/** Live count / base / batter-pitcher snapshot from the WPBL boxscore status. */
+export interface WpblLiveSituation {
+  /** Current inning number when known (for line-score highlight). */
+  inningNumber: number | null;
+  half: "top" | "bottom" | null;
+  balls: number | null;
+  strikes: number | null;
+  outs: number | null;
+  onFirst: boolean;
+  onSecond: boolean;
+  onThird: boolean;
+  batterName: string | null;
+  pitcherName: string | null;
+}
+
 export interface WpblGameDetailResponse {
   updatedAt: string;
   game: WpblScheduleGame & {
     /** Live/final inning label when known, e.g. "Top 5"; null otherwise. */
     inning: string | null;
+    /** Populated while live when the boxscore status has situation fields. */
+    situation: WpblLiveSituation | null;
   };
   boxscore: {
     available: boolean;

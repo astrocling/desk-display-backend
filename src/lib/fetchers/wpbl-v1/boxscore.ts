@@ -2,6 +2,7 @@ import type {
   WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblGameStatus,
+  WpblLiveSituation,
   WpblScheduleGame,
 } from "@/lib/types/wpbl-display";
 import { fetchWpblJson } from "./client";
@@ -12,9 +13,18 @@ import { teamFromId } from "./teams";
 const BATTING_STAT_KEYS = ["ab", "r", "h", "rbi", "bb", "so", "avg", "obp", "slg"] as const;
 const PITCHING_STAT_KEYS = ["ip", "h", "r", "er", "bb", "so", "era"] as const;
 
-interface WpblBoxscoreStatus {
+export interface WpblBoxscoreStatus {
   inning?: number;
   half?: string;
+  outs?: number;
+  balls?: number;
+  strikes?: number;
+  batter_name?: string;
+  pitcher_name?: string;
+  first_base?: string;
+  second_base?: string;
+  third_base?: string;
+  bases_occupied?: Array<number | string> | null;
 }
 
 interface WpblBoxscorePlayer {
@@ -126,6 +136,54 @@ export function formatInningLabel(
   return null;
 }
 
+function nonemptyName(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function baseOccupied(
+  named: string | null | undefined,
+  basesOccupied: Array<number | string> | null | undefined,
+  base: 1 | 2 | 3,
+): boolean {
+  if (nonemptyName(named)) return true;
+  if (!basesOccupied?.length) return false;
+  return basesOccupied.some((entry) => Number(entry) === base || entry === String(base));
+}
+
+function parseCount(value: number | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Live situation from boxscore status; null when not live or status missing. */
+export function mapWpblLiveSituation(
+  gameStatus: WpblGameStatus,
+  boxStatus: WpblBoxscoreStatus | null | undefined,
+): WpblLiveSituation | null {
+  if (gameStatus !== "live" || !boxStatus) return null;
+
+  const halfRaw = boxStatus.half?.trim().toLowerCase();
+  const half =
+    halfRaw === "top" ? "top" : halfRaw === "bottom" ? "bottom" : null;
+  const inningNumber =
+    typeof boxStatus.inning === "number" && boxStatus.inning > 0
+      ? boxStatus.inning
+      : null;
+
+  return {
+    inningNumber,
+    half,
+    balls: parseCount(boxStatus.balls),
+    strikes: parseCount(boxStatus.strikes),
+    outs: parseCount(boxStatus.outs),
+    onFirst: baseOccupied(boxStatus.first_base, boxStatus.bases_occupied, 1),
+    onSecond: baseOccupied(boxStatus.second_base, boxStatus.bases_occupied, 2),
+    onThird: baseOccupied(boxStatus.third_base, boxStatus.bases_occupied, 3),
+    batterName: nonemptyName(boxStatus.batter_name),
+    pitcherName: nonemptyName(boxStatus.pitcher_name),
+  };
+}
+
 export function mapWpblBoxscore(
   raw: WpblBoxscorePayload,
   _gameMeta: WpblScheduleGame,
@@ -190,13 +248,15 @@ export async function fetchWpblGameDetail(
     : { available: false, lineScore: null, batting: [], pitching: [] };
 
   const status = mapWpblStatus(boxRaw?.boxscore?.game_status ?? gameRaw.status);
+  const boxStatus = boxRaw?.boxscore?.status;
 
   return {
     updatedAt: new Date().toISOString(),
     game: {
       ...gameMeta,
       status,
-      inning: formatInningLabel(status, boxRaw?.boxscore?.status),
+      inning: formatInningLabel(status, boxStatus),
+      situation: mapWpblLiveSituation(status, boxStatus),
     },
     boxscore,
   };

@@ -342,6 +342,7 @@ Game detail with line score and box score. Per-game Redis key `wpbl:game:{id}`. 
 | Field | Type | Notes |
 |-------|------|-------|
 | `game.inning` | string \| null | e.g. `"Top 5"` while live |
+| `game.situation` | object \| null | Live count/bases/batter/pitcher while in progress; null otherwise |
 | `boxscore.available` | boolean | `false` when box not yet published |
 | `boxscore.lineScore` | object \| null | Inning-by-inning R/H/E/LOB |
 | `boxscore.batting` | array | Hitting lines (upstream `hitting` mapped here) |
