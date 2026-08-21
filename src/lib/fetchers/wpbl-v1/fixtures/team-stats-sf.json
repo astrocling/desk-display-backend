@@ -1,0 +1,102 @@
+{
+    "season_id": "c9sgab9f9yx00z75",
+    "team_id": "vhubhz8li07tmgq8",
+    "team_url": "https://www.womensprobaseballleague.com/teams/san-francisco/",
+    "calculation_version": "baseball-v3",
+    "source_through": "2026-08-21T12:59:29Z",
+    "aggregation": "roster_player_sums",
+    "standing": {
+        "rank": 1,
+        "tied": false,
+        "team_id": "vhubhz8li07tmgq8",
+        "team_name": "San Francisco Firebells",
+        "team_url": "https://www.womensprobaseballleague.com/teams/san-francisco/",
+        "logo_url": "",
+        "games_played": 8,
+        "wins": 5,
+        "losses": 3,
+        "ties": 0,
+        "winning_percentage": 0.625,
+        "games_behind": 0,
+        "runs_for": 76,
+        "runs_against": 53,
+        "run_differential": 23,
+        "hits_for": 93,
+        "errors": 10,
+        "team_lob": 64,
+        "home": {
+            "wins": 3,
+            "losses": 2,
+            "ties": 0
+        },
+        "away": {
+            "wins": 2,
+            "losses": 1,
+            "ties": 0
+        },
+        "last_ten": {
+            "wins": 5,
+            "losses": 3,
+            "ties": 0
+        },
+        "streak": {
+            "type": "L",
+            "length": 1
+        }
+    },
+    "batting": {
+        "games_played": 8,
+        "games_started": 0,
+        "plate_appearances": 0,
+        "at_bats": 241,
+        "runs": 76,
+        "hits": 93,
+        "doubles": 19,
+        "triples": 0,
+        "home_runs": 11,
+        "rbi": 73,
+        "walks": 39,
+        "hit_by_pitch": 13,
+        "strikeouts": 32,
+        "sacrifice_hits": 1,
+        "sacrifice_flies": 2,
+        "stolen_bases": 6,
+        "caught_stealing": 1,
+        "total_bases": 0,
+        "batter_lob": 0,
+        "hits_per_game": 11.625,
+        "runs_per_game": 9.5
+    },
+    "pitching": {
+        "games_played": 8,
+        "games_started": 8,
+        "outs_pitched": 162,
+        "innings_pitched": "54.0",
+        "hits_allowed": 75,
+        "runs_allowed": 53,
+        "earned_runs": 42,
+        "era": 7,
+        "walks": 29,
+        "strikeouts": 34,
+        "home_runs_allowed": 8,
+        "batters_faced": 274,
+        "pitch_count": 1057,
+        "wins": 5,
+        "losses": 3,
+        "saves": 0,
+        "pitcher_lob": 0
+    },
+    "fielding": {
+        "games_played": 8,
+        "games_started": 0,
+        "putouts": 162,
+        "assists": 67,
+        "errors": 10,
+        "total_chances": 239,
+        "double_plays": 0,
+        "passed_balls": 1,
+        "stolen_bases_allowed": 0,
+        "caught_stealing": 0,
+        "fielding_percentage": 0.958
+    }
+}
