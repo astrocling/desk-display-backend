@@ -10,6 +10,11 @@
       "source": "/",
       "has": [{ "type": "host", "value": "radar.theclingans.com" }],
       "destination": "/radar"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "wpbl.theclingans.com" }],
+      "destination": "/wpbl"
     }
   ]
 }
