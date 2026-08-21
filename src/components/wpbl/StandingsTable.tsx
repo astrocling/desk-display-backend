@@ -34,11 +34,10 @@ export function StandingsTable({ rows }: StandingsTableProps) {
           {rows.map((row) => (
             <tr key={row.teamId} className="whitespace-nowrap">
               <td className="px-3 py-2 tabular-nums text-slate-500">{row.rank}</td>
-              <td className="max-w-[11rem] px-3 py-2 sm:max-w-[16rem]">
-                <span className="inline-flex min-w-0 max-w-full items-center gap-2">
+              <td className="px-3 py-2">
+                <span className="inline-flex items-center gap-2">
                   <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
-                  <span className="shrink-0 font-medium">{row.abbr}</span>
-                  <span className="truncate text-slate-500">{row.name}</span>
+                  <span className="font-medium">{row.abbr}</span>
                 </span>
               </td>
               <td className="px-3 py-2 tabular-nums">{row.w}</td>
