@@ -19,7 +19,7 @@ import { FALLBACK_SEASON_ID } from "./teams";
 export { wpblGameKey };
 
 /** Max age of a live game blob before refresh. */
-export const WPBL_LIVE_TTL_MS = 45_000;
+export const WPBL_LIVE_TTL_MS = 30_000;
 
 export function shouldRefreshWpblGame(
   blob: WpblGameDetailResponse,

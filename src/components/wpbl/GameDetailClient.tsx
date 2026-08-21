@@ -10,7 +10,7 @@ import { LineScore } from "./LineScore";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
-const POLL_MS = 45_000;
+const POLL_MS = 30_000;
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);

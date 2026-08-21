@@ -16,7 +16,7 @@ import { sortWpblSchedule } from "./scheduleSort";
 import { todaysSlateGames } from "./scheduleWeek";
 import { TeamFilter, type WpblTeamFilter } from "./TeamFilter";
 
-const POLL_MS = 45_000;
+const POLL_MS = 30_000;
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
