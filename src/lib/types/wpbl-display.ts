@@ -67,6 +67,10 @@ export interface WpblLeaderEntry {
   teamAbbr: string;
   value: string; // display-ready, e.g. ".312", "7", "1.93"
   sortValue: number; // for stable ranking
+  /** Roster position when known (e.g. "CF", "P"); null when unknown. */
+  position: string | null;
+  /** Absolute headshot URL when available; null when unknown. */
+  headshotUrl: string | null;
 }
 
 /** Live count / base / batter-pitcher snapshot from the WPBL boxscore status. */
