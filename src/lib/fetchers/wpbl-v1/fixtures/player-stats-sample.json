@@ -1,0 +1,44 @@
+[
+  {
+    "playerId": "bpyqct4a85lh306g",
+    "name": "Jill Albayati",
+    "teamId": "vhubhz8li07tmgq8",
+    "batting": { "at_bats": 27, "hits": 11, "home_runs": 2, "rbi": 8 },
+    "pitching": { "outs_pitched": 30, "era": 1.8, "strikeouts": 10, "wins": 2, "saves": 0 }
+  },
+  {
+    "playerId": "jc062foc8ijjn7d2",
+    "name": "Hinano Beppu",
+    "teamId": "vhubhz8li07tmgq8",
+    "batting": { "at_bats": 12, "hits": 4, "home_runs": 0, "rbi": 2 },
+    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+  },
+  {
+    "playerId": "p-la-hr",
+    "name": "LA Slugger",
+    "teamId": "v4gisr4rbgmn67b0",
+    "batting": { "at_bats": 30, "hits": 10, "home_runs": 5, "rbi": 14 },
+    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+  },
+  {
+    "playerId": "p-ny-closer",
+    "name": "NY Closer",
+    "teamId": "fttth861nft1j2s7",
+    "batting": { "at_bats": 0, "hits": 0, "home_runs": 0, "rbi": 0 },
+    "pitching": { "outs_pitched": 18, "era": 2.33, "strikeouts": 12, "wins": 1, "saves": 3 }
+  },
+  {
+    "playerId": "p-bos-starter",
+    "name": "BOS Starter",
+    "teamId": "9f08or2mffx81409",
+    "batting": { "at_bats": 5, "hits": 1, "home_runs": 0, "rbi": 0 },
+    "pitching": { "outs_pitched": 45, "era": 3.6, "strikeouts": 22, "wins": 3, "saves": 0 }
+  },
+  {
+    "playerId": "p-sf-contact",
+    "name": "SF Contact",
+    "teamId": "vhubhz8li07tmgq8",
+    "batting": { "at_bats": 25, "hits": 12, "home_runs": 1, "rbi": 6 },
+    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+  }
+]
