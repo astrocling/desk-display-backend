@@ -12,7 +12,13 @@ export const REDIS_KEYS = {
   mapHighways: "map:highways",
   mapRunways: "map:runways",
   radarInterestingRegs: "radar:interestingRegs",
+  wpblLeague: "wpbl:league",
+  wpblLeaders: "wpbl:leaders",
 } as const;
+
+export function wpblGameKey(id: string): string {
+  return `wpbl:game:${id}`;
+}
 
 export const TIMEZONE_CITIES = [
   { id: "America/New_York", lat: 40.7128, lon: -74.006 },
