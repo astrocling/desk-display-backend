@@ -19,7 +19,11 @@ export type TeamFilterProps = {
 
 export function TeamFilter({ value, onChange }: TeamFilterProps) {
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Team filter">
+    <div
+      className="flex flex-nowrap gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      role="group"
+      aria-label="Team filter"
+    >
       {OPTIONS.map((opt) => {
         const active = value === opt.value;
         const isTeam = opt.value !== "ALL";
@@ -32,9 +36,9 @@ export function TeamFilter({ value, onChange }: TeamFilterProps) {
             className={
               active
                 ? isTeam
-                  ? "wpbl-team-accent-fill inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white"
-                  : "rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900"
-                : "inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                  ? "wpbl-team-accent-fill inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white"
+                  : "shrink-0 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900"
+                : "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
             }
             style={
               active && isTeam
