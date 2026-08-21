@@ -27,6 +27,8 @@ body {
 
 /* WPBL team accent colours — light primary by default, primaryDark in dark mode */
 .wpbl-team-accent {
+  border-left-width: 3px;
+  border-left-style: solid;
   border-left-color: var(--team-accent);
 }
 
