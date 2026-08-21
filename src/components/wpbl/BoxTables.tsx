@@ -109,7 +109,7 @@ export function BoxTables({
           style={side === "away" ? wpblTeamAccent(awayAbbr) : undefined}
           onClick={() => setSide("away")}
         >
-          <TeamLogo key={awayAbbr} abbr={awayAbbr} size="sm" />
+          <TeamLogo key={awayAbbr} abbr={awayAbbr} size="md" />
           {awayLabel}
         </button>
         <button
@@ -118,7 +118,7 @@ export function BoxTables({
           style={side === "home" ? wpblTeamAccent(homeAbbr) : undefined}
           onClick={() => setSide("home")}
         >
-          <TeamLogo key={homeAbbr} abbr={homeAbbr} size="sm" />
+          <TeamLogo key={homeAbbr} abbr={homeAbbr} size="md" />
           {homeLabel}
         </button>
       </div>

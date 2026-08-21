@@ -36,7 +36,7 @@ export function LineScore({ lineScore }: LineScoreProps) {
             <tr key={team.side} className="whitespace-nowrap">
               <td className="px-3 py-2">
                 <span className="inline-flex items-center gap-2">
-                  <TeamLogo key={team.abbr} abbr={team.abbr} size="sm" />
+                  <TeamLogo key={team.abbr} abbr={team.abbr} size="md" />
                   <span className="font-medium">{team.abbr}</span>
                   <span className="text-slate-500">{team.name}</span>
                 </span>

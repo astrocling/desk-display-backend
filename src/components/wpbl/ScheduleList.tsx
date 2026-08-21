@@ -1,11 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
 
 import { TeamLogo } from "./TeamLogo";
+import { partitionScheduleByWeek } from "./scheduleWeek";
 
 export type ScheduleListProps = {
   games: WpblScheduleGame[];
+  /** Injected for tests; defaults to now. */
+  now?: Date;
 };
 
 function StatusBadge({ status }: { status: WpblScheduleGame["status"] }) {
@@ -38,44 +44,115 @@ function scoreLine(game: WpblScheduleGame): string {
   return `${game.awayRuns}–${game.homeRuns}`;
 }
 
-export function ScheduleList({ games }: ScheduleListProps) {
+function GameRow({ game }: { game: WpblScheduleGame }) {
+  return (
+    <li>
+      <Link
+        href={`/wpbl/games/${game.id}`}
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+      >
+        <StatusBadge status={game.status} />
+        <span className="min-w-[5.5rem] text-xs tabular-nums text-slate-500">
+          {game.whenEt ?? "TBD"}
+        </span>
+        <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <span className="inline-flex items-center gap-2 font-medium">
+            <TeamLogo abbr={game.awayAbbr} size="md" />
+            {game.awayAbbr}
+          </span>
+          <span className="text-slate-400">@</span>
+          <span className="inline-flex items-center gap-2 font-medium">
+            <TeamLogo abbr={game.homeAbbr} size="md" />
+            {game.homeAbbr}
+          </span>
+          <span className="text-slate-500">
+            {game.awayName} at {game.homeName}
+          </span>
+        </span>
+        <span className="font-mono text-sm tabular-nums">{scoreLine(game)}</span>
+        {game.venue ? (
+          <span className="w-full text-xs text-slate-500 sm:w-auto">{game.venue}</span>
+        ) : null}
+      </Link>
+    </li>
+  );
+}
+
+function GameGroup({
+  title,
+  games,
+}: {
+  title: string;
+  games: WpblScheduleGame[];
+}) {
+  if (games.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {title}
+      </h3>
+      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        {games.map((game) => (
+          <GameRow key={game.id} game={game} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function ScheduleList({ games, now }: ScheduleListProps) {
+  const [expanded, setExpanded] = useState(false);
+  const partition = useMemo(
+    () => partitionScheduleByWeek(games, now ?? new Date()),
+    [games, now],
+  );
+
   if (games.length === 0) {
     return <p className="text-sm text-slate-500">No games for this filter.</p>;
   }
 
+  const { past, thisWeek, future, weekLabel } = partition;
+  const hiddenCount = past.length + future.length;
+  const canExpand = hiddenCount > 0;
+
   return (
-    <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
-      {games.map((game) => (
-        <li key={game.id}>
-          <Link
-            href={`/wpbl/games/${game.id}`}
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          {expanded ? "Full schedule" : `This week · ${weekLabel}`}
+        </p>
+        {canExpand ? (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            <StatusBadge status={game.status} />
-            <span className="min-w-[5.5rem] text-xs tabular-nums text-slate-500">
-              {game.whenEt ?? "TBD"}
-            </span>
-            <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <TeamLogo key={game.awayAbbr} abbr={game.awayAbbr} size="sm" />
-                {game.awayAbbr}
-              </span>
-              <span className="text-slate-400">@</span>
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <TeamLogo key={game.homeAbbr} abbr={game.homeAbbr} size="sm" />
-                {game.homeAbbr}
-              </span>
-              <span className="text-slate-500">
-                {game.awayName} at {game.homeName}
-              </span>
-            </span>
-            <span className="font-mono text-sm tabular-nums">{scoreLine(game)}</span>
-            {game.venue ? (
-              <span className="w-full text-xs text-slate-500 sm:w-auto">{game.venue}</span>
-            ) : null}
-          </Link>
-        </li>
-      ))}
-    </ul>
+            {expanded
+              ? "Show this week only"
+              : `Show more (${hiddenCount} past & upcoming)`}
+          </button>
+        ) : null}
+      </div>
+
+      {expanded ? (
+        <div className="space-y-6">
+          <GameGroup title="Earlier" games={past} />
+          <GameGroup title={`This week · ${weekLabel}`} games={thisWeek} />
+          <GameGroup title="Upcoming" games={future} />
+        </div>
+      ) : thisWeek.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          No games scheduled Mon–Sun this week.
+          {canExpand ? " Expand to see past and upcoming games." : null}
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+          {thisWeek.map((game) => (
+            <GameRow key={game.id} game={game} />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

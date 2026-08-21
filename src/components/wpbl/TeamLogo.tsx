@@ -4,7 +4,8 @@ import { useState } from "react";
 
 import { getWpblTeamBrand, wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
 
-const SIZES = { sm: 16, md: 24 } as const;
+/** Display sizes — source marks are 64×64; keep at or below that for sharpness. */
+const SIZES = { sm: 28, md: 40, lg: 48 } as const;
 
 export type TeamLogoProps = {
   abbr: string;
@@ -12,7 +13,7 @@ export type TeamLogoProps = {
   className?: string;
 };
 
-export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
+export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
   const brand = getWpblTeamBrand(abbr);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -20,14 +21,14 @@ export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
 
   const px = SIZES[size];
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- fixed 16–24px local marks; next/image adds no benefit
+    // eslint-disable-next-line @next/next/no-img-element -- fixed local marks; next/image adds no benefit
     <img
       src={src}
       alt=""
       width={px}
       height={px}
       decoding="async"
-      className={`inline-block shrink-0 rounded object-contain p-px dark:bg-white/90 ${className ?? ""}`.trim()}
+      className={`inline-block shrink-0 rounded-sm object-contain dark:bg-white/95 dark:p-0.5 ${className ?? ""}`.trim()}
       onError={() => setFailedSrc(src)}
       title={brand?.fullName}
     />

@@ -193,14 +193,14 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
           <span className="inline-flex items-center gap-2">
-            <TeamLogo abbr={game.awayAbbr} size="md" />
+            <TeamLogo abbr={game.awayAbbr} size="lg" />
             {game.awayAbbr}
           </span>
           <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
             {scoreLine(game)}
           </span>
           <span className="inline-flex items-center gap-2">
-            <TeamLogo abbr={game.homeAbbr} size="md" />
+            <TeamLogo abbr={game.homeAbbr} size="lg" />
             {game.homeAbbr}
           </span>
         </h1>
