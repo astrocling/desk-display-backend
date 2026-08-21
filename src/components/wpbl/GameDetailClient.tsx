@@ -8,6 +8,7 @@ import type { WpblGameDetailResponse, WpblGameStatus } from "@/lib/types/wpbl-di
 import { BoxTables } from "./BoxTables";
 import { LineScore } from "./LineScore";
 import { TeamLogo } from "./TeamLogo";
+import { keyPlayersFromDetail } from "./liveGameCard";
 
 const POLL_MS = 45_000;
 
@@ -170,6 +171,8 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
   }
 
   const { game, boxscore, updatedAt } = data;
+  const situation = game.situation;
+  const keys = keyPlayersFromDetail(data);
 
   return (
     <div className="mt-8 space-y-6">
@@ -177,7 +180,7 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
         ← Back to WPBL
       </Link>
 
-      <header className="space-y-2">
+      <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={game.status} />
           {game.inning ? (
@@ -210,6 +213,41 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
           {game.whenEt ? <span className="ml-2">· {game.whenEt}</span> : null}
           {game.venue ? <span className="ml-2">· {game.venue}</span> : null}
         </p>
+
+        {situation && isLive ? (
+          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
+            {situation.balls != null || situation.strikes != null ? (
+              <span className="font-mono tabular-nums">
+                Count {situation.balls ?? "—"}-{situation.strikes ?? "—"}
+              </span>
+            ) : null}
+            {situation.outs != null ? (
+              <span>{situation.outs} out</span>
+            ) : null}
+            <span>
+              Bases{" "}
+              {[
+                situation.onFirst ? "1B" : null,
+                situation.onSecond ? "2B" : null,
+                situation.onThird ? "3B" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "empty"}
+            </span>
+            {keys.pitcherName ? (
+              <span>
+                P {keys.pitcherName}
+                {keys.pitcherStats ? ` (${keys.pitcherStats})` : ""}
+              </span>
+            ) : null}
+            {keys.batterName ? (
+              <span>
+                AB {keys.batterName}
+                {keys.batterStats ? ` (${keys.batterStats})` : ""}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
       {boxscore.available && boxscore.lineScore ? (
@@ -218,7 +256,10 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
               Line score
             </h2>
-            <LineScore lineScore={boxscore.lineScore} />
+            <LineScore
+              lineScore={boxscore.lineScore}
+              highlightInning={situation?.inningNumber}
+            />
           </section>
 
           <section>

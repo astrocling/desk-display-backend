@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { mapWpblGames } from "./games";
-import { formatInningLabel, mapWpblBoxscore } from "./boxscore";
+import { formatInningLabel, mapWpblBoxscore, mapWpblLiveSituation } from "./boxscore";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -108,5 +108,68 @@ describe("formatInningLabel", () => {
     expect(formatInningLabel("final", { inning: 7, half: "top" })).toBeNull();
     expect(formatInningLabel("live", { inning: 0, half: "top" })).toBeNull();
     expect(formatInningLabel("scheduled", null)).toBeNull();
+  });
+});
+
+describe("mapWpblLiveSituation", () => {
+  it("returns null when not live", () => {
+    expect(
+      mapWpblLiveSituation("final", {
+        inning: 5,
+        half: "top",
+        outs: 1,
+        balls: 2,
+        strikes: 1,
+      }),
+    ).toBeNull();
+  });
+
+  it("maps count, bases, and names from boxscore status", () => {
+    expect(
+      mapWpblLiveSituation("live", {
+        inning: 6,
+        half: "top",
+        outs: 1,
+        balls: 1,
+        strikes: 2,
+        batter_name: "Olson",
+        pitcher_name: "Misiorowski",
+        first_base: "Runner",
+        second_base: "",
+        third_base: "",
+        bases_occupied: [1],
+      }),
+    ).toEqual({
+      inningNumber: 6,
+      half: "top",
+      balls: 1,
+      strikes: 2,
+      outs: 1,
+      onFirst: true,
+      onSecond: false,
+      onThird: false,
+      batterName: "Olson",
+      pitcherName: "Misiorowski",
+    });
+  });
+
+  it("uses bases_occupied when named bases are empty", () => {
+    const sit = mapWpblLiveSituation("live", {
+      inning: 3,
+      half: "bottom",
+      outs: 2,
+      balls: 0,
+      strikes: 0,
+      first_base: "",
+      second_base: "",
+      third_base: "",
+      bases_occupied: [2, 3],
+    });
+    expect(sit).toMatchObject({
+      onFirst: false,
+      onSecond: true,
+      onThird: true,
+      outs: 2,
+    });
   });
 });

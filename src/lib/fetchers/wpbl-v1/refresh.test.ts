@@ -31,6 +31,7 @@ function detail(
       venue: null,
       countsInStandings: true,
       inning: null,
+      situation: null,
       ...(partial.game ?? {}),
     },
     boxscore: partial.boxscore ?? {

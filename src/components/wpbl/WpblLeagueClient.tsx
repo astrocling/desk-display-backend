@@ -9,6 +9,7 @@ import type {
 } from "@/lib/types/wpbl-display";
 
 import { LeadersBoards } from "./LeadersBoards";
+import { LiveGamesSection } from "./LiveGamesSection";
 import { ScheduleList } from "./ScheduleList";
 import { StandingsTable } from "./StandingsTable";
 import { sortWpblSchedule } from "./scheduleSort";
@@ -71,6 +72,7 @@ export function WpblLeagueClient() {
   const [leadersError, setLeadersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<WpblTeamFilter>("ALL");
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
   const hasLeagueRef = useRef(false);
   const hasLeadersRef = useRef(false);
 
@@ -85,6 +87,7 @@ export function WpblLeagueClient() {
         setLeague((await leagueRes.json()) as WpblLeagueResponse);
         setLeagueError(null);
         hasLeagueRef.current = true;
+        setLiveRefreshKey((k) => k + 1);
       } else if (!hasLeagueRef.current) {
         const detail = await readApiError(leagueRes);
         setLeagueError(
@@ -164,6 +167,11 @@ export function WpblLeagueClient() {
     return sortWpblSchedule(games);
   }, [league, teamFilter]);
 
+  const liveGames = useMemo(
+    () => filteredSchedule.filter((g) => g.status === "live"),
+    [filteredSchedule],
+  );
+
   const updatedAt = league?.updatedAt ?? leaders?.updatedAt;
 
   if (loading) {
@@ -193,6 +201,12 @@ export function WpblLeagueClient() {
           ) : null}
         </div>
       </div>
+
+      <LiveGamesSection
+        liveGames={liveGames}
+        standings={league.standings}
+        refreshKey={liveRefreshKey}
+      />
 
       <section>
         <SectionTitle>Standings</SectionTitle>
