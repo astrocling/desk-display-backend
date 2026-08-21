@@ -1,5 +1,7 @@
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
 
+import { teamAccentStyle } from "./teamAccent";
+
 export const LEADERS_DISPLAY_LIMIT = 10;
 
 export type LeadersBoardsProps = {
@@ -29,7 +31,8 @@ function LeaderTable({ title, entries, showQualifier, minAb }: BoardDef & { minA
           {entries.map((entry, i) => (
             <li
               key={`${entry.playerId}-${i}`}
-              className="flex items-baseline gap-2 px-3 py-1.5 text-sm"
+              className="flex items-baseline gap-2 py-1.5 pl-3 pr-3 text-sm"
+              style={teamAccentStyle(entry.teamAbbr)}
             >
               <span className="w-4 tabular-nums text-slate-400">{i + 1}</span>
               <span className="flex-1 truncate">{entry.name}</span>

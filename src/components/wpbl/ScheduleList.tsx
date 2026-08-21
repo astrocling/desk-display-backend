@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
 
+import { TeamLogo } from "./TeamLogo";
+
 export type ScheduleListProps = {
   games: WpblScheduleGame[];
 };
@@ -53,11 +55,17 @@ export function ScheduleList({ games }: ScheduleListProps) {
             <span className="min-w-[5.5rem] text-xs tabular-nums text-slate-500">
               {game.whenEt ?? "TBD"}
             </span>
-            <span className="flex-1 text-sm">
-              <span className="font-medium">{game.awayAbbr}</span>
-              <span className="mx-1 text-slate-400">@</span>
-              <span className="font-medium">{game.homeAbbr}</span>
-              <span className="ml-2 text-slate-500">
+            <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <TeamLogo key={game.awayAbbr} abbr={game.awayAbbr} size="sm" />
+                {game.awayAbbr}
+              </span>
+              <span className="text-slate-400">@</span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <TeamLogo key={game.homeAbbr} abbr={game.homeAbbr} size="sm" />
+                {game.homeAbbr}
+              </span>
+              <span className="text-slate-500">
                 {game.awayName} at {game.homeName}
               </span>
             </span>

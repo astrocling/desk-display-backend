@@ -1,5 +1,7 @@
 import type { WpblStandingRow } from "@/lib/types/wpbl-display";
 
+import { TeamLogo } from "./TeamLogo";
+
 export type StandingsTableProps = {
   rows: WpblStandingRow[];
 };
@@ -33,8 +35,11 @@ export function StandingsTable({ rows }: StandingsTableProps) {
             <tr key={row.teamId} className="whitespace-nowrap">
               <td className="px-3 py-2 tabular-nums text-slate-500">{row.rank}</td>
               <td className="px-3 py-2">
-                <span className="font-medium">{row.abbr}</span>
-                <span className="ml-2 text-slate-500">{row.name}</span>
+                <span className="inline-flex items-center gap-2">
+                  <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
+                  <span className="font-medium">{row.abbr}</span>
+                  <span className="text-slate-500">{row.name}</span>
+                </span>
               </td>
               <td className="px-3 py-2 tabular-nums">{row.w}</td>
               <td className="px-3 py-2 tabular-nums">{row.l}</td>
