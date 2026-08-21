@@ -57,6 +57,36 @@ export function gameStartYmd(game: WpblScheduleGame): string | null {
   return etYmd(new Date(ms));
 }
 
+/**
+ * Games to pin at the top of the league board for "today" (ET):
+ * - any live game (even if it started yesterday ET)
+ * - any game whose start calendar day is today ET
+ */
+export function todaysSlateGames(
+  games: WpblScheduleGame[],
+  now: Date = new Date(),
+): WpblScheduleGame[] {
+  const today = etYmd(now);
+  const slate = games.filter(
+    (game) => game.status === "live" || gameStartYmd(game) === today,
+  );
+  return [...slate].sort((a, b) => {
+    const tier = (g: WpblScheduleGame) => {
+      if (g.status === "live") return 0;
+      if (g.status === "scheduled") return 1;
+      if (g.status === "final") return 2;
+      return 3;
+    };
+    const tA = tier(a);
+    const tB = tier(b);
+    if (tA !== tB) return tA - tB;
+    const aMs = a.startIso ? new Date(a.startIso).getTime() : 0;
+    const bMs = b.startIso ? new Date(b.startIso).getTime() : 0;
+    if (tA === 2) return bMs - aMs;
+    return aMs - bMs || a.id.localeCompare(b.id);
+  });
+}
+
 export type ScheduleWeekPartition = {
   weekStartYmd: string;
   weekEndYmd: string;

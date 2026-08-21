@@ -8,6 +8,7 @@ import {
   mondayOfWeekEt,
   partitionScheduleByWeek,
   sundayOfWeekEt,
+  todaysSlateGames,
 } from "./scheduleWeek";
 
 function game(
@@ -57,6 +58,82 @@ describe("etYmd / gameStartYmd", () => {
 
   it("returns null when startIso is missing", () => {
     expect(gameStartYmd(game({ id: "x", status: "scheduled" }))).toBeNull();
+  });
+});
+
+describe("todaysSlateGames", () => {
+  it("includes today's scheduled/final and any live game", () => {
+    const games = [
+      game({
+        id: "yesterday-final",
+        status: "final",
+        startIso: "2026-08-20T23:00:00Z",
+        awayRuns: 3,
+        homeRuns: 1,
+      }),
+      game({
+        id: "today-sched",
+        status: "scheduled",
+        startIso: "2026-08-21T23:00:00Z",
+        whenEt: "Fri 7:00 PM ET",
+      }),
+      game({
+        id: "today-final",
+        status: "final",
+        startIso: "2026-08-21T18:00:00Z",
+        awayRuns: 5,
+        homeRuns: 2,
+      }),
+      game({
+        id: "live-late",
+        status: "live",
+        startIso: "2026-08-21T01:00:00Z",
+        awayRuns: 1,
+        homeRuns: 0,
+      }),
+      game({
+        id: "tomorrow",
+        status: "scheduled",
+        startIso: "2026-08-22T23:00:00Z",
+      }),
+      game({
+        id: "live-from-yesterday",
+        status: "live",
+        startIso: "2026-08-21T03:30:00Z",
+        awayRuns: 2,
+        homeRuns: 2,
+      }),
+    ];
+
+    // After midnight UTC Aug 22 = still Aug 21 evening ET
+    const slate = todaysSlateGames(games, friEt);
+    expect(slate.map((g) => g.id)).toEqual([
+      "live-late",
+      "live-from-yesterday",
+      "today-sched",
+      "today-final",
+    ]);
+  });
+
+  it("keeps a live game that started on the previous ET calendar day", () => {
+    // Saturday 12:30 AM ET — Friday night game still live
+    const satEarly = new Date("2026-08-22T00:30:00-04:00");
+    const games = [
+      game({
+        id: "spillover-live",
+        status: "live",
+        startIso: "2026-08-21T23:00:00-04:00",
+      }),
+      game({
+        id: "sat-sched",
+        status: "scheduled",
+        startIso: "2026-08-22T19:00:00-04:00",
+      }),
+    ];
+    expect(todaysSlateGames(games, satEarly).map((g) => g.id)).toEqual([
+      "spillover-live",
+      "sat-sched",
+    ]);
   });
 });
 

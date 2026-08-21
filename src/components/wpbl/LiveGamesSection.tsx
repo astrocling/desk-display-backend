@@ -8,32 +8,34 @@ import type {
   WpblStandingRow,
 } from "@/lib/types/wpbl-display";
 
+import { DayGameCard } from "./DayGameCard";
 import { LiveGameCard } from "./LiveGameCard";
 
-export type LiveGamesSectionProps = {
-  liveGames: WpblScheduleGame[];
+export type TodaysGamesSectionProps = {
+  games: WpblScheduleGame[];
   standings: WpblStandingRow[];
   /** Bumps when the parent league poll refreshes so live details reload. */
   refreshKey: number;
 };
 
-export function LiveGamesSection({
-  liveGames,
+export function TodaysGamesSection({
+  games,
   standings,
   refreshKey,
-}: LiveGamesSectionProps) {
+}: TodaysGamesSectionProps) {
+  const liveGames = games.filter((g) => g.status === "live");
   const [details, setDetails] = useState<
     Record<string, WpblGameDetailResponse | undefined>
   >({});
   const [loading, setLoading] = useState(false);
 
-  const ids = liveGames.map((g) => g.id).join(",");
+  const liveIds = liveGames.map((g) => g.id).join(",");
 
   useEffect(() => {
-    if (!ids) return;
+    if (!liveIds) return;
 
     let cancelled = false;
-    const gameIds = ids.split(",");
+    const gameIds = liveIds.split(",");
 
     void (async () => {
       setLoading(true);
@@ -66,46 +68,55 @@ export function LiveGamesSection({
     return () => {
       cancelled = true;
     };
-  }, [ids, refreshKey]);
+  }, [liveIds, refreshKey]);
 
-  if (liveGames.length === 0) return null;
+  if (games.length === 0) return null;
 
-  const cards = liveGames
-    .map((game) => details[game.id])
-    .filter((d): d is WpblGameDetailResponse => Boolean(d));
+  const hasLive = liveGames.length > 0;
+  const title = hasLive ? "Today · Live" : "Today";
 
   return (
     <section className="space-y-3">
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        Live
+        {title}
       </h2>
-      {cards.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 dark:border-slate-600">
-          {loading
-            ? "Loading live game…"
-            : "Live game detected — waiting for box score."}
-          <ul className="mt-2 space-y-1 text-xs">
-            {liveGames.map((g) => (
-              <li key={g.id}>
-                {g.awayAbbr} @ {g.homeAbbr}
-                {g.awayRuns != null && g.homeRuns != null
-                  ? ` · ${g.awayRuns}–${g.homeRuns}`
-                  : ""}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {cards.map((detail) => (
-            <LiveGameCard
-              key={detail.game.id}
-              detail={detail}
-              standings={standings}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {games.map((game) => {
+          if (game.status === "live") {
+            const detail = details[game.id];
+            if (detail) {
+              return (
+                <LiveGameCard
+                  key={game.id}
+                  detail={detail}
+                  standings={standings}
+                />
+              );
+            }
+            return (
+              <div
+                key={game.id}
+                className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-600"
+              >
+                {loading
+                  ? `Loading ${game.awayAbbr} @ ${game.homeAbbr}…`
+                  : `${game.awayAbbr} @ ${game.homeAbbr}${
+                      game.awayRuns != null && game.homeRuns != null
+                        ? ` · ${game.awayRuns}–${game.homeRuns}`
+                        : ""
+                    } — waiting for box score.`}
+              </div>
+            );
+          }
+
+          return (
+            <DayGameCard key={game.id} game={game} standings={standings} />
+          );
+        })}
+      </div>
     </section>
   );
 }
+
+/** @deprecated Prefer TodaysGamesSection */
+export const LiveGamesSection = TodaysGamesSection;
