@@ -6,6 +6,14 @@ export type StandingsTableProps = {
   rows: WpblStandingRow[];
 };
 
+const stickyHead =
+  "sticky z-20 bg-slate-50 dark:bg-slate-900";
+const stickyBody =
+  "sticky z-10 bg-white dark:bg-[var(--background)]";
+const stickyEdge =
+  "shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.45)]";
+const rowBorder = "border-t border-slate-200 dark:border-slate-700";
+
 export function StandingsTable({ rows }: StandingsTableProps) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">No standings available.</p>;
@@ -13,10 +21,14 @@ export function StandingsTable({ rows }: StandingsTableProps) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-      <table className="min-w-full text-left text-sm">
+      <table className="w-max min-w-full border-separate border-spacing-0 text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           <tr>
-            <th className="px-3 py-2 font-medium">#</th>
+            <th className={`${stickyHead} left-0 w-9 min-w-9 px-2 py-2 font-medium`}>#</th>
+            <th
+              className={`${stickyHead} ${stickyEdge} left-9 w-14 min-w-14 px-1 py-2 font-medium`}
+              aria-label="Logo"
+            />
             <th className="px-3 py-2 font-medium">Team</th>
             <th className="px-3 py-2 font-medium">W</th>
             <th className="px-3 py-2 font-medium">L</th>
@@ -30,26 +42,30 @@ export function StandingsTable({ rows }: StandingsTableProps) {
             <th className="px-3 py-2 font-medium">Strk</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+        <tbody>
           {rows.map((row) => (
             <tr key={row.teamId} className="whitespace-nowrap">
-              <td className="px-3 py-2 tabular-nums text-slate-500">{row.rank}</td>
-              <td className="px-3 py-2">
-                <span className="inline-flex items-center gap-2">
-                  <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
-                  <span className="font-medium">{row.abbr}</span>
-                </span>
+              <td
+                className={`${stickyBody} ${rowBorder} left-0 w-9 min-w-9 px-2 py-2 tabular-nums text-slate-500`}
+              >
+                {row.rank}
               </td>
-              <td className="px-3 py-2 tabular-nums">{row.w}</td>
-              <td className="px-3 py-2 tabular-nums">{row.l}</td>
-              <td className="px-3 py-2 tabular-nums">{row.t}</td>
-              <td className="px-3 py-2 tabular-nums">{row.pct ?? "—"}</td>
-              <td className="px-3 py-2 tabular-nums">{row.gb ?? "—"}</td>
-              <td className="px-3 py-2 tabular-nums">{row.rf}</td>
-              <td className="px-3 py-2 tabular-nums">{row.ra}</td>
-              <td className="px-3 py-2 tabular-nums">{row.diff}</td>
-              <td className="px-3 py-2 tabular-nums">{row.l10 ?? "—"}</td>
-              <td className="px-3 py-2 tabular-nums">{row.streak ?? "—"}</td>
+              <td
+                className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 w-14 min-w-14 px-1 py-2`}
+              >
+                <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
+              </td>
+              <td className={`${rowBorder} min-w-[2.75rem] px-3 py-2 font-medium`}>{row.abbr}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.w}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.l}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.t}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.pct ?? "—"}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.gb ?? "—"}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.rf}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.ra}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.diff}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.l10 ?? "—"}</td>
+              <td className={`${rowBorder} px-3 py-2 tabular-nums`}>{row.streak ?? "—"}</td>
             </tr>
           ))}
         </tbody>
