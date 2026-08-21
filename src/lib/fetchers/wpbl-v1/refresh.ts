@@ -124,14 +124,18 @@ export async function refreshWpblLeaders(
 export async function refreshWpblGame(
   id: string,
 ): Promise<WpblGameDetailResponse> {
+  const key = wpblGameKey(id);
+  const prior = await getRedis().get<WpblGameDetailResponse>(key);
+
   try {
     const detail = await fetchWpblGameDetail(id);
-    await getRedis().set(wpblGameKey(id), detail);
-    return detail;
+    const next =
+      prior?.boxscore.available && !detail.boxscore.available
+        ? { ...detail, boxscore: prior.boxscore }
+        : detail;
+    await getRedis().set(key, next);
+    return next;
   } catch (error) {
-    const prior = await getRedis().get<WpblGameDetailResponse>(
-      wpblGameKey(id),
-    );
     if (prior) {
       return prior;
     }
