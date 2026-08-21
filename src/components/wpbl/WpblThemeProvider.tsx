@@ -20,7 +20,6 @@ import {
 
 type WpblThemeContextValue = {
   scheme: WpblColorScheme;
-  ready: boolean;
   setScheme: (scheme: WpblColorScheme) => void;
   toggle: () => void;
 };
@@ -43,9 +42,12 @@ function writeStoredScheme(scheme: WpblColorScheme): void {
   }
 }
 
+function documentScheme(): WpblColorScheme {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
 export function WpblThemeProvider({ children }: { children: ReactNode }) {
   const [scheme, setSchemeState] = useState<WpblColorScheme>("light");
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const initial = resolveWpblColorScheme(
@@ -55,7 +57,6 @@ export function WpblThemeProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from sessionStorage after SSR-safe default
     setSchemeState(initial);
     applyDocumentColorScheme(initial);
-    setReady(true);
 
     return () => {
       applyDocumentColorScheme(systemColorScheme());
@@ -69,12 +70,14 @@ export function WpblThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggle = useCallback(() => {
-    setScheme(scheme === "dark" ? "light" : "dark");
-  }, [scheme, setScheme]);
+    const next: WpblColorScheme =
+      documentScheme() === "dark" ? "light" : "dark";
+    setScheme(next);
+  }, [setScheme]);
 
   const value = useMemo(
-    () => ({ scheme, ready, setScheme, toggle }),
-    [scheme, ready, setScheme, toggle],
+    () => ({ scheme, setScheme, toggle }),
+    [scheme, setScheme, toggle],
   );
 
   return (

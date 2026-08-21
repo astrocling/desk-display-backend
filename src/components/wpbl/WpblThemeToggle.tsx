@@ -38,23 +38,19 @@ function MoonIcon({ className }: { className?: string }) {
 }
 
 export function WpblThemeToggle() {
-  const { scheme, toggle, ready } = useWpblTheme();
-  const next = scheme === "dark" ? "light" : "dark";
+  const { toggle } = useWpblTheme();
 
   return (
     <button
       type="button"
       onClick={toggle}
-      disabled={!ready}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+      aria-label="Toggle light and dark mode"
+      title="Toggle light and dark mode"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
     >
-      {scheme === "dark" ? (
-        <SunIcon className="h-4 w-4" />
-      ) : (
-        <MoonIcon className="h-4 w-4" />
-      )}
+      {/* CSS-driven icons track <html class="dark"> immediately (incl. FOUC script). */}
+      <SunIcon className="hidden h-4 w-4 dark:block" />
+      <MoonIcon className="block h-4 w-4 dark:hidden" />
     </button>
   );
 }
