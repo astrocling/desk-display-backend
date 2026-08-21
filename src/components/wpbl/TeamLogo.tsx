@@ -1,0 +1,34 @@
+"use client";
+
+import { useState } from "react";
+
+import { getWpblTeamBrand, wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
+
+const SIZES = { sm: 16, md: 24 } as const;
+
+export type TeamLogoProps = {
+  abbr: string;
+  size?: keyof typeof SIZES;
+  className?: string;
+};
+
+export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
+  const src = wpblTeamLogoSrc(abbr);
+  const brand = getWpblTeamBrand(abbr);
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return null;
+
+  const px = SIZES[size];
+  const nyPad = abbr === "NY" ? "rounded bg-slate-800 p-0.5" : "";
+  return (
+    <img
+      src={src}
+      alt=""
+      width={px}
+      height={px}
+      className={`inline-block shrink-0 object-contain ${nyPad} ${className ?? ""}`}
+      onError={() => setFailed(true)}
+      title={brand?.fullName}
+    />
+  );
+}
