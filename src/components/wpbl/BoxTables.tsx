@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
+import { wpblTeamPrimary } from "@/lib/wpbl-team-brand";
+
+import { TeamLogo } from "./TeamLogo";
 
 const BATTING_COLUMNS = ["ab", "r", "h", "rbi", "bb", "so", "avg", "obp", "slg"] as const;
 const PITCHING_COLUMNS = ["ip", "h", "r", "er", "bb", "so", "era"] as const;
@@ -12,6 +15,8 @@ export type BoxTablesProps = {
   pitching: WpblBoxPlayerLine[];
   awayLabel: string;
   homeLabel: string;
+  awayAbbr: string;
+  homeAbbr: string;
 };
 
 type Side = "away" | "home";
@@ -76,6 +81,8 @@ export function BoxTables({
   pitching,
   awayLabel,
   homeLabel,
+  awayAbbr,
+  homeAbbr,
 }: BoxTablesProps) {
   const [side, setSide] = useState<Side>("away");
 
@@ -90,7 +97,7 @@ export function BoxTables({
 
   const tabClass = (active: boolean) =>
     active
-      ? "border-b-2 border-slate-900 font-medium text-slate-900 dark:border-slate-100 dark:text-slate-100"
+      ? "border-b-2 font-medium text-slate-900 dark:text-slate-100"
       : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300";
 
   return (
@@ -98,16 +105,24 @@ export function BoxTables({
       <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700">
         <button
           type="button"
-          className={`px-1 pb-2 text-sm ${tabClass(side === "away")}`}
+          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${tabClass(side === "away")}`}
+          style={
+            side === "away" ? { borderBottomColor: wpblTeamPrimary(awayAbbr) } : undefined
+          }
           onClick={() => setSide("away")}
         >
+          <TeamLogo key={awayAbbr} abbr={awayAbbr} size="sm" />
           {awayLabel}
         </button>
         <button
           type="button"
-          className={`px-1 pb-2 text-sm ${tabClass(side === "home")}`}
+          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${tabClass(side === "home")}`}
+          style={
+            side === "home" ? { borderBottomColor: wpblTeamPrimary(homeAbbr) } : undefined
+          }
           onClick={() => setSide("home")}
         >
+          <TeamLogo key={homeAbbr} abbr={homeAbbr} size="sm" />
           {homeLabel}
         </button>
       </div>

@@ -7,6 +7,7 @@ import type { WpblGameDetailResponse, WpblGameStatus } from "@/lib/types/wpbl-di
 
 import { BoxTables } from "./BoxTables";
 import { LineScore } from "./LineScore";
+import { TeamLogo } from "./TeamLogo";
 
 const POLL_MS = 45_000;
 
@@ -190,12 +191,18 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
           </span>
         </div>
 
-        <h1 className="text-2xl font-semibold tracking-tight">
-          <span>{game.awayAbbr}</span>
-          <span className="mx-2 font-mono tabular-nums text-slate-600 dark:text-slate-300">
+        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
+          <span className="inline-flex items-center gap-2">
+            <TeamLogo abbr={game.awayAbbr} size="md" />
+            {game.awayAbbr}
+          </span>
+          <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
             {scoreLine(game)}
           </span>
-          <span>{game.homeAbbr}</span>
+          <span className="inline-flex items-center gap-2">
+            <TeamLogo abbr={game.homeAbbr} size="md" />
+            {game.homeAbbr}
+          </span>
         </h1>
 
         <p className="text-sm text-slate-500">
@@ -223,6 +230,8 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
               pitching={boxscore.pitching}
               awayLabel={`${game.awayAbbr} ${game.awayName}`}
               homeLabel={`${game.homeAbbr} ${game.homeName}`}
+              awayAbbr={game.awayAbbr}
+              homeAbbr={game.homeAbbr}
             />
           </section>
         </>

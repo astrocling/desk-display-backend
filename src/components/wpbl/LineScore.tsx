@@ -1,5 +1,7 @@
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 
+import { TeamLogo } from "./TeamLogo";
+
 export type LineScoreProps = {
   lineScore: NonNullable<WpblGameDetailResponse["boxscore"]["lineScore"]>;
 };
@@ -33,8 +35,11 @@ export function LineScore({ lineScore }: LineScoreProps) {
           {lineScore.teams.map((team) => (
             <tr key={team.side} className="whitespace-nowrap">
               <td className="px-3 py-2">
-                <span className="font-medium">{team.abbr}</span>
-                <span className="ml-2 text-slate-500">{team.name}</span>
+                <span className="inline-flex items-center gap-2">
+                  <TeamLogo key={team.abbr} abbr={team.abbr} size="sm" />
+                  <span className="font-medium">{team.abbr}</span>
+                  <span className="text-slate-500">{team.name}</span>
+                </span>
               </td>
               {innings.map((inning) => {
                 const cell = team.innings.find((i) => i.inning === inning);
