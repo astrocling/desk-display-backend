@@ -1,5 +1,9 @@
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
 import { fetchWpblJson } from "./client";
+import {
+  fetchWpblHeadshotMap,
+  resolvePlayerHeadshot,
+} from "./headshots";
 import { FALLBACK_SEASON_ID, teamFromId, WPBL_TEAMS } from "./teams";
 
 export const BATTING_MIN_AB = 10;
@@ -10,6 +14,8 @@ export interface WpblPlayerSeasonInput {
   playerId: string;
   name: string;
   teamId: string;
+  position?: string | null;
+  headshotUrl?: string | null;
   batting: {
     at_bats: number;
     hits: number;
@@ -54,6 +60,8 @@ interface WpblApiTeamPlayers {
     player_id: string;
     first_name?: string;
     last_name?: string;
+    position?: string;
+    headshot_url?: string;
   }>;
 }
 
@@ -85,6 +93,8 @@ function buildBoard(
         teamAbbr: teamAbbr(player.teamId),
         value: stat.value,
         sortValue: stat.sortValue,
+        position: player.position ?? null,
+        headshotUrl: player.headshotUrl ?? null,
       };
     })
     .filter((entry): entry is WpblLeaderEntry => entry != null);
@@ -163,6 +173,7 @@ export function mapPlayerStatsToInput(
   stats: WpblApiPlayerStats,
   teamId: string,
   fallbackName = "",
+  extras?: { position?: string | null; headshotUrl?: string | null },
 ): WpblPlayerSeasonInput {
   const batting = stats.batting ?? {};
   const pitching = stats.pitching ?? {};
@@ -172,6 +183,8 @@ export function mapPlayerStatsToInput(
     playerId: stats.player_id,
     name,
     teamId,
+    position: extras?.position ?? null,
+    headshotUrl: extras?.headshotUrl ?? null,
     batting: {
       at_bats: batting.at_bats ?? 0,
       hits: batting.hits ?? 0,
@@ -192,17 +205,22 @@ export async function fetchWpblLeaders(
   seasonId: string = FALLBACK_SEASON_ID,
 ): Promise<WpblLeadersBuild> {
   const teamIds = Object.keys(WPBL_TEAMS);
-  const rosterResults = await Promise.allSettled(
-    teamIds.map((id) =>
-      fetchWpblJson<WpblApiTeamPlayers>(`/v1/teams/${id}/players`),
+  const [rosterResults, headshotMap] = await Promise.all([
+    Promise.allSettled(
+      teamIds.map((id) =>
+        fetchWpblJson<WpblApiTeamPlayers>(`/v1/teams/${id}/players`),
+      ),
     ),
-  );
+    fetchWpblHeadshotMap(),
+  ]);
 
   let partial = rosterResults.some((result) => result.status === "rejected");
   const playerJobs: Array<{
     playerId: string;
     teamId: string;
     fallbackName: string;
+    position: string | null;
+    rosterHeadshotUrl: string | null;
   }> = [];
 
   for (let i = 0; i < teamIds.length; i++) {
@@ -211,10 +229,13 @@ export async function fetchWpblLeaders(
 
     const teamId = teamIds[i];
     for (const player of result.value.players) {
+      const fallbackName = rosterPlayerName(player);
       playerJobs.push({
         playerId: player.player_id,
         teamId,
-        fallbackName: rosterPlayerName(player),
+        fallbackName,
+        position: player.position?.trim() || null,
+        rosterHeadshotUrl: player.headshot_url?.trim() || null,
       });
     }
   }
@@ -234,7 +255,20 @@ export async function fetchWpblLeaders(
   const players = statsResults.flatMap((result, index) => {
     if (result.status !== "fulfilled") return [];
     const job = playerJobs[index];
-    return [mapPlayerStatsToInput(result.value, job.teamId, job.fallbackName)];
+    const name =
+      result.value.player_name?.trim() || job.fallbackName || job.playerId;
+    const headshotUrl = resolvePlayerHeadshot({
+      playerId: job.playerId,
+      name,
+      rosterHeadshotUrl: job.rosterHeadshotUrl,
+      headshotMap,
+    });
+    return [
+      mapPlayerStatsToInput(result.value, job.teamId, job.fallbackName, {
+        position: job.position,
+        headshotUrl,
+      }),
+    ];
   });
 
   const leaders = buildWpblLeaders(players);

@@ -99,12 +99,18 @@ describe("mapPlayerStatsToInput", () => {
       playerStatsApiFixture,
       rosterPlayer.team_id,
       rosterPlayerName(rosterPlayer),
+      {
+        position: rosterPlayer.position,
+        headshotUrl: "https://example.com/jill.webp",
+      },
     );
 
     expect(mapped).toMatchObject({
       playerId: "bpyqct4a85lh306g",
       name: "Jill Albayati",
       teamId: "vhubhz8li07tmgq8",
+      position: "P/Ut.",
+      headshotUrl: "https://example.com/jill.webp",
       batting: {
         at_bats: 27,
         hits: 11,
@@ -123,5 +129,9 @@ describe("mapPlayerStatsToInput", () => {
     const leaders = buildWpblLeaders([mapped]);
     expect(leaders.batting.avg[0].value).toBe(".407");
     expect(leaders.batting.hr[0].value).toBe("1");
+    expect(leaders.batting.avg[0].headshotUrl).toBe(
+      "https://example.com/jill.webp",
+    );
+    expect(leaders.batting.avg[0].position).toBe("P/Ut.");
   });
 });
