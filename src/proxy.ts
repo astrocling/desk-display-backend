@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/** Serve /radar at the root of radar.theclingans.com. */
+/** Serve app routes at the root of branded subdomains. */
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
-  if (
-    host.startsWith("radar.theclingans.com") &&
-    request.nextUrl.pathname === "/"
-  ) {
+  if (request.nextUrl.pathname !== "/") {
+    return NextResponse.next();
+  }
+
+  let pathname: string | null = null;
+  if (host.startsWith("radar.theclingans.com")) {
+    pathname = "/radar";
+  } else if (host.startsWith("wpbl.theclingans.com")) {
+    pathname = "/wpbl";
+  }
+
+  if (pathname) {
     const url = request.nextUrl.clone();
-    url.pathname = "/radar";
+    url.pathname = pathname;
     return NextResponse.rewrite(url);
   }
   return NextResponse.next();
