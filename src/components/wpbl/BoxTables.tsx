@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
-import { wpblTeamPrimary } from "@/lib/wpbl-team-brand";
+import { wpblTeamAccent } from "@/lib/wpbl-team-brand";
 
 import { TeamLogo } from "./TeamLogo";
 
@@ -105,10 +105,8 @@ export function BoxTables({
       <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700">
         <button
           type="button"
-          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${tabClass(side === "away")}`}
-          style={
-            side === "away" ? { borderBottomColor: wpblTeamPrimary(awayAbbr) } : undefined
-          }
+          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${side === "away" ? "wpbl-team-accent-border-b" : ""} ${tabClass(side === "away")}`}
+          style={side === "away" ? wpblTeamAccent(awayAbbr) : undefined}
           onClick={() => setSide("away")}
         >
           <TeamLogo key={awayAbbr} abbr={awayAbbr} size="sm" />
@@ -116,10 +114,8 @@ export function BoxTables({
         </button>
         <button
           type="button"
-          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${tabClass(side === "home")}`}
-          style={
-            side === "home" ? { borderBottomColor: wpblTeamPrimary(homeAbbr) } : undefined
-          }
+          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${side === "home" ? "wpbl-team-accent-border-b" : ""} ${tabClass(side === "home")}`}
+          style={side === "home" ? wpblTeamAccent(homeAbbr) : undefined}
           onClick={() => setSide("home")}
         >
           <TeamLogo key={homeAbbr} abbr={homeAbbr} size="sm" />

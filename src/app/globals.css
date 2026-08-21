@@ -25,6 +25,35 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* WPBL team accent colours — light primary by default, primaryDark in dark mode */
+.wpbl-team-accent {
+  border-left-color: var(--team-accent);
+}
+
+.wpbl-team-accent-fill {
+  background-color: var(--team-accent);
+  border-color: var(--team-accent);
+}
+
+.wpbl-team-accent-border-b {
+  border-bottom-color: var(--team-accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .wpbl-team-accent {
+    border-left-color: var(--team-accent-dark);
+  }
+
+  .wpbl-team-accent-fill {
+    background-color: var(--team-accent-dark);
+    border-color: var(--team-accent-dark);
+  }
+
+  .wpbl-team-accent-border-b {
+    border-bottom-color: var(--team-accent-dark);
+  }
+}
+
 /* Radar fixture — device ATC-lite theming (radar_lvgl / radar_format). */
 
 /* Airspace SVG is a canvas-container sibling; keep markers above it. */

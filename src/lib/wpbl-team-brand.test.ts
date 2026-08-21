@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getWpblTeamBrand,
+  wpblTeamAccent,
   wpblTeamLogoSrc,
   wpblTeamPrimary,
 } from "./wpbl-team-brand";
@@ -12,6 +13,7 @@ describe("getWpblTeamBrand", () => {
       expect(brand).not.toBeNull();
       expect(brand!.abbr).toBe(abbr);
       expect(brand!.primary).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(brand!.primaryDark).toMatch(/^#[0-9A-Fa-f]{6}$/);
       expect(brand!.logoSrc).toMatch(/^\/wpbl\//);
     }
   });
@@ -32,6 +34,26 @@ describe("wpblTeamPrimary", () => {
 
   it("returns slate fallback for unknown", () => {
     expect(wpblTeamPrimary("??")).toBe("#64748b");
+  });
+});
+
+describe("wpblTeamAccent", () => {
+  it("returns CSS vars for known abbrs", () => {
+    expect(wpblTeamAccent("NY")).toEqual({
+      "--team-accent": "#0B1F3A",
+      "--team-accent-dark": "#3C6FA8",
+    });
+    expect(wpblTeamAccent("SF")).toEqual({
+      "--team-accent": "#5B2A8C",
+      "--team-accent-dark": "#8B5FC4",
+    });
+  });
+
+  it("uses slate fallback for unknown abbr", () => {
+    expect(wpblTeamAccent("??")).toEqual({
+      "--team-accent": "#64748b",
+      "--team-accent-dark": "#64748b",
+    });
   });
 });
 

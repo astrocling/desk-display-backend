@@ -19,14 +19,15 @@ export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
   if (!src || failedSrc === src) return null;
 
   const px = SIZES[size];
-  const nyPad = abbr === "NY" ? "rounded bg-slate-800 p-0.5" : "";
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- fixed 16–24px local marks; next/image adds no benefit
     <img
       src={src}
       alt=""
       width={px}
       height={px}
-      className={`inline-block shrink-0 object-contain ${nyPad} ${className ?? ""}`.trim()}
+      decoding="async"
+      className={`inline-block shrink-0 rounded object-contain p-px dark:bg-white/90 ${className ?? ""}`.trim()}
       onError={() => setFailedSrc(src)}
       title={brand?.fullName}
     />

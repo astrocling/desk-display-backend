@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
-import { wpblTeamPrimary } from "@/lib/wpbl-team-brand";
+import { wpblTeamAccent } from "@/lib/wpbl-team-brand";
 
 export function teamAccentStyle(abbr: string): CSSProperties {
   return {
+    ...wpblTeamAccent(abbr),
     borderLeftWidth: 3,
     borderLeftStyle: "solid",
-    borderLeftColor: wpblTeamPrimary(abbr),
+    borderLeftColor: "var(--team-accent)",
   };
 }

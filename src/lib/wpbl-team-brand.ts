@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export type WpblBrandAbbr = "LA" | "NY" | "SF" | "BOS";
 
 export type WpblTeamBrand = {
@@ -5,6 +7,8 @@ export type WpblTeamBrand = {
   name: string;
   fullName: string;
   primary: string;
+  /** Lightened variant for ≥3:1 non-text contrast on dark backgrounds */
+  primaryDark: string;
   logoSrc: string;
 };
 
@@ -16,6 +20,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Queens",
     fullName: "Los Angeles Queens",
     primary: "#AF9067",
+    primaryDark: "#AF9067",
     logoSrc: "/wpbl/la.png",
   },
   NY: {
@@ -23,6 +28,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Heights",
     fullName: "New York Heights",
     primary: "#0B1F3A",
+    primaryDark: "#3C6FA8",
     logoSrc: "/wpbl/ny.png",
   },
   SF: {
@@ -30,6 +36,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Firebells",
     fullName: "San Francisco Firebells",
     primary: "#5B2A8C",
+    primaryDark: "#8B5FC4",
     logoSrc: "/wpbl/sf.png",
   },
   BOS: {
@@ -37,6 +44,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Hunters",
     fullName: "Boston Hunters",
     primary: "#0B6B3A",
+    primaryDark: "#0B6B3A",
     logoSrc: "/wpbl/bos.png",
   },
 };
@@ -56,4 +64,15 @@ export function wpblTeamPrimary(abbr: string): string {
 
 export function wpblTeamLogoSrc(abbr: string): string | null {
   return getWpblTeamBrand(abbr)?.logoSrc ?? null;
+}
+
+/** CSS custom properties for theme-aware team accent colours */
+export function wpblTeamAccent(abbr: string): CSSProperties {
+  const brand = getWpblTeamBrand(abbr);
+  const primary = brand?.primary ?? FALLBACK_PRIMARY;
+  const primaryDark = brand?.primaryDark ?? primary;
+  return {
+    ["--team-accent" as string]: primary,
+    ["--team-accent-dark" as string]: primaryDark,
+  };
 }
