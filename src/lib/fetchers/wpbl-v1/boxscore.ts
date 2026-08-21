@@ -28,14 +28,14 @@ interface WpblBoxscoreTeam {
   side: string;
   id: string;
   name: string;
-  line: Array<{ inning: number; runs: number }>;
-  totals: {
-    runs: number;
-    hits: number;
-    errors: number;
-    left_on_base: number;
-  };
-  players: WpblBoxscorePlayer[];
+  line?: Array<{ inning: number; runs: number }> | null;
+  totals?: {
+    runs: number | null;
+    hits: number | null;
+    errors: number | null;
+    left_on_base: number | null;
+  } | null;
+  players?: WpblBoxscorePlayer[] | null;
 }
 
 export interface WpblBoxscorePayload {
@@ -69,7 +69,7 @@ function mapPlayerLines(
   const lines: WpblBoxPlayerLine[] = [];
   for (const team of teams) {
     const side = team.side === "home" ? "home" : "away";
-    for (const player of team.players) {
+    for (const player of team.players ?? []) {
       const rawStats = player[statKey];
       if (!rawStats) continue;
       lines.push({
@@ -88,15 +88,22 @@ function mapLineScore(
 ): NonNullable<WpblGameDetailResponse["boxscore"]["lineScore"]> {
   const mappedTeams = teams.map((team) => {
     const info = teamFromId(team.id);
+    const line = team.line ?? [];
+    const totals = team.totals ?? {
+      runs: null,
+      hits: null,
+      errors: null,
+      left_on_base: null,
+    };
     return {
       side: (team.side === "home" ? "home" : "away") as "away" | "home",
       abbr: info?.abbr ?? "??",
       name: info?.name ?? team.name,
-      innings: team.line.map(({ inning, runs }) => ({ inning, runs })),
-      runs: team.totals.runs,
-      hits: team.totals.hits,
-      errors: team.totals.errors,
-      lob: team.totals.left_on_base,
+      innings: line.map(({ inning, runs }) => ({ inning, runs })),
+      runs: totals.runs ?? null,
+      hits: totals.hits ?? null,
+      errors: totals.errors ?? null,
+      lob: totals.left_on_base ?? null,
     };
   });
   const maxInning = Math.max(
@@ -124,7 +131,11 @@ export function mapWpblBoxscore(
   _gameMeta: WpblScheduleGame,
 ): WpblGameDetailResponse["boxscore"] {
   const teams = raw.boxscore?.teams ?? [];
-  if (teams.length === 0) {
+  const hasContent = teams.some(
+    (team) =>
+      (team.line?.length ?? 0) > 0 || (team.players?.length ?? 0) > 0,
+  );
+  if (!hasContent) {
     return { available: false, lineScore: null, batting: [], pitching: [] };
   }
 
@@ -136,17 +147,42 @@ export function mapWpblBoxscore(
   };
 }
 
-export async function fetchWpblGameDetail(id: string): Promise<WpblGameDetailResponse> {
-  const [gameRaw, boxRaw] = await Promise.all([
-    fetchWpblJson<WpblGamesPayload["games"][number]>(`/v1/games/${id}`),
-    fetchWpblJson<WpblBoxscorePayload>(`/v1/games/${id}/boxscore`).catch(
-      (): WpblBoxscorePayload | null => null,
+export async function fetchWpblGameDetail(
+  id: string,
+): Promise<WpblGameDetailResponse> {
+  const [gameResult, boxResult] = await Promise.allSettled([
+    fetchWpblJson<WpblGamesPayload["games"][number]>(`/v1/games/${encodeURIComponent(id)}`),
+    fetchWpblJson<WpblBoxscorePayload>(
+      `/v1/games/${encodeURIComponent(id)}/boxscore`,
     ),
   ]);
 
+  let gameRaw =
+    gameResult.status === "fulfilled" ? gameResult.value : null;
+  const boxRaw =
+    boxResult.status === "fulfilled" ? boxResult.value : null;
+
+  // If the single-game endpoint fails (429/404), recover meta from the full list.
+  if (!gameRaw) {
+    try {
+      const list = await fetchWpblJson<WpblGamesPayload>("/v1/games");
+      gameRaw = list.games.find((game) => game.game_id === id) ?? null;
+    } catch {
+      gameRaw = null;
+    }
+  }
+
+  if (!gameRaw) {
+    const reason =
+      gameResult.status === "rejected" && gameResult.reason instanceof Error
+        ? gameResult.reason.message
+        : `Unknown WPBL game ${id}`;
+    throw new Error(reason);
+  }
+
   const [gameMeta] = mapWpblGames({ games: [gameRaw] });
   if (!gameMeta) {
-    throw new Error(`Unknown WPBL game ${id}`);
+    throw new Error(`Unmapped WPBL game ${id}`);
   }
 
   const boxscore = boxRaw

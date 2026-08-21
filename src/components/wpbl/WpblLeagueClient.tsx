@@ -37,11 +37,24 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
+async function readApiError(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    return typeof body.error === "string" && body.error.trim()
+      ? body.error.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function fetchErrorMessage(
   label: string,
   status: number | null,
   fallback: string,
+  detail?: string | null,
 ): string {
+  if (detail) return detail;
   if (status === 503) {
     return `${label} data not loaded — run the WPBL refresh cron first.`;
   }
@@ -73,8 +86,14 @@ export function WpblLeagueClient() {
         setLeagueError(null);
         hasLeagueRef.current = true;
       } else if (!hasLeagueRef.current) {
+        const detail = await readApiError(leagueRes);
         setLeagueError(
-          fetchErrorMessage("League", leagueRes.status, "League fetch failed"),
+          fetchErrorMessage(
+            "League",
+            leagueRes.status,
+            "League fetch failed",
+            detail,
+          ),
         );
         setLeague(null);
       }
@@ -84,8 +103,14 @@ export function WpblLeagueClient() {
         setLeadersError(null);
         hasLeadersRef.current = true;
       } else if (!hasLeadersRef.current) {
+        const detail = await readApiError(leadersRes);
         setLeadersError(
-          fetchErrorMessage("Leaders", leadersRes.status, "Leaders fetch failed"),
+          fetchErrorMessage(
+            "Leaders",
+            leadersRes.status,
+            "Leaders fetch failed",
+            detail,
+          ),
         );
         setLeaders(null);
       }

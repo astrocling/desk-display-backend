@@ -73,9 +73,53 @@ function mapWpblGame(game: WpblApiGame): WpblScheduleGame | null {
 }
 
 export function mapWpblGames(payload: WpblGamesPayload): WpblScheduleGame[] {
-  return payload.games
-    .map(mapWpblGame)
-    .filter((game): game is WpblScheduleGame => game != null);
+  return collapseDuplicateMatchups(
+    payload.games
+      .map(mapWpblGame)
+      .filter((game): game is WpblScheduleGame => game != null),
+  );
+}
+
+function statusRank(status: WpblScheduleGame["status"]): number {
+  switch (status) {
+    case "live":
+      return 0;
+    case "final":
+      return 1;
+    case "scheduled":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function matchupDayKey(game: WpblScheduleGame): string {
+  const day = game.startIso ? game.startIso.slice(0, 10) : "unknown";
+  return `${game.awayAbbr}@${game.homeAbbr}|${day}`;
+}
+
+/** Prefer live > final > scheduled when the API emits ghost duplicate slots. */
+export function collapseDuplicateMatchups(
+  games: WpblScheduleGame[],
+): WpblScheduleGame[] {
+  const byMatchup = new Map<string, WpblScheduleGame>();
+  for (const game of games) {
+    const key = matchupDayKey(game);
+    const existing = byMatchup.get(key);
+    if (!existing) {
+      byMatchup.set(key, game);
+      continue;
+    }
+    const rankDiff = statusRank(game.status) - statusRank(existing.status);
+    if (rankDiff < 0) {
+      byMatchup.set(key, game);
+    } else if (rankDiff === 0) {
+      const gameStart = game.startIso ? Date.parse(game.startIso) : 0;
+      const existingStart = existing.startIso ? Date.parse(existing.startIso) : 0;
+      if (gameStart >= existingStart) byMatchup.set(key, game);
+    }
+  }
+  return Array.from(byMatchup.values());
 }
 
 export function resolveSeasonId(payload: WpblGamesPayload): string | null {

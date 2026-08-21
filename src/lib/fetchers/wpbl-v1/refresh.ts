@@ -104,24 +104,60 @@ async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
   await redis.set(REDIS_KEYS.wpblLeaders, merged);
 }
 
+/** Build league snapshot from WPBL /v1 with no Redis dependency. */
+export async function buildWpblLeague(): Promise<WpblLeagueResponse> {
+  const payload = await fetchWpblJson<WpblGamesPayload>("/v1/games");
+  const games = mapWpblGames(payload);
+  const seasonId = resolveSeasonId(payload) ?? FALLBACK_SEASON_ID;
+  const standings = await fetchWpblStandings(seasonId);
+
+  return {
+    updatedAt: new Date().toISOString(),
+    seasonId,
+    standings,
+    games,
+  };
+}
+
+/** Build leaders blob from WPBL /v1 with no Redis dependency. */
+export async function buildWpblLeadersBlob(
+  seasonId: string,
+): Promise<WpblLeadersResponse> {
+  const leaders = await fetchWpblLeaders(seasonId);
+  return {
+    ...leaders,
+    updatedAt: new Date().toISOString(),
+    seasonId,
+  };
+}
+
+async function readPriorLeague(): Promise<WpblLeagueResponse | null> {
+  try {
+    return await getRedis().get<WpblLeagueResponse>(REDIS_KEYS.wpblLeague);
+  } catch {
+    return null;
+  }
+}
+
+async function readPriorLeaders(): Promise<WpblLeadersResponse | null> {
+  try {
+    return await getRedis().get<WpblLeadersResponse>(REDIS_KEYS.wpblLeaders);
+  } catch {
+    return null;
+  }
+}
+
 export async function refreshWpblLeague(): Promise<WpblLeagueResponse> {
   try {
-    const payload = await fetchWpblJson<WpblGamesPayload>("/v1/games");
-    const games = mapWpblGames(payload);
-    const seasonId = resolveSeasonId(payload) ?? FALLBACK_SEASON_ID;
-    const standings = await fetchWpblStandings(seasonId);
-
-    const blob: WpblLeagueResponse = {
-      updatedAt: new Date().toISOString(),
-      seasonId,
-      standings,
-      games,
-    };
-
-    await softSetWpblLeague(blob);
+    const blob = await buildWpblLeague();
+    try {
+      await softSetWpblLeague(blob);
+    } catch {
+      // Redis optional for local live fallback
+    }
     return blob;
   } catch (error) {
-    const prior = await getRedis().get<WpblLeagueResponse>(REDIS_KEYS.wpblLeague);
+    const prior = await readPriorLeague();
     if (prior) {
       return prior;
     }
@@ -133,19 +169,15 @@ export async function refreshWpblLeaders(
   seasonId: string,
 ): Promise<WpblLeadersResponse> {
   try {
-    const leaders = await fetchWpblLeaders(seasonId);
-    const blob: WpblLeadersResponse = {
-      ...leaders,
-      updatedAt: new Date().toISOString(),
-      seasonId,
-    };
-
-    await softSetWpblLeaders(blob);
+    const blob = await buildWpblLeadersBlob(seasonId);
+    try {
+      await softSetWpblLeaders(blob);
+    } catch {
+      // Redis optional for local live fallback
+    }
     return blob;
   } catch (error) {
-    const prior = await getRedis().get<WpblLeadersResponse>(
-      REDIS_KEYS.wpblLeaders,
-    );
+    const prior = await readPriorLeaders();
     if (prior) {
       return prior;
     }
@@ -157,7 +189,12 @@ export async function refreshWpblGame(
   id: string,
 ): Promise<WpblGameDetailResponse> {
   const key = wpblGameKey(id);
-  const prior = await getRedis().get<WpblGameDetailResponse>(key);
+  let prior: WpblGameDetailResponse | null = null;
+  try {
+    prior = await getRedis().get<WpblGameDetailResponse>(key);
+  } catch {
+    prior = null;
+  }
 
   try {
     const detail = await fetchWpblGameDetail(id);
@@ -165,7 +202,11 @@ export async function refreshWpblGame(
       prior?.boxscore.available && !detail.boxscore.available
         ? { ...detail, boxscore: prior.boxscore }
         : detail;
-    await getRedis().set(key, next);
+    try {
+      await getRedis().set(key, next);
+    } catch {
+      // Redis optional for local live fallback
+    }
     return next;
   } catch (error) {
     if (prior) {

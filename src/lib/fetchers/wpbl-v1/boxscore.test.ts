@@ -61,6 +61,37 @@ describe("mapWpblBoxscore", () => {
     expect(jamie?.stats.obp).toBe(".500");
     expect(jamie?.stats.slg).toBe(".333");
   });
+
+  it("treats teams with null line/players as unavailable boxscore", () => {
+    const box = mapWpblBoxscore(
+      {
+        boxscore: {
+          game_status: "Not Started",
+          teams: [
+            {
+              side: "away",
+              id: "v4gisr4rbgmn67b0",
+              name: "Los Angeles Queens",
+              line: null,
+              totals: null,
+              players: null,
+            },
+            {
+              side: "home",
+              id: "fttth861nft1j2s7",
+              name: "New York Heights",
+              line: null,
+              totals: null,
+              players: null,
+            },
+          ],
+        },
+      },
+      gameMeta,
+    );
+    expect(box.available).toBe(false);
+    expect(box.lineScore).toBeNull();
+  });
 });
 
 describe("formatInningLabel", () => {

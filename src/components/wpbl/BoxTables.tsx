@@ -10,6 +10,8 @@ const PITCHING_COLUMNS = ["ip", "h", "r", "er", "bb", "so", "era"] as const;
 export type BoxTablesProps = {
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
+  awayLabel: string;
+  homeLabel: string;
 };
 
 type Side = "away" | "home";
@@ -69,7 +71,12 @@ function PlayerStatsTable({
   );
 }
 
-export function BoxTables({ batting, pitching }: BoxTablesProps) {
+export function BoxTables({
+  batting,
+  pitching,
+  awayLabel,
+  homeLabel,
+}: BoxTablesProps) {
   const [side, setSide] = useState<Side>("away");
 
   const sideBatting = useMemo(
@@ -94,14 +101,14 @@ export function BoxTables({ batting, pitching }: BoxTablesProps) {
           className={`px-1 pb-2 text-sm ${tabClass(side === "away")}`}
           onClick={() => setSide("away")}
         >
-          Away
+          {awayLabel}
         </button>
         <button
           type="button"
           className={`px-1 pb-2 text-sm ${tabClass(side === "home")}`}
           onClick={() => setSide("home")}
         >
-          Home
+          {homeLabel}
         </button>
       </div>
 

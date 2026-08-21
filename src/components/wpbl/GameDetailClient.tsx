@@ -75,7 +75,17 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
       if (!res.ok) {
         if (!hasDataRef.current) {
-          setError(`Game fetch failed (${res.status})`);
+          let detail: string | null = null;
+          try {
+            const body = (await res.json()) as { error?: unknown };
+            detail =
+              typeof body.error === "string" && body.error.trim()
+                ? body.error.trim()
+                : null;
+          } catch {
+            detail = null;
+          }
+          setError(detail ?? `Game fetch failed (${res.status})`);
           setData(null);
         }
         return false;
@@ -208,7 +218,12 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
               Box score
             </h2>
-            <BoxTables batting={boxscore.batting} pitching={boxscore.pitching} />
+            <BoxTables
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+              awayLabel={`${game.awayAbbr} ${game.awayName}`}
+              homeLabel={`${game.homeAbbr} ${game.homeName}`}
+            />
           </section>
         </>
       ) : (
