@@ -3,7 +3,7 @@
 ## Stack
 
 - **Runtime**: Next.js App Router (TypeScript) on Vercel
-- **Cache**: Upstash Redis (keys: `weather`, `timezones`, `scores`, `airports`)
+- **Cache**: Upstash Redis (keys: `weather`, `timezones`, `scores`, `airports`, `wpbl:league`, `wpbl:leaders`, `wpbl:game:{id}`)
 - **Cron**: Vercel Cron (`vercel.json`) invoking `/api/cron/*` routes
 - **Auth**: `Authorization: Bearer <CRON_SECRET>` on all cron endpoints (required; `x-vercel-cron` alone is not accepted)
 - **Flagstand**: Read-only Neon connection to SSR Hub (`DATABASE_URL`)
@@ -193,8 +193,165 @@ Sports scores for configured teams/leagues (`MLB_TEAM`, optional `FLAGSTAND_LEAG
 | `wpbl.standings` | array | Ranked 4-team table (≤4) |
 | `updatedAt` | string | ISO timestamp when cache was written |
 
-Flagstand fields are `null` when `DATABASE_URL` is unset or queries fail (scores cron still succeeds for MLB). Flagstand may still be populated; dial Sports UI shows MLB ↔ WPBL (Flagstand dormant on device). WPBL is ingested from the official stats homepage and soft-fails to empty/last-good arrays.
+Flagstand fields are `null` when `DATABASE_URL` is unset or queries fail (scores cron still succeeds for MLB). Flagstand may still be populated; dial Sports UI shows MLB ↔ WPBL (Flagstand dormant on device). WPBL is ingested from the official stats homepage (HTML scrape) and soft-fails to empty/last-good arrays. **Dial path unchanged** — this `wpbl` slice is separate from the JSON `/api/wpbl*` routes below.
+
 **Error** `503`: `{ "error": "scores not ready" }`
+
+### `GET /api/wpbl`
+
+Full WPBL league board: standings + schedule. Data from WPBL Stats API v1; cached by cron.
+
+**Response** `200` — Redis key `wpbl:league`:
+
+```json
+{
+  "updatedAt": "2026-08-10T12:00:00.000Z",
+  "seasonId": "abc123",
+  "standings": [
+    {
+      "teamId": "1",
+      "abbr": "LA",
+      "name": "Queens",
+      "rank": 1,
+      "w": 3,
+      "l": 1,
+      "t": 0,
+      "pct": ".750",
+      "gb": "—",
+      "rf": 28,
+      "ra": 18,
+      "diff": 10,
+      "l10": "5-3",
+      "streak": "W2"
+    }
+  ],
+  "games": [
+    {
+      "id": "game-uuid",
+      "status": "live",
+      "startIso": "2026-08-10T23:00:00.000Z",
+      "whenEt": null,
+      "awayAbbr": "BOS",
+      "homeAbbr": "LA",
+      "awayName": "Hunters",
+      "homeName": "Queens",
+      "awayRuns": 2,
+      "homeRuns": 4,
+      "venue": "Field A",
+      "countsInStandings": true
+    }
+  ]
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `seasonId` | string | Active WPBL season |
+| `standings` | array | Full 4-team table; neutral (no team filter) |
+| `games` | array | Full season schedule; `status` `scheduled`\|`live`\|`final`\|`other` |
+| `games[].countsInStandings` | boolean | Excluded games (e.g. exhibitions) flagged |
+| `updatedAt` | string | ISO timestamp when cache was written |
+
+**Error** `503`: `{ "error": "WPBL league cache empty" }`
+
+### `GET /api/wpbl/leaders`
+
+Season batting and pitching leaderboards. Cron refresh; partial upstream failures set `partial: true` and keep last-good boards.
+
+**Response** `200` — Redis key `wpbl:leaders`:
+
+```json
+{
+  "updatedAt": "2026-08-10T12:00:00.000Z",
+  "seasonId": "abc123",
+  "partial": false,
+  "qualifiers": { "battingMinAb": 10 },
+  "batting": {
+    "avg": [{ "playerId": "p1", "name": "Jane Doe", "teamAbbr": "LA", "value": ".312", "sortValue": 0.312 }],
+    "hr": [],
+    "rbi": [],
+    "h": []
+  },
+  "pitching": {
+    "era": [],
+    "so": [],
+    "w": [],
+    "sv": []
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `partial` | boolean | `true` if some player stat fetches failed |
+| `qualifiers.battingMinAb` | number | Minimum AB for AVG board (default **10**) |
+| `batting.avg` / `hr` / `rbi` / `h` | array | Top entries per category |
+| `pitching.era` / `so` / `w` / `sv` | array | Top entries per category |
+| `*.value` | string | Display-ready stat string |
+| `updatedAt` | string | ISO timestamp when cache was written |
+
+**Error** `503`: `{ "error": "WPBL leaders cache empty" }`
+
+### `GET /api/wpbl/games/[id]`
+
+Game detail with line score and box score. Per-game Redis key `wpbl:game:{id}`. Live games refresh on read when `updatedAt` is older than ~45s; on upstream failure returns last-good blob when present.
+
+**Response** `200`:
+
+```json
+{
+  "updatedAt": "2026-08-10T23:30:00.000Z",
+  "game": {
+    "id": "game-uuid",
+    "status": "live",
+    "inning": "Top 5",
+    "startIso": "2026-08-10T23:00:00.000Z",
+    "whenEt": null,
+    "awayAbbr": "BOS",
+    "homeAbbr": "LA",
+    "awayName": "Hunters",
+    "homeName": "Queens",
+    "awayRuns": 2,
+    "homeRuns": 4,
+    "venue": "Field A",
+    "countsInStandings": true
+  },
+  "boxscore": {
+    "available": true,
+    "lineScore": {
+      "maxInning": 9,
+      "teams": [
+        {
+          "side": "away",
+          "abbr": "BOS",
+          "name": "Hunters",
+          "innings": [{ "inning": 1, "runs": 0 }],
+          "runs": 2,
+          "hits": 5,
+          "errors": 0,
+          "lob": 3
+        }
+      ]
+    },
+    "batting": [{ "side": "away", "name": "Player", "position": "SS", "stats": { "ab": 4, "h": 2 } }],
+    "pitching": [{ "side": "home", "name": "Pitcher", "position": "P", "stats": { "ip": "5.0", "er": 2 } }]
+  }
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `game.inning` | string \| null | e.g. `"Top 5"` while live |
+| `boxscore.available` | boolean | `false` when box not yet published |
+| `boxscore.lineScore` | object \| null | Inning-by-inning R/H/E/LOB |
+| `boxscore.batting` | array | Hitting lines (upstream `hitting` mapped here) |
+| `boxscore.pitching` | array | Pitching lines |
+| `updatedAt` | string | ISO timestamp when cache was written |
+
+**Errors**:
+
+- `404`: `{ "error": "Game not found" }` (no cache and upstream failed)
+- `503`: not used on this route (stale cache served on failure)
 
 ### `GET /api/airport?code=<ICAO>`
 
@@ -228,6 +385,7 @@ All require `Authorization: Bearer <CRON_SECRET>`.
 | `/api/cron/weather` | `*/20 * * * *` | Refresh weather cache | `{ "ok": true }` |
 | `/api/cron/timezones` | `0 6 * * *` | Refresh timezone/sunrise data | `{ "ok": true, "cities": <count> }` |
 | `/api/cron/scores` | `*/15 * * * *` | Refresh scores cache | `{ "ok": true }` (optional `flagstandWarning`) |
+| `/api/cron/wpbl` | `*/5 * * * *` | Refresh `wpbl:league` + `wpbl:leaders` | `{ "ok": true, "games": <count>, "leadersPartial": <bool> }` |
 | `/api/cron/seed-airports` | manual | Seed airport hash from OurAirports CSV | `{ "ok": true, "count": <number> }` |
 
 Cron failures return `401` (unauthorized), `502` (upstream error), or `502` with `{ "error": "..." }`.
