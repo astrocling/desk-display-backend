@@ -37,48 +37,71 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
+function fetchErrorMessage(
+  label: string,
+  status: number | null,
+  fallback: string,
+): string {
+  if (status === 503) {
+    return `${label} data not loaded — run the WPBL refresh cron first.`;
+  }
+  if (status != null) {
+    return `${label} fetch failed (${status})`;
+  }
+  return fallback;
+}
+
 export function WpblLeagueClient() {
   const [league, setLeague] = useState<WpblLeagueResponse | null>(null);
   const [leaders, setLeaders] = useState<WpblLeadersResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [leagueError, setLeagueError] = useState<string | null>(null);
+  const [leadersError, setLeadersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<WpblTeamFilter>("ALL");
-  const hasDataRef = useRef(false);
+  const hasLeagueRef = useRef(false);
+  const hasLeadersRef = useRef(false);
 
   const load = useCallback(async () => {
-    const [leagueRes, leadersRes] = await Promise.all([
-      fetch("/api/wpbl"),
-      fetch("/api/wpbl/leaders"),
-    ]);
+    try {
+      const [leagueRes, leadersRes] = await Promise.all([
+        fetch("/api/wpbl"),
+        fetch("/api/wpbl/leaders"),
+      ]);
 
-    if (!leagueRes.ok || !leadersRes.ok) {
-      if (!hasDataRef.current) {
-        const leagueErr =
-          leagueRes.status === 503
-            ? "League data not loaded — run the WPBL refresh cron first."
-            : `League fetch failed (${leagueRes.status})`;
-        const leadersErr =
-          leadersRes.status === 503
-            ? "Leaders data not loaded — run the WPBL refresh cron first."
-            : `Leaders fetch failed (${leadersRes.status})`;
-        setError(
-          !leagueRes.ok && !leadersRes.ok
-            ? "WPBL cache empty — run the WPBL refresh cron first."
-            : !leagueRes.ok
-              ? leagueErr
-              : leadersErr,
+      if (leagueRes.ok) {
+        setLeague((await leagueRes.json()) as WpblLeagueResponse);
+        setLeagueError(null);
+        hasLeagueRef.current = true;
+      } else if (!hasLeagueRef.current) {
+        setLeagueError(
+          fetchErrorMessage("League", leagueRes.status, "League fetch failed"),
         );
         setLeague(null);
+      }
+
+      if (leadersRes.ok) {
+        setLeaders((await leadersRes.json()) as WpblLeadersResponse);
+        setLeadersError(null);
+        hasLeadersRef.current = true;
+      } else if (!hasLeadersRef.current) {
+        setLeadersError(
+          fetchErrorMessage("Leaders", leadersRes.status, "Leaders fetch failed"),
+        );
+        setLeaders(null);
+      }
+
+      return leagueRes.ok || leadersRes.ok;
+    } catch {
+      if (!hasLeagueRef.current) {
+        setLeagueError("League fetch failed — network error.");
+        setLeague(null);
+      }
+      if (!hasLeadersRef.current) {
+        setLeadersError("Leaders fetch failed — network error.");
         setLeaders(null);
       }
       return false;
     }
-
-    setLeague((await leagueRes.json()) as WpblLeagueResponse);
-    setLeaders((await leadersRes.json()) as WpblLeadersResponse);
-    setError(null);
-    hasDataRef.current = true;
-    return true;
   }, []);
 
   useEffect(() => {
@@ -122,15 +145,15 @@ export function WpblLeagueClient() {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
   }
 
-  if (error && !league && !leaders) {
+  if (!league && leagueError) {
     return (
       <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-        {error}
+        {leagueError}
       </div>
     );
   }
 
-  if (!league || !leaders) {
+  if (!league) {
     return null;
   }
 
@@ -158,7 +181,13 @@ export function WpblLeagueClient() {
 
       <section>
         <SectionTitle>Leaders</SectionTitle>
-        <LeadersBoards leaders={leaders} teamFilter={teamFilter} />
+        {leaders ? (
+          <LeadersBoards leaders={leaders} teamFilter={teamFilter} />
+        ) : (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            {leadersError ?? "Leaders unavailable."}
+          </div>
+        )}
       </section>
     </div>
   );

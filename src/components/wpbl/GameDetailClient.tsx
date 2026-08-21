@@ -61,42 +61,50 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
   const hasDataRef = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/wpbl/games/${gameId}`);
+    try {
+      const res = await fetch(`/api/wpbl/games/${gameId}`);
 
-    if (res.status === 404) {
+      if (res.status === 404) {
+        if (!hasDataRef.current) {
+          setNotFound(true);
+          setData(null);
+          setError(null);
+        }
+        return false;
+      }
+
+      if (!res.ok) {
+        if (!hasDataRef.current) {
+          setError(`Game fetch failed (${res.status})`);
+          setData(null);
+        }
+        return false;
+      }
+
+      const json = (await res.json()) as WpblGameDetailResponse;
+      setData(json);
+      setNotFound(false);
+      setError(null);
+      hasDataRef.current = true;
+      return true;
+    } catch {
       if (!hasDataRef.current) {
-        setNotFound(true);
+        setError("Game fetch failed — network error.");
         setData(null);
-        setError(null);
       }
       return false;
     }
-
-    if (!res.ok) {
-      if (!hasDataRef.current) {
-        setError(`Game fetch failed (${res.status})`);
-        setData(null);
-      }
-      return false;
-    }
-
-    const json = (await res.json()) as WpblGameDetailResponse;
-    setData(json);
-    setNotFound(false);
-    setError(null);
-    hasDataRef.current = true;
-    return true;
   }, [gameId]);
 
   useEffect(() => {
     let cancelled = false;
     hasDataRef.current = false;
-    setLoading(true);
     setData(null);
     setNotFound(false);
     setError(null);
 
     void (async () => {
+      setLoading(true);
       await load();
       if (!cancelled) setLoading(false);
     })();

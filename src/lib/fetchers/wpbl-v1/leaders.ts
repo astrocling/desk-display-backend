@@ -3,6 +3,8 @@ import { fetchWpblJson } from "./client";
 import { FALLBACK_SEASON_ID, teamFromId, WPBL_TEAMS } from "./teams";
 
 export const BATTING_MIN_AB = 10;
+/** Stored per board in Redis; UI shows fewer after team filter. */
+export const LEADERS_BOARD_STORE_LIMIT = 50;
 
 export interface WpblPlayerSeasonInput {
   playerId: string;
@@ -71,7 +73,7 @@ function buildBoard(
   players: WpblPlayerSeasonInput[],
   getEntry: (player: WpblPlayerSeasonInput) => { value: string; sortValue: number } | null,
   sort: "asc" | "desc" = "desc",
-  limit = 10,
+  limit = LEADERS_BOARD_STORE_LIMIT,
 ): WpblLeaderEntry[] {
   const entries = players
     .map((player) => {
@@ -151,13 +153,13 @@ export function buildWpblLeaders(players: WpblPlayerSeasonInput[]): WpblLeadersB
   };
 }
 
-function rosterPlayerName(player: WpblApiTeamPlayers["players"][number]): string {
+export function rosterPlayerName(player: WpblApiTeamPlayers["players"][number]): string {
   const first = player.first_name?.trim() ?? "";
   const last = player.last_name?.trim() ?? "";
   return `${first} ${last}`.trim();
 }
 
-function mapPlayerStatsToInput(
+export function mapPlayerStatsToInput(
   stats: WpblApiPlayerStats,
   teamId: string,
   fallbackName = "",

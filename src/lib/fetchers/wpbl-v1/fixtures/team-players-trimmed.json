@@ -1,0 +1,33 @@
+{
+  "count": 17,
+  "players": [
+    {
+      "player_id": "bpyqct4a85lh306g",
+      "team_id": "vhubhz8li07tmgq8",
+      "first_name": "Jill",
+      "last_name": "Albayati",
+      "position": "P/Ut."
+    },
+    {
+      "player_id": "jc062foc8ijjn7d2",
+      "team_id": "vhubhz8li07tmgq8",
+      "first_name": "Hinano",
+      "last_name": "Beppu",
+      "position": "2B"
+    },
+    {
+      "player_id": "vjeeaoxap16nadnw",
+      "team_id": "vhubhz8li07tmgq8",
+      "first_name": "Peyton",
+      "last_name": "Coria",
+      "position": "P"
+    },
+    {
+      "player_id": "psexfbwrg9daflgp",
+      "team_id": "vhubhz8li07tmgq8",
+      "first_name": "Ela",
+      "last_name": "Day-Bédard",
+      "position": "Inf."
+    }
+  ]
+}

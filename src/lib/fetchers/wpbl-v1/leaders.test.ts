@@ -2,7 +2,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BATTING_MIN_AB, buildWpblLeaders } from "./leaders";
+import {
+  BATTING_MIN_AB,
+  buildWpblLeaders,
+  LEADERS_BOARD_STORE_LIMIT,
+  mapPlayerStatsToInput,
+  rosterPlayerName,
+} from "./leaders";
+
+const fixtureDir = dirname(fileURLToPath(import.meta.url));
 
 const players = [
   {
@@ -29,10 +37,15 @@ const players = [
 ];
 
 const fixturePlayers = JSON.parse(
-  readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "fixtures/player-stats-sample.json"),
-    "utf8",
-  ),
+  readFileSync(join(fixtureDir, "fixtures/player-stats-sample.json"), "utf8"),
+);
+
+const teamPlayersFixture = JSON.parse(
+  readFileSync(join(fixtureDir, "fixtures/team-players-trimmed.json"), "utf8"),
+);
+
+const playerStatsApiFixture = JSON.parse(
+  readFileSync(join(fixtureDir, "fixtures/player-stats-api-trimmed.json"), "utf8"),
 );
 
 describe("buildWpblLeaders", () => {
@@ -51,11 +64,64 @@ describe("buildWpblLeaders", () => {
     expect(leaders.partial).toBe(false);
   });
 
-  it("ranks fixture players and caps boards at 10", () => {
+  it("stores up to 50 entries per board", () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({
+      playerId: `p${i}`,
+      name: `Player ${i}`,
+      teamId: "vhubhz8li07tmgq8",
+      batting: { at_bats: 20, hits: i, home_runs: i, rbi: i },
+      pitching: { outs_pitched: 0, era: 0, strikeouts: 0, wins: 0, saves: 0 },
+    }));
+    const leaders = buildWpblLeaders(many);
+    expect(LEADERS_BOARD_STORE_LIMIT).toBe(50);
+    expect(leaders.batting.hr).toHaveLength(50);
+    expect(leaders.batting.hr[0].sortValue).toBeGreaterThan(
+      leaders.batting.hr.at(-1)?.sortValue ?? 0,
+    );
+  });
+
+  it("ranks fixture players with non-zero AVG and HR leaders", () => {
     const leaders = buildWpblLeaders(fixturePlayers);
-    expect(leaders.batting.avg.length).toBeLessThanOrEqual(10);
+    expect(leaders.batting.avg.length).toBeGreaterThan(0);
+    expect(leaders.batting.hr.length).toBeGreaterThan(0);
     expect(leaders.pitching.era[0].sortValue).toBeLessThanOrEqual(
       leaders.pitching.era.at(-1)?.sortValue ?? Infinity,
     );
+  });
+});
+
+describe("mapPlayerStatsToInput", () => {
+  it("maps live API field names from trimmed fixtures", () => {
+    const rosterPlayer = teamPlayersFixture.players[0];
+    expect(rosterPlayerName(rosterPlayer)).toBe("Jill Albayati");
+
+    const mapped = mapPlayerStatsToInput(
+      playerStatsApiFixture,
+      rosterPlayer.team_id,
+      rosterPlayerName(rosterPlayer),
+    );
+
+    expect(mapped).toMatchObject({
+      playerId: "bpyqct4a85lh306g",
+      name: "Jill Albayati",
+      teamId: "vhubhz8li07tmgq8",
+      batting: {
+        at_bats: 27,
+        hits: 11,
+        home_runs: 1,
+        rbi: 7,
+      },
+      pitching: {
+        outs_pitched: 30,
+        era: 1.8,
+        strikeouts: 10,
+        wins: 2,
+        saves: 0,
+      },
+    });
+
+    const leaders = buildWpblLeaders([mapped]);
+    expect(leaders.batting.avg[0].value).toBe(".407");
+    expect(leaders.batting.hr[0].value).toBe("1");
   });
 });

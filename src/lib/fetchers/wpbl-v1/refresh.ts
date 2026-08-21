@@ -40,20 +40,24 @@ export function shouldRefreshWpblGame(
   return false;
 }
 
-async function softSetWpblLeague(blob: WpblLeagueResponse): Promise<void> {
-  const redis = getRedis();
-  if (blob.games.length === 0 && blob.standings.length === 0) {
-    const prior = await redis.get<WpblLeagueResponse>(REDIS_KEYS.wpblLeague);
-    if (prior) {
-      return;
-    }
+export function mergeWpblLeagueBlob(
+  fresh: WpblLeagueResponse,
+  prior: WpblLeagueResponse | null,
+): WpblLeagueResponse {
+  if (!prior) return fresh;
+
+  const merged = { ...fresh };
+  if (fresh.standings.length === 0 && prior.standings.length > 0) {
+    merged.standings = prior.standings;
   }
-  await redis.set(REDIS_KEYS.wpblLeague, blob);
+  if (fresh.games.length === 0 && prior.games.length > 0) {
+    merged.games = prior.games;
+  }
+  return merged;
 }
 
-async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
-  const redis = getRedis();
-  const hasData =
+function leadersHasData(blob: WpblLeadersResponse): boolean {
+  return (
     blob.batting.avg.length > 0 ||
     blob.batting.hr.length > 0 ||
     blob.batting.rbi.length > 0 ||
@@ -61,15 +65,43 @@ async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
     blob.pitching.era.length > 0 ||
     blob.pitching.so.length > 0 ||
     blob.pitching.w.length > 0 ||
-    blob.pitching.sv.length > 0;
+    blob.pitching.sv.length > 0
+  );
+}
 
-  if (!hasData) {
-    const prior = await redis.get<WpblLeadersResponse>(REDIS_KEYS.wpblLeaders);
+export function mergeWpblLeadersBlob(
+  fresh: WpblLeadersResponse,
+  prior: WpblLeadersResponse | null,
+): WpblLeadersResponse {
+  if (!prior || leadersHasData(fresh)) return fresh;
+  if (!leadersHasData(prior)) return fresh;
+  return prior;
+}
+
+async function softSetWpblLeague(blob: WpblLeagueResponse): Promise<void> {
+  const redis = getRedis();
+  const prior = await redis.get<WpblLeagueResponse>(REDIS_KEYS.wpblLeague);
+  const merged = mergeWpblLeagueBlob(blob, prior);
+
+  if (merged.games.length === 0 && merged.standings.length === 0) {
     if (prior) {
       return;
     }
   }
-  await redis.set(REDIS_KEYS.wpblLeaders, blob);
+  await redis.set(REDIS_KEYS.wpblLeague, merged);
+}
+
+async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
+  const redis = getRedis();
+  const prior = await redis.get<WpblLeadersResponse>(REDIS_KEYS.wpblLeaders);
+  const merged = mergeWpblLeadersBlob(blob, prior);
+
+  if (!leadersHasData(merged)) {
+    if (prior) {
+      return;
+    }
+  }
+  await redis.set(REDIS_KEYS.wpblLeaders, merged);
 }
 
 export async function refreshWpblLeague(): Promise<WpblLeagueResponse> {

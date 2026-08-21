@@ -1,5 +1,7 @@
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
 
+export const LEADERS_DISPLAY_LIMIT = 10;
+
 export type LeadersBoardsProps = {
   leaders: WpblLeadersResponse;
   teamFilter: string;
@@ -42,8 +44,9 @@ function LeaderTable({ title, entries, showQualifier, minAb }: BoardDef & { minA
 }
 
 function filterEntries(entries: WpblLeaderEntry[], teamFilter: string): WpblLeaderEntry[] {
-  if (teamFilter === "ALL") return entries;
-  return entries.filter((e) => e.teamAbbr === teamFilter);
+  const filtered =
+    teamFilter === "ALL" ? entries : entries.filter((e) => e.teamAbbr === teamFilter);
+  return filtered.slice(0, LEADERS_DISPLAY_LIMIT);
 }
 
 export function LeadersBoards({ leaders, teamFilter }: LeadersBoardsProps) {
