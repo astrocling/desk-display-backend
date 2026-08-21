@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   WpblLeadersResponse,
@@ -43,6 +43,7 @@ export function WpblLeagueClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [teamFilter, setTeamFilter] = useState<WpblTeamFilter>("ALL");
+  const hasDataRef = useRef(false);
 
   const load = useCallback(async () => {
     const [leagueRes, leadersRes] = await Promise.all([
@@ -51,29 +52,32 @@ export function WpblLeagueClient() {
     ]);
 
     if (!leagueRes.ok || !leadersRes.ok) {
-      const leagueErr =
-        leagueRes.status === 503
-          ? "League data not loaded — run the WPBL refresh cron first."
-          : `League fetch failed (${leagueRes.status})`;
-      const leadersErr =
-        leadersRes.status === 503
-          ? "Leaders data not loaded — run the WPBL refresh cron first."
-          : `Leaders fetch failed (${leadersRes.status})`;
-      setError(
-        !leagueRes.ok && !leadersRes.ok
-          ? "WPBL cache empty — run the WPBL refresh cron first."
-          : !leagueRes.ok
-            ? leagueErr
-            : leadersErr,
-      );
-      setLeague(null);
-      setLeaders(null);
+      if (!hasDataRef.current) {
+        const leagueErr =
+          leagueRes.status === 503
+            ? "League data not loaded — run the WPBL refresh cron first."
+            : `League fetch failed (${leagueRes.status})`;
+        const leadersErr =
+          leadersRes.status === 503
+            ? "Leaders data not loaded — run the WPBL refresh cron first."
+            : `Leaders fetch failed (${leadersRes.status})`;
+        setError(
+          !leagueRes.ok && !leadersRes.ok
+            ? "WPBL cache empty — run the WPBL refresh cron first."
+            : !leagueRes.ok
+              ? leagueErr
+              : leadersErr,
+        );
+        setLeague(null);
+        setLeaders(null);
+      }
       return false;
     }
 
     setLeague((await leagueRes.json()) as WpblLeagueResponse);
     setLeaders((await leadersRes.json()) as WpblLeadersResponse);
     setError(null);
+    hasDataRef.current = true;
     return true;
   }, []);
 
@@ -118,7 +122,7 @@ export function WpblLeagueClient() {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
   }
 
-  if (error) {
+  if (error && !league && !leaders) {
     return (
       <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
         {error}
