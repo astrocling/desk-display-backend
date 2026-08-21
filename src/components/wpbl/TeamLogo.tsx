@@ -15,8 +15,8 @@ export type TeamLogoProps = {
 export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
   const brand = getWpblTeamBrand(abbr);
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) return null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || failedSrc === src) return null;
 
   const px = SIZES[size];
   const nyPad = abbr === "NY" ? "rounded bg-slate-800 p-0.5" : "";
@@ -26,8 +26,8 @@ export function TeamLogo({ abbr, size = "sm", className }: TeamLogoProps) {
       alt=""
       width={px}
       height={px}
-      className={`inline-block shrink-0 object-contain ${nyPad} ${className ?? ""}`}
-      onError={() => setFailed(true)}
+      className={`inline-block shrink-0 object-contain ${nyPad} ${className ?? ""}`.trim()}
+      onError={() => setFailedSrc(src)}
       title={brand?.fullName}
     />
   );

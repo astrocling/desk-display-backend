@@ -41,6 +41,8 @@ export function TeamFilter({ value, onChange }: TeamFilterProps) {
                 ? {
                     backgroundColor: wpblTeamPrimary(opt.value),
                     borderColor: wpblTeamPrimary(opt.value),
+                    // Queens gold is mid-tone — dark text reads better than white
+                    color: opt.value === "LA" ? "#111827" : undefined,
                   }
                 : undefined
             }
