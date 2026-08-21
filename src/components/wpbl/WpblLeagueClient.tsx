@@ -16,7 +16,7 @@ import { sortWpblSchedule } from "./scheduleSort";
 import { todaysSlateGames } from "./scheduleWeek";
 import { TeamFilter, type WpblTeamFilter } from "./TeamFilter";
 
-const POLL_MS = 45_000;
+const POLL_MS = 30_000;
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
@@ -198,7 +198,7 @@ export function WpblLeagueClient() {
         <div className="text-xs text-slate-500">
           {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
           {hasLive ? (
-            <span className="ml-2 text-red-600 dark:text-red-400">· Live — refreshing every 45s</span>
+            <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
           ) : null}
         </div>
       </div>

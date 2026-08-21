@@ -10,7 +10,7 @@ import { LineScore } from "./LineScore";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
-const POLL_MS = 45_000;
+const POLL_MS = 30_000;
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
@@ -189,7 +189,7 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
           <span className="text-xs text-slate-500">
             {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
             {isLive ? (
-              <span className="ml-2 text-red-600 dark:text-red-400">· Live — refreshing every 45s</span>
+              <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
             ) : null}
           </span>
         </div>
