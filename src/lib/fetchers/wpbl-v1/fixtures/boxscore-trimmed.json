@@ -1,0 +1,467 @@
+{
+  "boxscore": {
+    "game_id": "8alsgvzc90ypwphl",
+    "game_status": "Final",
+    "status": {
+      "complete": true,
+      "inning": 0,
+      "half": "",
+      "batting_team_id": "",
+      "outs": 0,
+      "balls": 0,
+      "strikes": 0,
+      "batter_name": "",
+      "pitcher_name": "",
+      "first_base": "",
+      "second_base": "",
+      "third_base": "",
+      "bases_occupied": [],
+      "bases_loaded": false,
+      "away_runs": 10,
+      "home_runs": 8
+    },
+    "teams": [
+      {
+        "side": "away",
+        "id": "v4gisr4rbgmn67b0",
+        "name": "Los Angeles Queens",
+        "line": [
+          {
+            "inning": 1,
+            "runs": 2
+          },
+          {
+            "inning": 2,
+            "runs": 0
+          },
+          {
+            "inning": 3,
+            "runs": 0
+          },
+          {
+            "inning": 4,
+            "runs": 2
+          },
+          {
+            "inning": 5,
+            "runs": 0
+          },
+          {
+            "inning": 6,
+            "runs": 2
+          },
+          {
+            "inning": 7,
+            "runs": 4
+          }
+        ],
+        "totals": {
+          "runs": 10,
+          "hits": 10,
+          "errors": 2,
+          "left_on_base": 5
+        },
+        "players": [
+          {
+            "id": "621he4harla4rfs1",
+            "profile_url": "https://www.womensprobaseballleague.com/players/mone-davis/",
+            "name": "Mo'ne Davis",
+            "short_name": "Mo'ne Davis",
+            "uniform": "3",
+            "position": "cf",
+            "spot": "1",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "4",
+              "fly": "2",
+              "ground": "1",
+              "h": "0",
+              "obp": ".000",
+              "ops": ".000",
+              "r": "1",
+              "rbi": "0",
+              "slg": ".000"
+            },
+            "fielding": {
+              "a": "0",
+              "e": "1",
+              "po": "1"
+            }
+          },
+          {
+            "id": "psop4589hgseq83d",
+            "profile_url": "https://www.womensprobaseballleague.com/players/jamie-mackay/",
+            "name": "Jamie Mackay",
+            "short_name": "Jamie Mackay",
+            "uniform": "20",
+            "position": "c",
+            "spot": "3",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "3",
+              "bb": "1",
+              "fly": "1",
+              "ground": "1",
+              "h": "1",
+              "obp": ".500",
+              "ops": ".833",
+              "r": "1",
+              "rbi": "0",
+              "slg": ".333"
+            },
+            "fielding": {
+              "a": "0",
+              "e": "1",
+              "po": "6",
+              "sba": "2"
+            }
+          },
+          {
+            "id": "46594pfod50536vw",
+            "profile_url": "https://www.womensprobaseballleague.com/players/amira-hondras/",
+            "name": "Amira Hondras",
+            "short_name": "Amira Hondras",
+            "uniform": "7",
+            "position": "2b",
+            "spot": "7",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "4",
+              "double": "1",
+              "ground": "2",
+              "h": "2",
+              "obp": ".500",
+              "ops": "1.250",
+              "r": "1",
+              "rbi": "4",
+              "slg": ".750"
+            },
+            "fielding": {
+              "a": "2",
+              "e": "0",
+              "indp": "1",
+              "po": "2"
+            }
+          },
+          {
+            "id": "3d36iqt0pwdh6i8b",
+            "profile_url": "https://www.womensprobaseballleague.com/players/ayami-sato/",
+            "name": "Ayami Sato",
+            "short_name": "Ayami Sato",
+            "uniform": "18",
+            "position": "p",
+            "spot": "10",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "0",
+              "h": "0",
+              "obp": ".000",
+              "ops": ".000",
+              "r": "0",
+              "rbi": "0",
+              "slg": ".000"
+            },
+            "pitching": {
+              "ab": "17",
+              "appear": "1",
+              "bb": "1",
+              "bf": "19",
+              "double": "1",
+              "er": "4",
+              "fly": "5",
+              "ground": "2",
+              "gs": "1",
+              "h": "10",
+              "ip": "3.0",
+              "pitches": "71",
+              "r": "7",
+              "sfa": "1",
+              "so": "1",
+              "strikes": "47",
+              "whip": "3.67"
+            },
+            "fielding": {
+              "a": "1",
+              "e": "0",
+              "po": "0",
+              "sba": "1"
+            }
+          },
+          {
+            "id": "qia9474ayx8cyeuw",
+            "profile_url": "https://www.womensprobaseballleague.com/players/meggie-meidlinger/",
+            "name": "Meggie Meidlinger",
+            "short_name": "Meggie Meidlinger",
+            "uniform": "13",
+            "position": "p",
+            "spot": "10",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "0",
+              "h": "0",
+              "obp": ".000",
+              "ops": ".000",
+              "r": "0",
+              "rbi": "0",
+              "slg": ".000"
+            },
+            "pitching": {
+              "ab": "7",
+              "appear": "3",
+              "bb": "1",
+              "bf": "8",
+              "bk": "1",
+              "fly": "1",
+              "ground": "3",
+              "h": "1",
+              "ip": "2.0",
+              "kl": "1",
+              "pitches": "29",
+              "so": "2",
+              "strikes": "19",
+              "whip": "1.00",
+              "win": "1-0"
+            },
+            "fielding": {
+              "a": "0",
+              "e": "0",
+              "po": "0",
+              "sba": "1"
+            }
+          },
+          {
+            "id": "",
+            "name": "Caitlin Eynon",
+            "short_name": "Caitlin Eynon",
+            "uniform": "29",
+            "position": "",
+            "spot": "0",
+            "bats": "L",
+            "throws": "R"
+          }
+        ]
+      },
+      {
+        "side": "home",
+        "id": "fttth861nft1j2s7",
+        "name": "New York Heights",
+        "line": [
+          {
+            "inning": 1,
+            "runs": 5
+          },
+          {
+            "inning": 2,
+            "runs": 2
+          },
+          {
+            "inning": 3,
+            "runs": 0
+          },
+          {
+            "inning": 4,
+            "runs": 1
+          },
+          {
+            "inning": 5,
+            "runs": 0
+          },
+          {
+            "inning": 6,
+            "runs": 0
+          },
+          {
+            "inning": 7,
+            "runs": 0
+          }
+        ],
+        "totals": {
+          "runs": 8,
+          "hits": 12,
+          "errors": 1,
+          "left_on_base": 6
+        },
+        "players": [
+          {
+            "id": "qpz463w9p8a43hmp",
+            "profile_url": "https://www.womensprobaseballleague.com/players/valerie-perez/",
+            "name": "Val Perez",
+            "short_name": "Val Perez",
+            "uniform": "27",
+            "position": "ss",
+            "spot": "1",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "4",
+              "fly": "2",
+              "ground": "1",
+              "h": "1",
+              "obp": ".250",
+              "ops": ".500",
+              "r": "1",
+              "rbi": "0",
+              "slg": ".250"
+            },
+            "fielding": {
+              "a": "3",
+              "e": "1",
+              "indp": "1",
+              "po": "3"
+            }
+          },
+          {
+            "id": "6fn9036v8jpxmptb",
+            "profile_url": "https://www.womensprobaseballleague.com/players/denae-benites/",
+            "name": "Denae Benites",
+            "short_name": "Denae Benites",
+            "uniform": "2",
+            "position": "c",
+            "spot": "3",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "4",
+              "h": "4",
+              "hr": "1",
+              "obp": "1.000",
+              "ops": "2.750",
+              "r": "3",
+              "rbi": "2",
+              "sb": "1",
+              "slg": "1.750"
+            },
+            "fielding": {
+              "a": "1",
+              "e": "0",
+              "po": "6",
+              "sba": "1"
+            }
+          },
+          {
+            "id": "54od878q20rx7hv5",
+            "profile_url": "https://www.womensprobaseballleague.com/players/kylee-lahners/",
+            "name": "Kylee Lahners",
+            "short_name": "Kylee Lahners",
+            "uniform": "22",
+            "position": "dh/1b",
+            "spot": "4",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "2",
+              "bb": "2",
+              "double": "1",
+              "h": "2",
+              "obp": "1.000",
+              "ops": "2.500",
+              "r": "1",
+              "rbi": "3",
+              "slg": "1.500"
+            },
+            "fielding": {
+              "a": "0",
+              "e": "0",
+              "po": "0"
+            }
+          },
+          {
+            "id": "n4n9isveqnhvmxn1",
+            "profile_url": "https://www.womensprobaseballleague.com/players/rakyung-kim/",
+            "name": "Rakyung Kim",
+            "short_name": "Rakyung Kim",
+            "uniform": "29",
+            "position": "p",
+            "spot": "10",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "0",
+              "h": "0",
+              "obp": ".000",
+              "ops": ".000",
+              "r": "0",
+              "rbi": "0",
+              "slg": ".000"
+            },
+            "pitching": {
+              "ab": "15",
+              "appear": "1",
+              "bb": "4",
+              "bf": "19",
+              "double": "1",
+              "er": "2",
+              "fly": "6",
+              "ground": "2",
+              "gs": "1",
+              "h": "2",
+              "ip": "4.0",
+              "kl": "1",
+              "pitches": "80",
+              "r": "4",
+              "so": "4",
+              "strikes": "43",
+              "whip": "1.50",
+              "wp": "4"
+            },
+            "fielding": {
+              "a": "0",
+              "e": "0",
+              "po": "0",
+              "sba": "1"
+            }
+          },
+          {
+            "id": "a3mzzzpphfnwvx9c",
+            "profile_url": "https://www.womensprobaseballleague.com/players/jacqueline-reynolds/",
+            "name": "Jacqui Reynolds",
+            "short_name": "Jacqui Reynolds",
+            "uniform": "31",
+            "position": "p",
+            "spot": "10",
+            "bats": "R",
+            "throws": "R",
+            "hitting": {
+              "ab": "0",
+              "h": "0",
+              "obp": ".000",
+              "ops": ".000",
+              "r": "0",
+              "rbi": "0",
+              "slg": ".000"
+            },
+            "pitching": {
+              "ab": "15",
+              "appear": "2",
+              "bb": "1",
+              "bf": "16",
+              "double": "3",
+              "er": "6",
+              "ground": "5",
+              "h": "8",
+              "ip": "2.2",
+              "kl": "1",
+              "loss": "0-1",
+              "pitches": "65",
+              "r": "6",
+              "so": "2",
+              "strikes": "39",
+              "whip": "4.09",
+              "wp": "1"
+            },
+            "fielding": {
+              "a": "1",
+              "e": "0",
+              "po": "0"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
