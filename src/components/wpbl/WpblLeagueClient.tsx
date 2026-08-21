@@ -9,10 +9,11 @@ import type {
 } from "@/lib/types/wpbl-display";
 
 import { LeadersBoards } from "./LeadersBoards";
-import { LiveGamesSection } from "./LiveGamesSection";
 import { ScheduleList } from "./ScheduleList";
 import { StandingsTable } from "./StandingsTable";
+import { TodaysGamesSection } from "./LiveGamesSection";
 import { sortWpblSchedule } from "./scheduleSort";
+import { todaysSlateGames } from "./scheduleWeek";
 import { TeamFilter, type WpblTeamFilter } from "./TeamFilter";
 
 const POLL_MS = 45_000;
@@ -167,8 +168,8 @@ export function WpblLeagueClient() {
     return sortWpblSchedule(games);
   }, [league, teamFilter]);
 
-  const liveGames = useMemo(
-    () => filteredSchedule.filter((g) => g.status === "live"),
+  const todayGames = useMemo(
+    () => todaysSlateGames(filteredSchedule),
     [filteredSchedule],
   );
 
@@ -202,8 +203,8 @@ export function WpblLeagueClient() {
         </div>
       </div>
 
-      <LiveGamesSection
-        liveGames={liveGames}
+      <TodaysGamesSection
+        games={todayGames}
         standings={league.standings}
         refreshKey={liveRefreshKey}
       />
