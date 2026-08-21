@@ -58,18 +58,15 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
           </span>
         </div>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            <span className="inline-flex items-center gap-1.5">
-              <TeamLogo abbr={game.awayAbbr} size="md" />
-              {game.awayAbbr}
-            </span>
+          {/* Fixed columns so logos / abbrs / @ line up across every row */}
+          <div className="grid grid-cols-[2.75rem_2.75rem_1rem_2.75rem_2.75rem] items-center justify-items-center gap-x-1.5 text-sm font-medium">
+            <TeamLogo abbr={game.awayAbbr} size="md" />
+            <span className="tabular-nums tracking-wide">{game.awayAbbr}</span>
             <span className="text-slate-400" aria-hidden>
               @
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <TeamLogo abbr={game.homeAbbr} size="md" />
-              {game.homeAbbr}
-            </span>
+            <TeamLogo abbr={game.homeAbbr} size="md" />
+            <span className="tabular-nums tracking-wide">{game.homeAbbr}</span>
           </div>
           <p className="mt-0.5 truncate text-xs text-slate-500">
             {game.awayName} at {game.homeName}
