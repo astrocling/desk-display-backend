@@ -1,0 +1,31 @@
+{
+  "count": 2,
+  "games": [
+    {
+      "game_id": "8alsgvzc90ypwphl",
+      "season_id": "c9sgab9f9yx00z75",
+      "home_team_id": "fttth861nft1j2s7",
+      "away_team_id": "v4gisr4rbgmn67b0",
+      "home_team_name": "New York Heights",
+      "away_team_name": "Los Angeles Queens",
+      "status": "Final",
+      "scheduled_start": "2026-08-01T21:00:00Z",
+      "venue": "",
+      "counts_in_standings": true,
+      "presto_data": { "score": { "away": "10", "home": "8" } }
+    },
+    {
+      "game_id": "futuregame000001",
+      "season_id": "c9sgab9f9yx00z75",
+      "home_team_id": "9f08or2mffx81409",
+      "away_team_id": "vhubhz8li07tmgq8",
+      "home_team_name": "Boston Hunters",
+      "away_team_name": "San Francisco Firebells",
+      "status": "Not Started",
+      "scheduled_start": "2026-08-22T17:00:00Z",
+      "venue": "Fenway",
+      "counts_in_standings": true,
+      "presto_data": { "score": { "away": "0", "home": "0" } }
+    }
+  ]
+}
