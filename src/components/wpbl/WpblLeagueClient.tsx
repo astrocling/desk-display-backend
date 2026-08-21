@@ -159,18 +159,20 @@ export function WpblLeagueClient() {
     return () => window.clearInterval(id);
   }, [hasLive, load]);
 
-  const filteredSchedule = useMemo(() => {
+  const sortedSchedule = useMemo(() => {
     if (!league) return [];
-    const games =
-      teamFilter === "ALL"
-        ? league.games
-        : league.games.filter((g) => gameInvolvesTeam(g, teamFilter));
-    return sortWpblSchedule(games);
-  }, [league, teamFilter]);
+    return sortWpblSchedule(league.games);
+  }, [league]);
 
+  const filteredSchedule = useMemo(() => {
+    if (teamFilter === "ALL") return sortedSchedule;
+    return sortedSchedule.filter((g) => gameInvolvesTeam(g, teamFilter));
+  }, [sortedSchedule, teamFilter]);
+
+  /** Live / today's slate ignores team filter — filter only applies below standings. */
   const todayGames = useMemo(
-    () => todaysSlateGames(filteredSchedule),
-    [filteredSchedule],
+    () => todaysSlateGames(sortedSchedule),
+    [sortedSchedule],
   );
 
   const updatedAt = league?.updatedAt ?? leaders?.updatedAt;
@@ -193,14 +195,11 @@ export function WpblLeagueClient() {
 
   return (
     <div className="mt-8 space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TeamFilter value={teamFilter} onChange={setTeamFilter} />
-        <div className="text-xs text-slate-500">
-          {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
-          {hasLive ? (
-            <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
-          ) : null}
-        </div>
+      <div className="text-xs text-slate-500">
+        {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
+        {hasLive ? (
+          <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
+        ) : null}
       </div>
 
       <TodaysGamesSection
@@ -213,6 +212,8 @@ export function WpblLeagueClient() {
         <SectionTitle>Standings</SectionTitle>
         <StandingsTable rows={league.standings} />
       </section>
+
+      <TeamFilter value={teamFilter} onChange={setTeamFilter} />
 
       <section>
         <SectionTitle>Schedule</SectionTitle>
