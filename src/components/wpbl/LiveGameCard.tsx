@@ -5,7 +5,6 @@ import Link from "next/link";
 import type {
   WpblGameDetailResponse,
   WpblLiveSituation,
-  WpblStandingRow,
 } from "@/lib/types/wpbl-display";
 
 import { LineScore } from "./LineScore";
@@ -14,15 +13,7 @@ import { keyPlayersFromDetail } from "./liveGameCard";
 
 export type LiveGameCardProps = {
   detail: WpblGameDetailResponse;
-  standings: WpblStandingRow[];
 };
-
-function recordFor(standings: WpblStandingRow[], abbr: string): string | null {
-  const row = standings.find((s) => s.abbr === abbr);
-  if (!row) return null;
-  if (row.t > 0) return `${row.w}-${row.l}-${row.t}`;
-  return `${row.w}-${row.l}`;
-}
 
 function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
   const baseClass = (on: boolean) =>
@@ -73,30 +64,14 @@ function OutsDots({ outs }: { outs: number | null }) {
 
 function TeamSide({
   abbr,
-  name,
-  record,
   runs,
   align,
 }: {
   abbr: string;
-  name: string;
-  record: string | null;
   runs: number | null;
   align: "left" | "right";
 }) {
   const score = runs == null ? "—" : String(runs);
-  const cluster = (
-    <>
-      <TeamLogo abbr={abbr} size="lg" />
-      <span className="min-w-0">
-        <span className="block text-lg font-semibold tracking-tight">{abbr}</span>
-        <span className="block truncate text-xs text-slate-500">
-          {name}
-          {record ? ` · ${record}` : ""}
-        </span>
-      </span>
-    </>
-  );
 
   return (
     <div
@@ -104,7 +79,7 @@ function TeamSide({
         align === "right" ? "flex-row-reverse text-right" : ""
       }`}
     >
-      {cluster}
+      <TeamLogo abbr={abbr} size="lg" />
       <span className="shrink-0 text-3xl font-bold tabular-nums tracking-tight">{score}</span>
     </div>
   );
@@ -145,12 +120,10 @@ function KeyPlayer({
   );
 }
 
-export function LiveGameCard({ detail, standings }: LiveGameCardProps) {
+export function LiveGameCard({ detail }: LiveGameCardProps) {
   const { game, boxscore } = detail;
   const situation = game.situation;
   const keys = keyPlayersFromDetail(detail);
-  const awayRecord = recordFor(standings, game.awayAbbr);
-  const homeRecord = recordFor(standings, game.homeAbbr);
 
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -169,13 +142,7 @@ export function LiveGameCard({ detail, standings }: LiveGameCardProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <TeamSide
-            abbr={game.awayAbbr}
-            name={game.awayName}
-            record={awayRecord}
-            runs={game.awayRuns}
-            align="left"
-          />
+          <TeamSide abbr={game.awayAbbr} runs={game.awayRuns} align="left" />
 
           <div className="flex w-[5.5rem] shrink-0 flex-col items-center gap-1 text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
@@ -191,13 +158,7 @@ export function LiveGameCard({ detail, standings }: LiveGameCardProps) {
             {situation ? <OutsDots outs={situation.outs} /> : null}
           </div>
 
-          <TeamSide
-            abbr={game.homeAbbr}
-            name={game.homeName}
-            record={homeRecord}
-            runs={game.homeRuns}
-            align="right"
-          />
+          <TeamSide abbr={game.homeAbbr} runs={game.homeRuns} align="right" />
         </div>
       </div>
 

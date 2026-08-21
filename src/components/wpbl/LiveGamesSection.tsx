@@ -89,7 +89,6 @@ export function TodaysGamesSection({
                 <LiveGameCard
                   key={game.id}
                   detail={detail}
-                  standings={standings}
                 />
               );
             }
