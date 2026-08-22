@@ -294,7 +294,7 @@ Season batting and pitching leaderboards. Cron refresh; partial upstream failure
 
 ### `GET /api/wpbl/games/[id]`
 
-Game detail with line score, box score, and play-by-play. Per-game Redis key `wpbl:game:{id}`. Live games refresh on read when `updatedAt` is older than ~30s; on upstream failure returns last-good blob when present. The Gameday UI also opens the official public websocket (`wss://stats.womensprobaseballleague.com/v1/ws?channels=game:{id},boxscore:{id}`) while status is live, with a slower HTTP safety poll as fallback.
+Game detail with line score, box score, and play-by-play. Per-game Redis key `wpbl:game:{id}`. Live games refresh on read when `updatedAt` is older than ~30s; on upstream failure returns last-good blob when present. The Gameday UI also opens the official public websocket (`wss://stats.womensprobaseballleague.com/v1/ws?channels=game:{id},boxscore:{id}`) while status is live, with a slower HTTP safety poll as fallback. TrackMan rows from `boxscore.tracking_activity` (and live `tracking_activity_updated`) enrich pitch chips with type / release velo when available.
 
 **Response** `200`:
 

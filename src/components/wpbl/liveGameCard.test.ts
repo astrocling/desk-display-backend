@@ -134,6 +134,7 @@ describe("keyPlayersFromDetail", () => {
           },
         ],
         plays: [],
+      tracking: [],
       },
     };
 
@@ -214,6 +215,7 @@ describe("keyPlayersFromDetail", () => {
           },
         ],
         plays: [],
+      tracking: [],
       },
     };
 

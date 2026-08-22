@@ -5,6 +5,7 @@ import {
   formatInningLabel,
   mapWpblBoxscore,
   mapWpblLiveSituation,
+  mapWpblTrackingEvent,
   type WpblBoxscorePayload,
   type WpblBoxscoreStatus,
 } from "./boxscore";
@@ -19,7 +20,13 @@ export function asWpblBoxscorePayload(
   if (obj.boxscore && typeof obj.boxscore === "object") {
     return raw as WpblBoxscorePayload;
   }
-  if ("teams" in obj || "status" in obj || "plays" in obj || "game_status" in obj) {
+  if (
+    "teams" in obj ||
+    "status" in obj ||
+    "plays" in obj ||
+    "game_status" in obj ||
+    "tracking_activity" in obj
+  ) {
     return { boxscore: obj as WpblBoxscorePayload["boxscore"] };
   }
   return null;
@@ -78,11 +85,19 @@ export function applyWpblLiveBoxscore(
         ...mapped,
         batting: preserveSeasonRates(mapped.batting, prior.boxscore.batting),
         pitching: preserveSeasonRates(mapped.pitching, prior.boxscore.pitching),
+        tracking:
+          mapped.tracking.length > 0
+            ? mapped.tracking
+            : (prior.boxscore.tracking ?? []),
       }
     : prior.boxscore.available
       ? {
           ...prior.boxscore,
           plays: mapped.plays.length ? mapped.plays : prior.boxscore.plays,
+          tracking:
+            mapped.tracking.length > 0
+              ? mapped.tracking
+              : (prior.boxscore.tracking ?? []),
         }
       : mapped;
 
@@ -174,8 +189,41 @@ export function applyWpblLiveGameState(
 export type WpblLiveEnvelope =
   | { type: "subscribed" }
   | { type: "boxscore"; boxscore: unknown }
+  | { type: "tracking"; event: unknown }
   | { type: "game_state"; state: WpblLiveGameState; gameStatus?: string | null }
   | { type: "ignored" };
+
+/** Upsert one TrackMan activity onto the detail blob (by activityId). */
+export function applyWpblLiveTracking(
+  prior: WpblGameDetailResponse,
+  raw: unknown,
+): WpblGameDetailResponse {
+  const event = mapWpblTrackingEvent(raw);
+  if (!event) return prior;
+
+  const items = [...(prior.boxscore.tracking ?? [])];
+  const idx = items.findIndex((row) => row.activityId === event.activityId);
+  if (idx >= 0) {
+    items[idx] = { ...items[idx], ...event };
+  } else {
+    items.push(event);
+  }
+  items.sort((a, b) => {
+    const ta = Date.parse(a.occurredAt ?? "") || 0;
+    const tb = Date.parse(b.occurredAt ?? "") || 0;
+    if (ta !== tb) return ta - tb;
+    return (a.sequence ?? 0) - (b.sequence ?? 0);
+  });
+
+  return {
+    ...prior,
+    updatedAt: new Date().toISOString(),
+    boxscore: {
+      ...prior.boxscore,
+      tracking: items,
+    },
+  };
+}
 
 /** Parse a WPBL `/v1/ws` JSON envelope into a merge action. */
 export function parseWpblLiveEnvelope(raw: unknown): WpblLiveEnvelope {
@@ -194,6 +242,9 @@ export function parseWpblLiveEnvelope(raw: unknown): WpblLiveEnvelope {
   }
   if (type === "boxscore_updated" && data?.new_value) {
     return { type: "boxscore", boxscore: data.new_value };
+  }
+  if (type === "tracking_activity_updated" && data?.new_value) {
+    return { type: "tracking", event: data.new_value };
   }
   if (type === "game_snapshot" && data) {
     const game = data.game as { status?: string } | undefined;
@@ -238,6 +289,9 @@ export function applyWpblLiveEnvelope(
 ): WpblGameDetailResponse {
   if (envelope.type === "boxscore") {
     return applyWpblLiveBoxscore(prior, envelope.boxscore);
+  }
+  if (envelope.type === "tracking") {
+    return applyWpblLiveTracking(prior, envelope.event);
   }
   if (envelope.type === "game_state") {
     return applyWpblLiveGameState(prior, envelope.state, envelope.gameStatus);

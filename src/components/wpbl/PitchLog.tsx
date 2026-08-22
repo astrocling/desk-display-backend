@@ -1,15 +1,14 @@
 "use client";
 
-import type { WpblPitchEvent } from "@/lib/types/wpbl-display";
-import { pitchKind } from "@/lib/wpbl-plays";
+import type { PitchChip } from "@/lib/wpbl-tracking";
 
 export type PitchLogProps = {
-  pitches: WpblPitchEvent[];
+  chips: PitchChip[];
   label?: string | null;
   compact?: boolean;
 };
 
-function chipClass(kind: ReturnType<typeof pitchKind>): string {
+function chipClass(kind: PitchChip["kind"]): string {
   switch (kind) {
     case "ball":
       return "bg-sky-600 text-white";
@@ -19,27 +18,22 @@ function chipClass(kind: ReturnType<typeof pitchKind>): string {
       return "bg-amber-500 text-white";
     case "in_play":
       return "bg-emerald-600 text-white";
+    case "track":
+      return "bg-slate-700 text-white dark:bg-slate-600";
     default:
       return "bg-slate-500 text-white";
   }
 }
 
-function shortLabel(event: WpblPitchEvent): string {
-  const kind = pitchKind(event);
-  if (kind === "ball") return "B";
-  if (kind === "foul") return "F";
-  if (kind === "in_play") return "X";
-  if (kind === "strike") {
-    if (event.type.includes("swinging") || event.code.toUpperCase() === "S") {
-      return "S";
-    }
-    return "K";
-  }
-  return event.code || "?";
+function secondaryLine(chip: PitchChip): string | null {
+  if (chip.exitMph != null) return `${chip.exitMph}`;
+  if (chip.releaseMph != null) return `${chip.releaseMph}`;
+  if (chip.pitchTypeAbbr && chip.kind !== "track") return chip.pitchTypeAbbr;
+  return null;
 }
 
-export function PitchLog({ pitches, label, compact }: PitchLogProps) {
-  if (!pitches.length) return null;
+export function PitchLog({ chips, label, compact }: PitchLogProps) {
+  if (!chips.length) return null;
 
   return (
     <div className={compact ? "space-y-1" : "space-y-1.5"}>
@@ -47,7 +41,7 @@ export function PitchLog({ pitches, label, compact }: PitchLogProps) {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           {label}
           <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">
-            · {pitches.length} pitch{pitches.length === 1 ? "" : "es"}
+            · {chips.length} pitch{chips.length === 1 ? "" : "es"}
           </span>
         </p>
       ) : null}
@@ -55,15 +49,20 @@ export function PitchLog({ pitches, label, compact }: PitchLogProps) {
         className="flex flex-wrap gap-1"
         aria-label={label ?? "Pitch sequence"}
       >
-        {pitches.map((event) => {
-          const kind = pitchKind(event);
+        {chips.map((chip) => {
+          const secondary = secondaryLine(chip);
           return (
-            <li key={`${event.sequence}-${event.code}-${event.description}`}>
+            <li key={chip.key}>
               <span
-                title={event.description || event.type}
-                className={`inline-flex min-w-[1.35rem] items-center justify-center rounded px-1 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${chipClass(kind)}`}
+                title={chip.title}
+                className={`inline-flex min-w-[1.6rem] flex-col items-center justify-center rounded px-1 py-0.5 font-mono font-semibold tabular-nums ${chipClass(chip.kind)}`}
               >
-                {shortLabel(event)}
+                <span className="text-[10px] leading-none">{chip.label}</span>
+                {secondary && secondary !== chip.label ? (
+                  <span className="text-[8px] font-medium leading-tight opacity-90">
+                    {secondary}
+                  </span>
+                ) : null}
               </span>
             </li>
           );
@@ -71,7 +70,7 @@ export function PitchLog({ pitches, label, compact }: PitchLogProps) {
       </ol>
       {!compact ? (
         <p className="text-[11px] leading-snug text-slate-500">
-          {pitches.map((e) => e.description || e.code).join(" · ")}
+          {chips.map((c) => c.title).join(" · ")}
         </p>
       ) : null}
     </div>

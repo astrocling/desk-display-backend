@@ -9,10 +9,10 @@ import type {
 } from "@/lib/types/wpbl-display";
 import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import {
-  atBatPitchLog,
   lineupFollowers,
   shortRunnerLabel,
 } from "@/lib/wpbl-plays";
+import { buildPitchChips } from "@/lib/wpbl-tracking";
 
 import { PitchLog } from "./PitchLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
@@ -218,7 +218,11 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
   const situation = game.situation;
   const keys = keyPlayersFromDetail(detail);
   const followers = lineupFollowers(boxscore.batting, situation);
-  const pitchLog = atBatPitchLog(situation, boxscore.plays);
+  const pitchLog = buildPitchChips(
+    situation,
+    boxscore.plays,
+    boxscore.tracking ?? [],
+  );
   const isLive = game.status === "live";
 
   return (
@@ -316,10 +320,10 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
         </div>
       )}
 
-      {pitchLog.pitches.length > 0 ? (
+      {pitchLog.chips.length > 0 ? (
         <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
           <PitchLog
-            pitches={pitchLog.pitches}
+            chips={pitchLog.chips}
             label={pitchLog.label}
             compact={false}
           />

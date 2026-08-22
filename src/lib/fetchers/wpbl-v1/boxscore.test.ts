@@ -76,6 +76,30 @@ describe("mapWpblBoxscore", () => {
     expect(box.batting.some((p) => p.name === "Caitlin Eynon")).toBe(false);
     expect(box.pitching.some((p) => p.name === "Caitlin Eynon")).toBe(false);
     expect(box.plays).toEqual([]);
+    expect(box.tracking).toEqual([]);
+  });
+
+  it("maps TrackMan tracking_activity when present", () => {
+    const trackingFixture = JSON.parse(
+      readFileSync(
+        join(
+          dirname(fileURLToPath(import.meta.url)),
+          "fixtures/tracking-trimmed.json",
+        ),
+        "utf8",
+      ),
+    );
+    const box = mapWpblBoxscore(
+      {
+        boxscore: {
+          ...fixture.boxscore,
+          tracking_activity: trackingFixture.tracking_activity,
+        },
+      },
+      gameMeta,
+    );
+    expect(box.tracking).toHaveLength(7);
+    expect(box.tracking[0]!.pitchType).toBe("Fastball");
   });
 
   it("maps plays from boxscore when present", () => {
@@ -272,6 +296,7 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
         },
       ],
       plays: [],
+    tracking: [],
     };
 
     await enrichLiveKeyPlayerSeasonRates(

@@ -74,6 +74,7 @@ function baseDetail(
         },
       ],
       plays: [],
+    tracking: [],
     },
     ...partial,
   };
@@ -283,6 +284,7 @@ describe("applyWpblLiveEnvelope", () => {
         status: { away_runs: 10, home_runs: 8, complete: true },
         teams: [],
         plays: [],
+      tracking: [],
       },
     });
     expect(next.game.status).toBe("final");

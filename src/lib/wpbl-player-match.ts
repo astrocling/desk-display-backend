@@ -9,6 +9,34 @@ export function normalizePlayerName(name: string): string {
     .trim();
 }
 
+/**
+ * Canonical first-last key so TrackMan "Last, First" matches play-feed "First Last".
+ */
+export function playerNameKey(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes(",")) {
+    const [last, ...rest] = trimmed.split(",");
+    return normalizePlayerName(`${rest.join(" ")} ${last ?? ""}`);
+  }
+  return normalizePlayerName(trimmed);
+}
+
+/** True when names refer to the same player (handles Last, First vs First Last). */
+export function playerNamesMatch(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (!a?.trim() || !b?.trim()) return false;
+  const ka = playerNameKey(a);
+  const kb = playerNameKey(b);
+  if (!ka || !kb) return false;
+  if (ka === kb) return true;
+  const aLast = ka.split(" ").at(-1);
+  const bLast = kb.split(" ").at(-1);
+  return Boolean(aLast && aLast === bLast && aLast.length > 2);
+}
+
 /** Prefer exact match, then last-token / substring matches. */
 export function findPlayerLine(
   lines: WpblBoxPlayerLine[],
@@ -18,22 +46,27 @@ export function findPlayerLine(
   const needle = normalizePlayerName(name);
   if (!needle) return null;
 
-  const exact = lines.find((line) => normalizePlayerName(line.name) === needle);
+  const needleKey = playerNameKey(name);
+  const exact = lines.find(
+    (line) =>
+      normalizePlayerName(line.name) === needle ||
+      playerNameKey(line.name) === needleKey,
+  );
   if (exact) return exact;
 
-  const needleParts = needle.split(" ");
-  const needleLast = needleParts[needleParts.length - 1] ?? needle;
+  const needleParts = needleKey.split(" ");
+  const needleLast = needleParts[needleParts.length - 1] ?? needleKey;
 
   const byLast = lines.find((line) => {
-    const parts = normalizePlayerName(line.name).split(" ");
+    const parts = playerNameKey(line.name).split(" ");
     return parts[parts.length - 1] === needleLast;
   });
   if (byLast) return byLast;
 
   return (
     lines.find((line) => {
-      const hay = normalizePlayerName(line.name);
-      return hay.includes(needle) || needle.includes(hay);
+      const hay = playerNameKey(line.name);
+      return hay.includes(needleKey) || needleKey.includes(hay);
     }) ?? null
   );
 }

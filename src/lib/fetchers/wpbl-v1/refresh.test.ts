@@ -43,6 +43,7 @@ function detail(
       batting: [],
       pitching: [],
       plays: [],
+    tracking: [],
     },
   };
 }
@@ -156,6 +157,7 @@ describe("shouldRefreshWpblGame", () => {
         batting: [],
         pitching: [],
         plays: [],
+      tracking: [],
       },
     });
     expect(shouldRefreshWpblGame(d, now)).toBe(true);
@@ -171,6 +173,7 @@ describe("shouldRefreshWpblGame", () => {
         batting: [],
         pitching: [],
         plays: [],
+      tracking: [],
       },
     });
     expect(shouldRefreshWpblGame(d, now)).toBe(false);

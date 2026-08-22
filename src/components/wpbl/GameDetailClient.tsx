@@ -10,6 +10,7 @@ import type {
 } from "@/lib/types/wpbl-display";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay, pitchesFromPlay } from "@/lib/wpbl-plays";
+import { chipsFromPitchEvents } from "@/lib/wpbl-tracking";
 
 import { BoxTables } from "./BoxTables";
 import { GamedayScoreboard } from "./GamedayScoreboard";
@@ -146,7 +147,7 @@ function LatestPlayBanner({
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
 }) {
-  const pitches = pitchesFromPlay(play);
+  const chips = chipsFromPitchEvents(pitchesFromPlay(play));
   const roster = rosterFromBoxLines(batting, pitching);
 
   return (
@@ -169,9 +170,9 @@ function LatestPlayBanner({
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
         {linkifyPlayerNames(play.narrative, roster)}
       </p>
-      {pitches.length > 0 ? (
+      {chips.length > 0 ? (
         <div className="mt-2">
-          <PitchLog pitches={pitches} compact />
+          <PitchLog chips={chips} compact />
         </div>
       ) : null}
     </div>

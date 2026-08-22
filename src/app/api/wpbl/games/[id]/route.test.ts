@@ -45,6 +45,7 @@ describe("normalizeWpblGameDetail", () => {
 
     const next = normalizeWpblGameDetail(stale);
     expect(next.boxscore.plays).toEqual([]);
+    expect(next.boxscore.tracking).toEqual([]);
     expect(next.game.situation).toMatchObject({
       runnerFirst: null,
       runnerSecond: null,

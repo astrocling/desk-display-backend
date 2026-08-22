@@ -9,6 +9,7 @@ import {
   formatPlayInning,
   pitchesFromPlay,
 } from "@/lib/wpbl-plays";
+import { chipsFromPitchEvents } from "@/lib/wpbl-tracking";
 
 import {
   linkifyPlayerNames,
@@ -34,7 +35,7 @@ function PlayRow({
   pitching: WpblBoxPlayerLine[];
   roster: ReturnType<typeof rosterFromBoxLines>;
 }) {
-  const pitches = pitchesFromPlay(play);
+  const chips = chipsFromPitchEvents(pitchesFromPlay(play));
 
   return (
     <li
@@ -86,9 +87,9 @@ function PlayRow({
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
         {linkifyPlayerNames(play.narrative, roster)}
       </p>
-      {pitches.length > 0 ? (
+      {chips.length > 0 ? (
         <div className="mt-1.5">
-          <PitchLog pitches={pitches} compact />
+          <PitchLog chips={chips} compact />
         </div>
       ) : null}
     </li>

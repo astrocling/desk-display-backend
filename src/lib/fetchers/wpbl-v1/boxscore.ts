@@ -6,6 +6,7 @@ import type {
   WpblPitchEvent,
   WpblPlay,
   WpblScheduleGame,
+  WpblTrackingEvent,
 } from "@/lib/types/wpbl-display";
 import { findPlayerLine } from "@/lib/wpbl-player-match";
 import { formatWpblPosition } from "@/lib/wpbl-position";
@@ -79,6 +80,29 @@ interface WpblRawPitchEvent {
   description?: string;
 }
 
+interface WpblRawTrackingActivity {
+  activity_id?: string;
+  kind?: string;
+  sequence?: number;
+  occurred_at?: string;
+  inning?: number;
+  half?: string;
+  batter_name?: string;
+  pitcher_name?: string;
+  batter_id?: string;
+  pitcher_id?: string;
+  pitch_type?: string;
+  hit_type?: string;
+  release_speed?: number;
+  exit_speed?: number;
+  speed_unit?: string;
+  spin_rate_rpm?: number;
+  launch_angle_deg?: number;
+  distance?: number;
+  distance_unit?: string;
+  strike_zone_decision?: string;
+}
+
 interface WpblRawPlay {
   sequence?: number;
   inning?: number;
@@ -108,6 +132,7 @@ export interface WpblBoxscorePayload {
     status?: WpblBoxscoreStatus;
     teams?: WpblBoxscoreTeam[];
     plays?: WpblRawPlay[] | null;
+    tracking_activity?: WpblRawTrackingActivity[] | null;
   };
 }
 
@@ -117,6 +142,7 @@ const EMPTY_BOXSCORE: WpblGameDetailResponse["boxscore"] = {
   batting: [],
   pitching: [],
   plays: [],
+  tracking: [],
 };
 
 function mapStatGroup(
@@ -294,6 +320,70 @@ function mapPitchEvents(
   return events.sort((a, b) => a.sequence - b.sequence);
 }
 
+function parseOptionalNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return null;
+}
+
+function mapTrackingKind(raw: string | null | undefined): WpblTrackingEvent["kind"] {
+  const kind = raw?.trim().toLowerCase();
+  if (kind === "pitch") return "pitch";
+  if (kind === "hit") return "hit";
+  return "other";
+}
+
+/** Map official boxscore TrackMan activity; oldest-first by occurred_at. */
+export function mapWpblTrackingActivity(
+  raw: WpblRawTrackingActivity[] | null | undefined,
+): WpblTrackingEvent[] {
+  if (!raw?.length) return [];
+
+  const rows: WpblTrackingEvent[] = [];
+  for (const item of raw) {
+    const activityId = item.activity_id?.trim();
+    if (!activityId) continue;
+    rows.push({
+      activityId,
+      kind: mapTrackingKind(item.kind),
+      sequence: parseOptionalNumber(item.sequence),
+      occurredAt: item.occurred_at?.trim() || null,
+      inning:
+        typeof item.inning === "number" && item.inning > 0 ? item.inning : null,
+      half: mapHalf(item.half),
+      batterName: nonemptyName(item.batter_name),
+      pitcherName: nonemptyName(item.pitcher_name),
+      batterId: item.batter_id?.trim() || null,
+      pitcherId: item.pitcher_id?.trim() || null,
+      pitchType: item.pitch_type?.trim() || null,
+      hitType: item.hit_type?.trim() || null,
+      releaseSpeed: parseOptionalNumber(item.release_speed),
+      exitSpeed: parseOptionalNumber(item.exit_speed),
+      speedUnit: item.speed_unit?.trim() || null,
+      spinRateRpm: parseOptionalNumber(item.spin_rate_rpm),
+      launchAngleDeg: parseOptionalNumber(item.launch_angle_deg),
+      distance: parseOptionalNumber(item.distance),
+      distanceUnit: item.distance_unit?.trim() || null,
+      strikeZoneDecision: item.strike_zone_decision?.trim() || null,
+    });
+  }
+
+  return rows.sort((a, b) => {
+    const ta = Date.parse(a.occurredAt ?? "") || 0;
+    const tb = Date.parse(b.occurredAt ?? "") || 0;
+    if (ta !== tb) return ta - tb;
+    return (a.sequence ?? 0) - (b.sequence ?? 0);
+  });
+}
+
+/** Map a single live tracking_activity_updated payload. */
+export function mapWpblTrackingEvent(
+  raw: unknown,
+): WpblTrackingEvent | null {
+  if (!raw || typeof raw !== "object") return null;
+  const mapped = mapWpblTrackingActivity([raw as WpblRawTrackingActivity]);
+  return mapped[0] ?? null;
+}
+
 /** Map official boxscore plays; oldest-first by sequence. */
 export function mapWpblPlays(
   rawPlays: WpblRawPlay[] | null | undefined,
@@ -348,12 +438,13 @@ export function mapWpblBoxscore(
 ): WpblGameDetailResponse["boxscore"] {
   const teams = raw.boxscore?.teams ?? [];
   const plays = mapWpblPlays(raw.boxscore?.plays);
+  const tracking = mapWpblTrackingActivity(raw.boxscore?.tracking_activity);
   const hasContent = teams.some(
     (team) =>
       (team.line?.length ?? 0) > 0 || (team.players?.length ?? 0) > 0,
   );
   if (!hasContent) {
-    return { ...EMPTY_BOXSCORE, plays };
+    return { ...EMPTY_BOXSCORE, plays, tracking };
   }
 
   return {
@@ -362,6 +453,7 @@ export function mapWpblBoxscore(
     batting: mapPlayerLines(teams, "hitting", BATTING_STAT_KEYS),
     pitching: mapPlayerLines(teams, "pitching", PITCHING_STAT_KEYS),
     plays,
+    tracking,
   };
 }
 
