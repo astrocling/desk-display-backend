@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
+import { formatWpblPosition } from "@/lib/wpbl-position";
 import { wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
 
 import { teamAccentStyle } from "./teamAccent";
@@ -143,7 +144,9 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
           {entry.name}
         </span>
         <span className="mt-0.5 block text-xs text-neutral-400">
-          {[entry.position, entry.teamAbbr].filter(Boolean).join(" · ")}
+          {[formatWpblPosition(entry.position), entry.teamAbbr]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
       </span>
       <span className="shrink-0 text-2xl font-bold tabular-nums tracking-tight text-[#41B6E6]">

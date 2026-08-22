@@ -6,6 +6,7 @@ import type {
   WpblScheduleGame,
 } from "@/lib/types/wpbl-display";
 import { findPlayerLine } from "@/lib/wpbl-player-match";
+import { formatWpblPosition } from "@/lib/wpbl-position";
 import { fetchWpblJson } from "./client";
 import { mapWpblGames, type WpblGamesPayload } from "./games";
 import { mapWpblStatus } from "./status";
@@ -99,7 +100,7 @@ function mapPlayerLines(
         side,
         name: player.name,
         playerId: player.id?.trim() ? player.id.trim() : null,
-        position: player.position?.trim() ? player.position : null,
+        position: formatWpblPosition(player.position),
         stats: mapStatGroup(rawStats, statKeys),
       });
     }

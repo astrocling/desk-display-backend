@@ -48,6 +48,7 @@ describe("mapWpblBoxscore", () => {
     const amiraBatting = box.batting.find((p) => p.name === "Amira Hondras");
     expect(amiraBatting).toMatchObject({
       side: "away",
+      position: "2B",
       stats: { ab: "4", h: "2", r: "1", rbi: "4" },
     });
     expect(amiraBatting?.playerId).toBeTruthy();
@@ -55,6 +56,7 @@ describe("mapWpblBoxscore", () => {
     const ayamiPitching = box.pitching.find((p) => p.name === "Ayami Sato");
     expect(ayamiPitching).toMatchObject({
       side: "away",
+      position: "P",
       stats: { ip: "3.0", h: "10", r: "7", er: "4" },
     });
     expect(ayamiPitching?.playerId).toBeTruthy();
@@ -68,6 +70,16 @@ describe("mapWpblBoxscore", () => {
     const jamie = box.batting.find((p) => p.name === "Jamie Mackay");
     expect(jamie?.stats.obp).toBe(".500");
     expect(jamie?.stats.slg).toBe(".333");
+  });
+
+  it("uppercases player positions from the boxscore payload", () => {
+    const box = mapWpblBoxscore(fixture, gameMeta);
+    expect(box.batting.find((p) => p.name === "Kylee Lahners")?.position).toBe(
+      "DH/1B",
+    );
+    expect(box.batting.find((p) => p.name === "Mo'ne Davis")?.position).toBe(
+      "CF",
+    );
   });
 
   it("treats teams with null line/players as unavailable boxscore", () => {

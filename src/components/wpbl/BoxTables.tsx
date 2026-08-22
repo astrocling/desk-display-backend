@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
+import { formatWpblPosition } from "@/lib/wpbl-position";
 import { wpblTeamAccent } from "@/lib/wpbl-team-brand";
 
 import { TeamLogo } from "./TeamLogo";
@@ -60,7 +61,9 @@ function PlayerStatsTable({
               {players.map((player) => (
                 <tr key={`${player.name}-${player.position ?? ""}`} className="whitespace-nowrap">
                   <td className="px-3 py-2">{player.name}</td>
-                  <td className="px-2 py-2 text-slate-500">{player.position ?? "—"}</td>
+                  <td className="px-2 py-2 text-slate-500">
+                    {formatWpblPosition(player.position) ?? "—"}
+                  </td>
                   {columns.map((col) => (
                     <td key={col} className="px-2 py-2 text-center font-mono tabular-nums">
                       {formatStat(player.stats[col])}
