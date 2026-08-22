@@ -16,66 +16,58 @@ export type GameCardTeam = {
   emphasize?: boolean;
 };
 
-function teamSubtitle(team: GameCardTeam): string {
-  const nickname = getWpblTeamBrand(team.abbr)?.name ?? team.name;
-  return team.record ? `${nickname} · ${team.record}` : nickname;
+function teamNickname(team: GameCardTeam): string {
+  return getWpblTeamBrand(team.abbr)?.name ?? team.name;
 }
 
-function TeamIdentity({
+function TeamLine({
   team,
-  align,
+  showScore,
 }: {
   team: GameCardTeam;
-  align: "left" | "right";
+  showScore: boolean;
 }) {
+  const nickname = teamNickname(team);
+  const meta = team.record
+    ? `${team.abbr} · ${team.record}`
+    : team.abbr;
+
   return (
-    <div
-      className={`flex min-w-0 items-center gap-2 ${
-        align === "right" ? "flex-row-reverse text-right" : ""
-      }`}
-    >
+    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-x-2.5">
       <TeamLogo abbr={team.abbr} size="md" />
       <div className="min-w-0 overflow-hidden">
         <p
-          className={`truncate text-base tracking-tight ${
+          className={`truncate text-sm tracking-tight ${
             team.emphasize
               ? "font-bold text-slate-900 dark:text-slate-50"
               : "font-semibold text-slate-800 dark:text-slate-100"
           }`}
         >
-          {team.abbr}
+          {nickname}
         </p>
         <p className="truncate text-[11px] leading-snug text-slate-500">
-          {teamSubtitle(team)}
+          {meta}
         </p>
       </div>
+      {showScore ? (
+        <p
+          className={`w-9 shrink-0 text-right text-2xl tabular-nums tracking-tight ${
+            team.emphasize
+              ? "font-bold text-slate-900 dark:text-slate-50"
+              : "font-semibold text-slate-600 dark:text-slate-300"
+          }`}
+        >
+          {team.runs == null ? "—" : team.runs}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function Score({
-  runs,
-  emphasize,
-}: {
-  runs: number | null | undefined;
-  emphasize?: boolean;
-}) {
-  return (
-    <p
-      className={`w-8 shrink-0 text-center text-2xl tabular-nums tracking-tight sm:w-9 sm:text-3xl ${
-        emphasize
-          ? "font-bold text-slate-900 dark:text-slate-50"
-          : "font-semibold text-slate-600 dark:text-slate-300"
-      }`}
-    >
-      {runs == null ? "—" : runs}
-    </p>
-  );
-}
-
 /**
- * Shared away | status | home row for today/live/final cards.
- * Scores sit beside the center status so logos and abbreviations never overlap.
+ * Shared matchup for today/live/final cards.
+ * Stacks teams vertically (logo + nickname + score) with status on the right
+ * so lettermark logos never collide with abbreviations on narrow viewports.
  */
 export function GameCardMatchup({
   away,
@@ -89,22 +81,14 @@ export function GameCardMatchup({
   showScores: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 sm:gap-x-3">
-      <TeamIdentity team={away} align="left" />
-
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-        {showScores ? (
-          <Score runs={away.runs} emphasize={away.emphasize} />
-        ) : null}
-        <div className="flex min-w-[4.75rem] max-w-[7rem] flex-col items-center gap-0.5 text-center sm:min-w-[5.5rem]">
-          {center}
-        </div>
-        {showScores ? (
-          <Score runs={home.runs} emphasize={home.emphasize} />
-        ) : null}
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 sm:gap-x-4">
+      <div className="min-w-0 space-y-2.5">
+        <TeamLine team={away} showScore={showScores} />
+        <TeamLine team={home} showScore={showScores} />
       </div>
-
-      <TeamIdentity team={home} align="right" />
+      <div className="flex w-[5.25rem] shrink-0 flex-col items-center justify-center gap-0.5 text-center sm:w-[6rem]">
+        {center}
+      </div>
     </div>
   );
 }

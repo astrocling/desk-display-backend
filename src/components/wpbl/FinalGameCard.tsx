@@ -81,9 +81,6 @@ export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
               <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
                 Final
               </p>
-              {game.whenEt ? (
-                <p className="text-[10px] text-slate-500">{game.whenEt}</p>
-              ) : null}
             </>
           }
         />
