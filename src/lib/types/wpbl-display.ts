@@ -101,6 +101,33 @@ export interface WpblPitchEvent {
 }
 
 /**
+ * TrackMan / tracking measurement from `boxscore.tracking_activity`
+ * (and live `tracking_activity_updated` websocket envelopes).
+ */
+export interface WpblTrackingEvent {
+  activityId: string;
+  kind: "pitch" | "hit" | "other";
+  sequence: number | null;
+  occurredAt: string | null;
+  inning: number | null;
+  half: "top" | "bottom" | null;
+  batterName: string | null;
+  pitcherName: string | null;
+  batterId: string | null;
+  pitcherId: string | null;
+  pitchType: string | null;
+  hitType: string | null;
+  releaseSpeed: number | null;
+  exitSpeed: number | null;
+  speedUnit: string | null;
+  spinRateRpm: number | null;
+  launchAngleDeg: number | null;
+  distance: number | null;
+  distanceUnit: string | null;
+  strikeZoneDecision: string | null;
+}
+
+/**
  * One play from the WPBL boxscore `plays` array (official narrative feed).
  * Sequence increases through the game; UI usually shows newest first.
  */
@@ -154,6 +181,8 @@ export interface WpblGameDetailResponse {
     pitching: WpblBoxPlayerLine[];
     /** Chronological play-by-play (oldest first). Empty when not yet published. */
     plays: WpblPlay[];
+    /** TrackMan activity oldest-first; empty when tracking is offline. */
+    tracking: WpblTrackingEvent[];
   };
 }
 

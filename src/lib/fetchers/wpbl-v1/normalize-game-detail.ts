@@ -36,6 +36,9 @@ export function normalizeWpblGameDetail(
     boxscore: {
       ...blob.boxscore,
       plays: Array.isArray(blob.boxscore.plays) ? blob.boxscore.plays : [],
+      tracking: Array.isArray(blob.boxscore.tracking)
+        ? blob.boxscore.tracking
+        : [],
       batting: (blob.boxscore.batting ?? []).map(normalizeLine),
       pitching: (blob.boxscore.pitching ?? []).map(normalizeLine),
     },

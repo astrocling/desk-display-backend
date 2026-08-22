@@ -4,7 +4,11 @@ import type {
   WpblPitchEvent,
   WpblPlay,
 } from "@/lib/types/wpbl-display";
-import { findPlayerLine, normalizePlayerName } from "@/lib/wpbl-player-match";
+import {
+  findPlayerLine,
+  normalizePlayerName,
+  playerNamesMatch,
+} from "@/lib/wpbl-player-match";
 
 /** Newest play by sequence, or null when empty. */
 export function latestWpblPlay(plays: WpblPlay[]): WpblPlay | null {
@@ -125,24 +129,11 @@ export function atBatPitchLog(
   }
 
   const batter = situation?.batterName;
-  if (namesLooselyMatch(batter, latest.batterName)) {
+  if (playerNamesMatch(batter, latest.batterName)) {
     return { pitches, source: "current", label: "This at-bat" };
   }
 
   return { pitches, source: "last", label: "Last at-bat" };
-}
-
-function namesLooselyMatch(
-  a: string | null | undefined,
-  b: string | null | undefined,
-): boolean {
-  if (!a?.trim() || !b?.trim()) return false;
-  const na = normalizePlayerName(a);
-  const nb = normalizePlayerName(b);
-  if (na === nb) return true;
-  const aLast = na.split(" ").at(-1);
-  const bLast = nb.split(" ").at(-1);
-  return Boolean(aLast && aLast === bLast);
 }
 
 export type LineupFollowers = {
