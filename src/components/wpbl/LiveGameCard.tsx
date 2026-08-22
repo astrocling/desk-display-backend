@@ -271,7 +271,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       </div>
 
       {boxscore.available && boxscore.lineScore ? (
-        <div className={`px-2 py-2 ${WPBL_PANEL_FOOTER}`}>
+        <div className={WPBL_PANEL_FOOTER}>
           <LineScore
             lineScore={boxscore.lineScore}
             highlightInning={situation?.inningNumber}

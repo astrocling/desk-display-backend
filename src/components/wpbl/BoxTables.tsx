@@ -38,19 +38,19 @@ function PlayerStatsTable({
   columns: readonly string[];
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700">
-      <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+    <div className="wpbl-panel">
+      <div className="wpbl-panel-inset px-3 py-2">
+        <h3 className="wpbl-section-label">{title}</h3>
       </div>
       {players.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-slate-500">No {title.toLowerCase()} stats.</p>
+        <p className="px-3 py-3 text-sm wpbl-muted">No {title.toLowerCase()} stats.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <table className="w-full min-w-full border-collapse text-sm">
+            <thead className="bg-[var(--wpbl-bg-elevated)] text-xs uppercase tracking-wide wpbl-muted">
               <tr>
-                <th className="px-3 py-2 font-medium">Player</th>
-                <th className="px-2 py-2 font-medium">Pos</th>
+                <th className="px-3 py-2 text-left font-medium">Player</th>
+                <th className="px-2 py-2 text-left font-medium">Pos</th>
                 {columns.map((col) => (
                   <th key={col} className="px-2 py-2 text-center font-medium">
                     {col.toUpperCase()}
@@ -58,21 +58,27 @@ function PlayerStatsTable({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+            <tbody>
               {players.map((player) => (
-                <tr key={`${player.playerId ?? player.name}-${player.position ?? ""}`} className="whitespace-nowrap">
+                <tr
+                  key={`${player.playerId ?? player.name}-${player.position ?? ""}`}
+                  className="border-t border-[var(--wpbl-rule)] whitespace-nowrap hover:bg-[var(--wpbl-bg-hover)]"
+                >
                   <td className="px-3 py-2">
                     <PlayerNameLink
                       playerId={player.playerId}
                       name={player.name}
-                      className="text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                      className="text-[var(--wpbl-ink)]"
                     />
                   </td>
-                  <td className="px-2 py-2 text-slate-500">
+                  <td className="px-2 py-2 wpbl-muted">
                     {formatWpblPosition(player.position) ?? "—"}
                   </td>
                   {columns.map((col) => (
-                    <td key={col} className="px-2 py-2 text-center font-mono tabular-nums">
+                    <td
+                      key={col}
+                      className="px-2 py-2 text-center font-mono tabular-nums text-[var(--wpbl-ink-secondary)]"
+                    >
                       {formatStat(player.stats[col])}
                     </td>
                   ))}
@@ -105,32 +111,31 @@ export function BoxTables({
     [pitching, side],
   );
 
-  const tabClass = (active: boolean) =>
-    active
-      ? "border-b-2 font-medium text-slate-900 dark:text-slate-100"
-      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300";
+  const tabs: { id: Side; label: string; abbr: string }[] = [
+    { id: "away", label: awayLabel, abbr: awayAbbr },
+    { id: "home", label: homeLabel, abbr: homeAbbr },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700">
-        <button
-          type="button"
-          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${side === "away" ? "wpbl-team-accent-border-b" : ""} ${tabClass(side === "away")}`}
-          style={side === "away" ? wpblTeamAccent(awayAbbr) : undefined}
-          onClick={() => setSide("away")}
-        >
-          <TeamLogo key={awayAbbr} abbr={awayAbbr} size="md" />
-          {awayLabel}
-        </button>
-        <button
-          type="button"
-          className={`inline-flex items-center gap-1.5 px-1 pb-2 text-sm ${side === "home" ? "wpbl-team-accent-border-b" : ""} ${tabClass(side === "home")}`}
-          style={side === "home" ? wpblTeamAccent(homeAbbr) : undefined}
-          onClick={() => setSide("home")}
-        >
-          <TeamLogo key={homeAbbr} abbr={homeAbbr} size="md" />
-          {homeLabel}
-        </button>
+      <div className="flex gap-4 border-b border-[var(--wpbl-rule)]">
+        {tabs.map((tab) => {
+          const active = side === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              className={`inline-flex items-center gap-1.5 pb-2 ${
+                active ? "wpbl-tab wpbl-tab--active" : "wpbl-tab"
+              } ${active ? "wpbl-team-accent-border-b" : ""}`}
+              style={active ? wpblTeamAccent(tab.abbr) : undefined}
+              onClick={() => setSide(tab.id)}
+            >
+              <TeamLogo key={tab.abbr} abbr={tab.abbr} size="sm" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <PlayerStatsTable title="Batting" players={sideBatting} columns={BATTING_COLUMNS} />

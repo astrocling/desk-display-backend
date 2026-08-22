@@ -4,22 +4,17 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
+import { getWpblTeamBrand } from "@/lib/wpbl-team-brand";
 
 import { TeamLogo } from "./TeamLogo";
 import { partitionScheduleByWeek } from "./scheduleWeek";
 
 export type ScheduleListProps = {
   games: WpblScheduleGame[];
-  /** Injected for tests; defaults to now. */
   now?: Date;
-  /**
-   * `week` — this-week focus with expand (schedule page).
-   * `flat` — render the given games as a simple list (home teaser).
-   */
   variant?: "week" | "flat";
 };
 
-/** Split "Wed 8/12 6:30 PM" into date + time for a two-line status rail. */
 function splitWhenEt(whenEt: string | null): {
   primary: string;
   secondary: string | null;
@@ -35,7 +30,7 @@ function splitWhenEt(whenEt: string | null): {
 function StatusRail({ game }: { game: WpblScheduleGame }) {
   if (game.status === "live") {
     return (
-      <div className="flex flex-col items-start justify-center gap-0.5">
+      <div className="flex flex-col items-start justify-center">
         <span className="wpbl-live-label">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
@@ -49,37 +44,29 @@ function StatusRail({ game }: { game: WpblScheduleGame }) {
 
   if (game.status === "final") {
     return (
-      <div className="flex flex-col items-start justify-center">
-        <span className="wpbl-section-label text-[11px]">
-          Final
-        </span>
-      </div>
+      <span className="wpbl-section-label text-[10px]">Final</span>
     );
   }
 
   if (game.status === "other") {
     return (
-      <div className="flex flex-col items-start justify-center">
-        <span
-          className="text-[11px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--wpbl-warning)" }}
-        >
-          TBD
-        </span>
-      </div>
+      <span
+        className="text-[10px] font-semibold uppercase tracking-wide"
+        style={{ color: "var(--wpbl-warning)" }}
+      >
+        TBD
+      </span>
     );
   }
 
   const { primary, secondary } = splitWhenEt(game.whenEt);
   return (
     <div className="flex flex-col items-start justify-center gap-0.5">
-      <span className="text-[11px] font-medium tabular-nums text-[var(--wpbl-ink-secondary)]">
+      <span className="text-[10px] font-medium tabular-nums text-[var(--wpbl-ink-secondary)]">
         {primary}
       </span>
       {secondary ? (
-        <span className="text-[11px] tabular-nums wpbl-muted">
-          {secondary}
-        </span>
+        <span className="text-[10px] tabular-nums wpbl-muted">{secondary}</span>
       ) : null}
     </div>
   );
@@ -98,27 +85,34 @@ function TeamLine({
   showScore: boolean;
   isWinner: boolean;
 }) {
+  const nickname = getWpblTeamBrand(abbr)?.name ?? name;
+
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_1.75rem] items-center gap-x-2">
+    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-2">
       <TeamLogo abbr={abbr} size="sm" />
-      <span
-        className={`truncate text-sm tracking-tight ${
-          isWinner
-            ? "font-semibold text-[var(--wpbl-ink)]"
-            : "font-medium text-[var(--wpbl-ink-secondary)]"
-        }`}
-      >
-        {name}
-      </span>
-      <span
-        className={`w-7 justify-self-end text-right font-mono text-sm tabular-nums ${
-          isWinner
-            ? "font-semibold text-[var(--wpbl-ink)]"
-            : "wpbl-muted"
-        }`}
-      >
-        {showScore ? (runs == null ? "—" : runs) : null}
-      </span>
+      <div className="min-w-0 overflow-hidden">
+        <p
+          className={`truncate text-sm tracking-tight ${
+            isWinner
+              ? "font-semibold text-[var(--wpbl-ink)]"
+              : "font-medium text-[var(--wpbl-ink-secondary)]"
+          }`}
+        >
+          {nickname}
+        </p>
+        <p className="truncate text-[10px] leading-snug wpbl-muted">{abbr}</p>
+      </div>
+      {showScore ? (
+        <p
+          className={`wpbl-schedule-team-score w-8 shrink-0 text-right ${
+            isWinner
+              ? "font-bold text-[var(--wpbl-ink)]"
+              : "font-semibold wpbl-muted"
+          }`}
+        >
+          {runs == null ? "—" : runs}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -141,16 +135,12 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
 
   return (
     <li>
-      <Link
-        href={`/wpbl/games/${game.id}`}
-        className="block px-3.5 py-3 hover:bg-[var(--wpbl-bg-hover)]"
-      >
-        <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-start gap-x-3">
-          {/* Match height of the two team lines so status stays optically centered */}
-          <div className="flex min-h-[4.25rem] flex-col justify-center">
+      <Link href={`/wpbl/games/${game.id}`} className="wpbl-schedule-row">
+        <div className="grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2.5">
+          <div className="flex min-h-[3.75rem] flex-col justify-center">
             <StatusRail game={game} />
           </div>
-          <div className="min-w-0 space-y-1.5">
+          <div className="min-w-0 space-y-2">
             <TeamLine
               abbr={game.awayAbbr}
               name={game.awayName}
@@ -168,7 +158,7 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
           </div>
         </div>
         {game.venue ? (
-          <p className="mt-1.5 truncate pl-[calc(4.75rem+0.75rem+2.5rem)] text-[11px] wpbl-muted">
+          <p className="mt-1.5 truncate pl-[calc(3.25rem+0.625rem+2.25rem)] text-[10px] wpbl-muted">
             {game.venue}
           </p>
         ) : null}
