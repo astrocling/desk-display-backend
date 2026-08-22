@@ -167,6 +167,8 @@ export interface WpblBoxPlayerLine {
   battingOrder: number | null;
   /** Jersey number string when present. */
   uniform: string | null;
+  /** Absolute headshot URL when resolved; null when unknown. */
+  headshotUrl: string | null;
   stats: Record<string, string | number | null>; // mapped display columns
 }
 

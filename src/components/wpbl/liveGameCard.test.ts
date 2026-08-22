@@ -20,6 +20,7 @@ describe("normalizePlayerName / findPlayerLine", () => {
         position: "2b",
         battingOrder: null,
         uniform: null,
+        headshotUrl: null,
         stats: { ab: "2", h: "0", avg: ".000" },
       },
       {
@@ -29,6 +30,7 @@ describe("normalizePlayerName / findPlayerLine", () => {
         position: "p",
         battingOrder: null,
         uniform: null,
+        headshotUrl: null,
         stats: { ip: "5.1", era: "1.68" },
       },
     ];
@@ -48,6 +50,7 @@ describe("batterRateLine", () => {
         position: "cf",
         battingOrder: null,
         uniform: null,
+        headshotUrl: null,
         stats: { ab: "0", h: "0", avg: ".286", obp: "1.000", slg: ".000" },
       }),
     ).toBe(".286");
@@ -62,6 +65,7 @@ describe("batterRateLine", () => {
         position: "cf",
         battingOrder: null,
         uniform: null,
+        headshotUrl: null,
         stats: { ab: "0", h: "0", obp: "1.000", slg: ".000" },
       }),
     ).toBeNull();
@@ -113,6 +117,7 @@ describe("keyPlayersFromDetail", () => {
             position: "1b",
             battingOrder: null,
             uniform: null,
+            headshotUrl: null,
             stats: { ab: "2", h: "0", avg: ".250" },
           },
         ],
@@ -124,6 +129,7 @@ describe("keyPlayersFromDetail", () => {
             position: "p",
             battingOrder: null,
             uniform: null,
+            headshotUrl: null,
             stats: { ip: "5.1", era: "1.68" },
           },
         ],
@@ -136,10 +142,12 @@ describe("keyPlayersFromDetail", () => {
       pitcherId: "pitcher-1",
       pitcherTeamAbbr: "MIL",
       pitcherStats: "5.1 IP · 1.68 ERA",
+      pitcherHeadshotUrl: null,
       batterName: "Olson",
       batterId: "batter-1",
       batterTeamAbbr: "ATL",
       batterStats: "0-2 · .250",
+      batterHeadshotUrl: null,
     });
     expect(batterGameLine(detail.boxscore.batting[0]!)).toBe("0-2");
   });
@@ -188,6 +196,7 @@ describe("keyPlayersFromDetail", () => {
             position: "lf",
             battingOrder: null,
             uniform: null,
+            headshotUrl: null,
             // Game OBP/SLG only — the old bug summed these to 1.000
             stats: { ab: "0", h: "0", obp: "1.000", slg: ".000", ops: "1.000" },
           },
@@ -200,6 +209,7 @@ describe("keyPlayersFromDetail", () => {
             position: "p",
             battingOrder: null,
             uniform: null,
+            headshotUrl: null,
             stats: { ip: "2.1" },
           },
         ],

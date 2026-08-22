@@ -30,7 +30,7 @@ function parseRuns(value: unknown): number | null {
   return null;
 }
 
-/** Keep season AVG/ERA enriched on HTTP load across live WS remaps. */
+/** Keep season AVG/ERA and headshots enriched on HTTP load across live WS remaps. */
 export function preserveSeasonRates(
   next: WpblBoxPlayerLine[],
   prior: WpblBoxPlayerLine[],
@@ -49,7 +49,11 @@ export function preserveSeasonRates(
     if (old.stats.era != null && old.stats.era !== "") {
       stats.era = old.stats.era;
     }
-    return { ...line, stats };
+    return {
+      ...line,
+      stats,
+      headshotUrl: line.headshotUrl ?? old.headshotUrl ?? null,
+    };
   });
 }
 

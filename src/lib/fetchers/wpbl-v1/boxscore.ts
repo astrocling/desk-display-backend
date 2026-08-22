@@ -11,6 +11,10 @@ import { findPlayerLine } from "@/lib/wpbl-player-match";
 import { formatWpblPosition } from "@/lib/wpbl-position";
 import { fetchWpblJson } from "./client";
 import { mapWpblGames, type WpblGamesPayload } from "./games";
+import {
+  fetchWpblHeadshotMap,
+  resolvePlayerHeadshot,
+} from "./headshots";
 import { mapWpblStatus } from "./status";
 import { FALLBACK_SEASON_ID, teamFromId } from "./teams";
 
@@ -159,6 +163,7 @@ function mapPlayerLines(
         battingOrder:
           statKey === "hitting" ? parseBattingOrder(player.spot) : null,
         uniform: player.uniform?.trim() ? player.uniform.trim() : null,
+        headshotUrl: null,
         stats: mapStatGroup(rawStats, statKeys),
       });
     }
@@ -422,6 +427,31 @@ export async function enrichLiveKeyPlayerSeasonRates(
   );
 }
 
+/** Attach official headshots onto batting/pitching lines (mutates in place). */
+export async function enrichBoxscoreHeadshots(
+  boxscore: WpblGameDetailResponse["boxscore"],
+): Promise<void> {
+  if (!boxscore.available) return;
+  const lines = [...boxscore.batting, ...boxscore.pitching];
+  if (!lines.length) return;
+
+  let headshotMap: Map<string, string>;
+  try {
+    headshotMap = await fetchWpblHeadshotMap();
+  } catch {
+    return;
+  }
+  if (headshotMap.size === 0) return;
+
+  for (const line of lines) {
+    line.headshotUrl = resolvePlayerHeadshot({
+      playerId: line.playerId ?? "",
+      name: line.name,
+      headshotMap,
+    });
+  }
+}
+
 export async function fetchWpblGameDetail(
   id: string,
 ): Promise<WpblGameDetailResponse> {
@@ -469,9 +499,12 @@ export async function fetchWpblGameDetail(
   const situation = mapWpblLiveSituation(status, boxStatus);
   const seasonId = gameRaw.season_id?.trim() || FALLBACK_SEASON_ID;
 
-  if (situation && boxscore.available) {
-    await enrichLiveKeyPlayerSeasonRates(boxscore, situation, seasonId);
-  }
+  await Promise.all([
+    situation && boxscore.available
+      ? enrichLiveKeyPlayerSeasonRates(boxscore, situation, seasonId)
+      : Promise.resolve(),
+    enrichBoxscoreHeadshots(boxscore),
+  ]);
 
   return {
     updatedAt: new Date().toISOString(),

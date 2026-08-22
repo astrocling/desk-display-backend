@@ -14,12 +14,19 @@ export function normalizeWpblGameDetail(
   blob: WpblGameDetailResponse,
 ): WpblGameDetailResponse {
   const situation = blob.game.situation;
-  const normalizeLine = <T extends { battingOrder?: number | null; uniform?: string | null }>(
+  const normalizeLine = <
+    T extends {
+      battingOrder?: number | null;
+      uniform?: string | null;
+      headshotUrl?: string | null;
+    },
+  >(
     line: T,
   ) => ({
     ...line,
     battingOrder: line.battingOrder ?? null,
     uniform: line.uniform ?? null,
+    headshotUrl: line.headshotUrl ?? null,
   });
 
   return {

@@ -51,6 +51,7 @@ function batter(
     playerId: null,
     position: "cf",
     uniform: null,
+    headshotUrl: null,
     stats: {},
     ...partial,
   };

@@ -349,6 +349,7 @@ Game detail with line score, box score, and play-by-play. Per-game Redis key `wp
 | `boxscore.batting` | array | Hitting lines (upstream `hitting` mapped here) |
 | `boxscore.batting[].battingOrder` | number \| null | Lineup spot when present |
 | `boxscore.batting[].uniform` | string \| null | Jersey number when present |
+| `boxscore.batting[].headshotUrl` | string \| null | Official headshot when resolved |
 | `boxscore.pitching` | array | Pitching lines |
 | `boxscore.plays` | array | Chronological play-by-play from the official feed (oldest first); empty when unpublished |
 | `boxscore.plays[].narrative` | string | Official play description |

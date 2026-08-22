@@ -17,6 +17,7 @@ import {
   linkifyPlayerNames,
   rosterFromBoxLines,
 } from "./linkifyPlayerNames";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
@@ -158,12 +159,14 @@ function KeyPlayer({
   teamAbbr,
   name,
   playerId,
+  headshotUrl,
   stats,
 }: {
   label: string;
   teamAbbr: string | null;
   name: string | null;
   playerId: string | null;
+  headshotUrl: string | null;
   stats: string | null;
 }) {
   if (!name) {
@@ -179,19 +182,27 @@ function KeyPlayer({
   }
 
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-        {label}
-        {teamAbbr ? ` (${teamAbbr})` : ""}
-      </p>
-      <p className="truncate text-sm font-semibold">
-        <PlayerNameLink
-          playerId={playerId}
-          name={name}
-          className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
-        />
-      </p>
-      {stats ? <p className="truncate text-xs text-slate-500">{stats}</p> : null}
+    <div className="flex min-w-0 items-start gap-2">
+      <PlayerHeadshot
+        name={name}
+        headshotUrl={headshotUrl}
+        teamAbbr={teamAbbr}
+        size={32}
+      />
+      <div className="min-w-0">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+          {label}
+          {teamAbbr ? ` (${teamAbbr})` : ""}
+        </p>
+        <p className="truncate text-sm font-semibold">
+          <PlayerNameLink
+            playerId={playerId}
+            name={name}
+            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+          />
+        </p>
+        {stats ? <p className="truncate text-xs text-slate-500">{stats}</p> : null}
+      </div>
     </div>
   );
 }
@@ -272,6 +283,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
             teamAbbr={keys.pitcherTeamAbbr}
             name={keys.pitcherName}
             playerId={keys.pitcherId}
+            headshotUrl={keys.pitcherHeadshotUrl}
             stats={keys.pitcherStats}
           />
           <KeyPlayer
@@ -279,6 +291,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
             teamAbbr={keys.batterTeamAbbr}
             name={keys.batterName}
             playerId={keys.batterId}
+            headshotUrl={keys.batterHeadshotUrl}
             stats={keys.batterStats}
           />
         </div>

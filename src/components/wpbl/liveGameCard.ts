@@ -46,10 +46,12 @@ export type LiveKeyPlayers = {
   pitcherId: string | null;
   pitcherTeamAbbr: string | null;
   pitcherStats: string | null;
+  pitcherHeadshotUrl: string | null;
   batterName: string | null;
   batterId: string | null;
   batterTeamAbbr: string | null;
   batterStats: string | null;
+  batterHeadshotUrl: string | null;
 };
 
 export function keyPlayersFromDetail(
@@ -85,6 +87,7 @@ export function keyPlayersFromDetail(
       pitcherIpLine(pitcherLine),
       pitcherEraLine(pitcherLine),
     ]),
+    pitcherHeadshotUrl: pitcherLine?.headshotUrl ?? null,
     batterName: sit?.batterName ?? null,
     batterId: batterLine?.playerId ?? null,
     batterTeamAbbr:
@@ -101,5 +104,6 @@ export function keyPlayersFromDetail(
       batterGameLine(batterLine),
       batterRateLine(batterLine),
     ]),
+    batterHeadshotUrl: batterLine?.headshotUrl ?? null,
   };
 }

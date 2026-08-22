@@ -16,6 +16,7 @@ const batting: WpblBoxPlayerLine[] = [
     position: "CF",
     battingOrder: 1,
     uniform: "3",
+    headshotUrl: null,
     stats: {},
   },
   {
@@ -25,6 +26,7 @@ const batting: WpblBoxPlayerLine[] = [
     position: "2B",
     battingOrder: 2,
     uniform: null,
+    headshotUrl: null,
     stats: {},
   },
 ];
@@ -37,6 +39,7 @@ const pitching: WpblBoxPlayerLine[] = [
     position: "P",
     battingOrder: null,
     uniform: "18",
+    headshotUrl: null,
     stats: {},
   },
 ];

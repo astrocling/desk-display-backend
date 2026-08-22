@@ -163,6 +163,7 @@ describe("mapPlayerDetail", () => {
       teamName: "Firebells",
       position: "P/UT.",
       uniform: "18",
+      headshotUrl: null,
       bats: "R",
       throws: "R",
       hometown: "Anaheim, Calif.",

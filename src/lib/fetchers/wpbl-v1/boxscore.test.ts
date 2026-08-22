@@ -59,6 +59,7 @@ describe("mapWpblBoxscore", () => {
       position: "2B",
       battingOrder: 7,
       uniform: "7",
+      headshotUrl: null,
       stats: { ab: "4", h: "2", r: "1", rbi: "4" },
     });
     expect(amiraBatting?.playerId).toBeTruthy();
@@ -249,6 +250,7 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
           position: "lf",
           battingOrder: null,
           uniform: null,
+          headshotUrl: null,
           stats: {
             ab: "0",
             h: "0",
@@ -265,6 +267,7 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
           position: "p",
           battingOrder: null,
           uniform: null,
+          headshotUrl: null,
           stats: { ip: "2.1" } as Record<string, string | number | null>,
         },
       ],

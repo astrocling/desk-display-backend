@@ -15,6 +15,7 @@ import {
 } from "@/lib/wpbl-plays";
 
 import { PitchLog } from "./PitchLog";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
@@ -163,12 +164,16 @@ function PlayerLine({
   player,
   fallbackName,
   fallbackPlayerId,
+  fallbackHeadshotUrl,
+  teamAbbr,
   stats,
 }: {
   label: string;
   player: WpblBoxPlayerLine | null;
   fallbackName?: string | null;
   fallbackPlayerId?: string | null;
+  fallbackHeadshotUrl?: string | null;
+  teamAbbr?: string | null;
   stats?: string | null;
 }) {
   const name = player?.name ?? fallbackName;
@@ -180,20 +185,30 @@ function PlayerLine({
   ]
     .filter(Boolean)
     .join(" · ");
+  const playerId = player?.playerId ?? fallbackPlayerId;
+  const headshotUrl = player?.headshotUrl ?? fallbackHeadshotUrl ?? null;
 
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-        <PlayerNameLink
-          playerId={player?.playerId ?? fallbackPlayerId}
-          name={name}
-          className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
-        />
-      </p>
-      {meta ? <p className="truncate text-xs text-slate-500">{meta}</p> : null}
+    <div className="flex min-w-0 items-start gap-2">
+      <PlayerHeadshot
+        name={name}
+        headshotUrl={headshotUrl}
+        teamAbbr={teamAbbr}
+        size={36}
+      />
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+        </p>
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <PlayerNameLink
+            playerId={playerId}
+            name={name}
+            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+          />
+        </p>
+        {meta ? <p className="truncate text-xs text-slate-500">{meta}</p> : null}
+      </div>
     </div>
   );
 }
@@ -257,9 +272,15 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-4">
           <PlayerLine
             label="Pitching"
-            player={null}
+            player={
+              keys.pitcherId
+                ? (boxscore.pitching.find((p) => p.playerId === keys.pitcherId) ??
+                  null)
+                : null
+            }
             fallbackName={keys.pitcherName}
             fallbackPlayerId={keys.pitcherId}
+            teamAbbr={keys.pitcherTeamAbbr}
             stats={keys.pitcherStats}
           />
           <PlayerLine
@@ -267,10 +288,31 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
             player={followers.batter}
             fallbackName={keys.batterName}
             fallbackPlayerId={keys.batterId}
+            teamAbbr={keys.batterTeamAbbr}
             stats={keys.batterStats}
           />
-          <PlayerLine label="On deck" player={followers.onDeck} />
-          <PlayerLine label="In the hole" player={followers.inHole} />
+          <PlayerLine
+            label="On deck"
+            player={followers.onDeck}
+            teamAbbr={
+              followers.battingSide === "away"
+                ? game.awayAbbr
+                : followers.battingSide === "home"
+                  ? game.homeAbbr
+                  : null
+            }
+          />
+          <PlayerLine
+            label="In the hole"
+            player={followers.inHole}
+            teamAbbr={
+              followers.battingSide === "away"
+                ? game.awayAbbr
+                : followers.battingSide === "home"
+                  ? game.homeAbbr
+                  : null
+            }
+          />
         </div>
       )}
 
