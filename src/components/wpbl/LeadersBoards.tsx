@@ -14,6 +14,10 @@ export const LEADERS_DISPLAY_LIMIT = 10;
 export type LeadersBoardsProps = {
   leaders: WpblLeadersResponse;
   teamFilter: string;
+  /** Max rows to show (default {@link LEADERS_DISPLAY_LIMIT}). */
+  limit?: number;
+  /** Initial hitting category id (e.g. `"hr"`). */
+  initialCategoryId?: string;
 };
 
 type StatGroup = "hitting" | "pitching";
@@ -78,10 +82,14 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-function filterEntries(entries: WpblLeaderEntry[], teamFilter: string): WpblLeaderEntry[] {
+function filterEntries(
+  entries: WpblLeaderEntry[],
+  teamFilter: string,
+  limit: number,
+): WpblLeaderEntry[] {
   const filtered =
     teamFilter === "ALL" ? entries : entries.filter((e) => e.teamAbbr === teamFilter);
-  return filtered.slice(0, LEADERS_DISPLAY_LIMIT);
+  return filtered.slice(0, limit);
 }
 
 function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
@@ -118,14 +126,19 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
   );
 }
 
-export function LeadersBoards({ leaders, teamFilter }: LeadersBoardsProps) {
+export function LeadersBoards({
+  leaders,
+  teamFilter,
+  limit = LEADERS_DISPLAY_LIMIT,
+  initialCategoryId = "hr",
+}: LeadersBoardsProps) {
   const [group, setGroup] = useState<StatGroup>("hitting");
-  const [categoryId, setCategoryId] = useState("hr");
+  const [categoryId, setCategoryId] = useState(initialCategoryId);
 
   const groupCategories = CATEGORIES.filter((c) => c.group === group);
   const active =
     groupCategories.find((c) => c.id === categoryId) ?? groupCategories[0];
-  const entries = filterEntries(active.getEntries(leaders), teamFilter);
+  const entries = filterEntries(active.getEntries(leaders), teamFilter, limit);
   const minAb = leaders.qualifiers.battingMinAb;
 
   return (

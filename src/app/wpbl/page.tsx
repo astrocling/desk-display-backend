@@ -1,5 +1,5 @@
-import { WpblLeagueClient } from "@/components/wpbl/WpblLeagueClient";
+import { WpblHomeClient } from "@/components/wpbl/WpblLeagueClient";
 
 export default function WpblPage() {
-  return <WpblLeagueClient />;
+  return <WpblHomeClient />;
 }
