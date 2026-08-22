@@ -7,6 +7,7 @@ import type {
   WpblPlayerDetailResponse,
 } from "@/lib/types/wpbl-display";
 import {
+  leaderPlayerIdsToWarm,
   mergeWpblLeadersBlob,
   mergeWpblLeagueBlob,
   shouldRefreshWpblGame,
@@ -261,5 +262,45 @@ describe("shouldRefreshWpblPlayer", () => {
       now.getTime() - WPBL_PLAYER_TTL_MS + 60_000,
     ).toISOString();
     expect(shouldRefreshWpblPlayer(player(updatedAt), now)).toBe(false);
+  });
+});
+
+describe("leaderPlayerIdsToWarm", () => {
+  function entry(
+    playerId: string,
+    name = playerId,
+  ): WpblLeadersResponse["batting"]["avg"][number] {
+    return {
+      playerId,
+      name,
+      teamAbbr: "SF",
+      value: "1",
+      sortValue: 1,
+      position: null,
+      headshotUrl: null,
+    };
+  }
+
+  it("dedupes across boards and respects per-board limit", () => {
+    const leaders: WpblLeadersResponse = {
+      ...emptyLeaders(),
+      batting: {
+        avg: [entry("a"), entry("b"), entry("c")],
+        hr: [entry("a"), entry("d")],
+        rbi: [],
+        h: [],
+      },
+      pitching: {
+        era: [entry("e")],
+        so: [],
+        w: [],
+        sv: [],
+      },
+    };
+    expect(leaderPlayerIdsToWarm(leaders, 2)).toEqual(["a", "b", "d", "e"]);
+  });
+
+  it("returns empty when boards are empty", () => {
+    expect(leaderPlayerIdsToWarm(emptyLeaders())).toEqual([]);
   });
 });

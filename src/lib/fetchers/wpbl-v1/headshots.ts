@@ -6,6 +6,9 @@
  * (`wpbl_player` CPT) and link back via ACF `stats_player_id`.
  */
 
+import { REDIS_KEYS } from "@/lib/config";
+import { getRedis } from "@/lib/redis";
+
 const WP_PLAYER_API =
   "https://www.womensprobaseballleague.com/wp-json/wp/v2/wpbl_player";
 
@@ -14,6 +17,11 @@ const DEFAULT_TTL_MS = 30 * 60_000;
 type CacheEntry = { expiresAt: number; value: Map<string, string> };
 
 let mapCache: CacheEntry | null = null;
+
+export type WpblHeadshotBlob = {
+  updatedAt: string;
+  map: Record<string, string>;
+};
 
 interface WpAcfField {
   value?: unknown;
@@ -114,9 +122,98 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&gt;/g, ">");
 }
 
+function mapFromRecord(record: Record<string, string>): Map<string, string> {
+  return new Map(Object.entries(record));
+}
+
+function recordFromMap(map: Map<string, string>): Record<string, string> {
+  return Object.fromEntries(map.entries());
+}
+
+function isFresh(updatedAt: string, ttlMs: number, now = Date.now()): boolean {
+  const ms = Date.parse(updatedAt);
+  if (!Number.isFinite(ms)) return false;
+  return now - ms < ttlMs;
+}
+
+async function readHeadshotBlobFromRedis(): Promise<WpblHeadshotBlob | null> {
+  try {
+    return await getRedis().get<WpblHeadshotBlob>(REDIS_KEYS.wpblHeadshots);
+  } catch {
+    return null;
+  }
+}
+
+async function writeHeadshotBlobToRedis(map: Map<string, string>): Promise<void> {
+  try {
+    const blob: WpblHeadshotBlob = {
+      updatedAt: new Date().toISOString(),
+      map: recordFromMap(map),
+    };
+    await getRedis().set(REDIS_KEYS.wpblHeadshots, blob);
+  } catch {
+    // Redis optional
+  }
+}
+
+async function crawlWordpressHeadshots(): Promise<Map<string, string>> {
+  const byId = new Map<string, string>();
+  const byName = new Map<string, string>();
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages && page <= 20) {
+    const url = `${WP_PLAYER_API}?per_page=20&page=${page}`;
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "desk-display-backend/wpbl-headshots",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`WP players ${response.status}`);
+    }
+    totalPages = Number(response.headers.get("X-WP-TotalPages") ?? "1") || 1;
+    const posts = (await response.json()) as WpPlayerPost[];
+    if (!Array.isArray(posts) || posts.length === 0) break;
+
+    for (const post of posts) {
+      const acf = post.acf ?? {};
+      const headshotUrl = extractHeadshotUrlFromAcf(acf.headshot);
+      if (!headshotUrl) continue;
+
+      const statsId = acfPlainValue(acf.stats_player_id);
+      if (statsId) {
+        byId.set(statsId, headshotUrl);
+      }
+
+      const first = acfPlainValue(acf.first_name);
+      const last = acfPlainValue(acf.last_name);
+      const title = decodeHtmlEntities(post.title?.rendered ?? "");
+      const composed = `${first} ${last}`.trim() || title;
+      if (composed) {
+        byName.set(normalizePlayerNameKey(composed), headshotUrl);
+      }
+      if (title) {
+        byName.set(normalizePlayerNameKey(title), headshotUrl);
+      }
+    }
+
+    page += 1;
+  }
+
+  const combined = new Map<string, string>(byId);
+  for (const [nameKey, url] of byName) {
+    combined.set(`name:${nameKey}`, url);
+  }
+  return combined;
+}
+
 /**
  * Build playerId → headshot URL from WordPress `wpbl_player` posts.
  * Soft-fails to an empty map on network/parse errors.
+ * Uses process memory + Redis so cold serverless instances skip the WP crawl.
  */
 export async function fetchWpblHeadshotMap(options?: {
   ttlMs?: number;
@@ -126,62 +223,24 @@ export async function fetchWpblHeadshotMap(options?: {
     return mapCache.value;
   }
 
+  const redisBlob = await readHeadshotBlobFromRedis();
+  if (redisBlob?.map && isFresh(redisBlob.updatedAt, ttlMs)) {
+    const fromRedis = mapFromRecord(redisBlob.map);
+    mapCache = { expiresAt: Date.now() + ttlMs, value: fromRedis };
+    return fromRedis;
+  }
+
   try {
-    const byId = new Map<string, string>();
-    const byName = new Map<string, string>();
-    let page = 1;
-    let totalPages = 1;
-
-    while (page <= totalPages && page <= 20) {
-      const url = `${WP_PLAYER_API}?per_page=20&page=${page}`;
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "desk-display-backend/wpbl-headshots",
-        },
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(`WP players ${response.status}`);
-      }
-      totalPages = Number(response.headers.get("X-WP-TotalPages") ?? "1") || 1;
-      const posts = (await response.json()) as WpPlayerPost[];
-      if (!Array.isArray(posts) || posts.length === 0) break;
-
-      for (const post of posts) {
-        const acf = post.acf ?? {};
-        const headshotUrl = extractHeadshotUrlFromAcf(acf.headshot);
-        if (!headshotUrl) continue;
-
-        const statsId = acfPlainValue(acf.stats_player_id);
-        if (statsId) {
-          byId.set(statsId, headshotUrl);
-        }
-
-        const first = acfPlainValue(acf.first_name);
-        const last = acfPlainValue(acf.last_name);
-        const title = decodeHtmlEntities(post.title?.rendered ?? "");
-        const composed = `${first} ${last}`.trim() || title;
-        if (composed) {
-          byName.set(normalizePlayerNameKey(composed), headshotUrl);
-        }
-        if (title) {
-          byName.set(normalizePlayerNameKey(title), headshotUrl);
-        }
-      }
-
-      page += 1;
-    }
-
-    // Attach name→url under a reserved prefix so callers can resolve by name.
-    const combined = new Map<string, string>(byId);
-    for (const [nameKey, url] of byName) {
-      combined.set(`name:${nameKey}`, url);
-    }
-
+    const combined = await crawlWordpressHeadshots();
     mapCache = { expiresAt: Date.now() + ttlMs, value: combined };
+    await writeHeadshotBlobToRedis(combined);
     return combined;
   } catch {
+    if (redisBlob?.map && Object.keys(redisBlob.map).length > 0) {
+      const stale = mapFromRecord(redisBlob.map);
+      mapCache = { expiresAt: Date.now() + 60_000, value: stale };
+      return stale;
+    }
     const empty = new Map<string, string>();
     // Brief negative cache so a flaky WP does not hammer every leaders refresh.
     mapCache = { expiresAt: Date.now() + 60_000, value: empty };

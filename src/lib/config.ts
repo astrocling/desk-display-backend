@@ -14,6 +14,8 @@ export const REDIS_KEYS = {
   radarInterestingRegs: "radar:interestingRegs",
   wpblLeague: "wpbl:league",
   wpblLeaders: "wpbl:leaders",
+  /** Serialized WP headshot id/name → URL map. */
+  wpblHeadshots: "wpbl:headshots",
 } as const;
 
 export function wpblGameKey(id: string): string {

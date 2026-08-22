@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 
-import { normalizeWpblGameDetail } from "./route";
+import { normalizeWpblGameDetail } from "@/lib/fetchers/wpbl-v1/normalize-game-detail";
 
 describe("normalizeWpblGameDetail", () => {
   it("fills missing plays and runner name fields on stale blobs", () => {

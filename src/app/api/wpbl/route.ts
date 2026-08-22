@@ -6,6 +6,7 @@ import {
 import { getRedis } from "@/lib/redis";
 import type { WpblLeagueResponse } from "@/lib/types/wpbl-display";
 import { wpblApiErrorResponse } from "@/lib/wpbl-api-error";
+import { jsonWithCache, WPBL_API_CACHE_CONTROL } from "@/lib/wpbl-cache-headers";
 
 export async function GET() {
   try {
@@ -14,7 +15,7 @@ export async function GET() {
         REDIS_KEYS.wpblLeague,
       );
       if (cached) {
-        return Response.json(cached);
+        return jsonWithCache(cached, WPBL_API_CACHE_CONTROL);
       }
     } catch {
       // Fall through to live build when Redis is unset/unreachable.
@@ -22,7 +23,7 @@ export async function GET() {
 
     // Empty cache or no Redis: build live (and write if Redis works).
     const blob = await refreshWpblLeague().catch(() => buildWpblLeague());
-    return Response.json(blob);
+    return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
   } catch (error) {
     return wpblApiErrorResponse(error);
   }

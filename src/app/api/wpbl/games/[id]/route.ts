@@ -1,48 +1,22 @@
 import { wpblGameKey } from "@/lib/config";
 import { fetchWpblGameDetail } from "@/lib/fetchers/wpbl-v1/boxscore";
 import { WpblHttpError } from "@/lib/fetchers/wpbl-v1/client";
+import { normalizeWpblGameDetail } from "@/lib/fetchers/wpbl-v1/normalize-game-detail";
 import {
   refreshWpblGame,
   shouldRefreshWpblGame,
 } from "@/lib/fetchers/wpbl-v1/refresh";
 import { getRedis } from "@/lib/redis";
+import { scheduleBackground } from "@/lib/schedule-background";
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 import { wpblApiErrorResponse } from "@/lib/wpbl-api-error";
+import {
+  jsonWithCache,
+  WPBL_API_CACHE_CONTROL,
+  WPBL_LIVE_API_CACHE_CONTROL,
+} from "@/lib/wpbl-cache-headers";
 
-/** Backfill fields added after older Redis game blobs were cached. */
-export function normalizeWpblGameDetail(
-  blob: WpblGameDetailResponse,
-): WpblGameDetailResponse {
-  const situation = blob.game.situation;
-  const normalizeLine = <T extends { battingOrder?: number | null; uniform?: string | null }>(
-    line: T,
-  ) => ({
-    ...line,
-    battingOrder: line.battingOrder ?? null,
-    uniform: line.uniform ?? null,
-  });
-
-  return {
-    ...blob,
-    game: {
-      ...blob.game,
-      situation: situation
-        ? {
-            ...situation,
-            runnerFirst: situation.runnerFirst ?? null,
-            runnerSecond: situation.runnerSecond ?? null,
-            runnerThird: situation.runnerThird ?? null,
-          }
-        : null,
-    },
-    boxscore: {
-      ...blob.boxscore,
-      plays: Array.isArray(blob.boxscore.plays) ? blob.boxscore.plays : [],
-      batting: (blob.boxscore.batting ?? []).map(normalizeLine),
-      pitching: (blob.boxscore.pitching ?? []).map(normalizeLine),
-    },
-  };
-}
+export { normalizeWpblGameDetail };
 
 function gameFetchErrorResponse(error: unknown): Response {
   if (error instanceof WpblHttpError) {
@@ -73,6 +47,12 @@ function gameFetchErrorResponse(error: unknown): Response {
   return Response.json({ error: message }, { status: 502 });
 }
 
+function cacheControlFor(blob: WpblGameDetailResponse): string {
+  return blob.game.status === "live"
+    ? WPBL_LIVE_API_CACHE_CONTROL
+    : WPBL_API_CACHE_CONTROL;
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -89,20 +69,32 @@ export async function GET(
     }
 
     const now = new Date();
-    if (!blob || shouldRefreshWpblGame(blob, now)) {
+    const needsRefresh = !blob || shouldRefreshWpblGame(blob, now);
+
+    // SWR: when we have a usable blob, return it and refresh in the background.
+    // Still block on cold miss (no blob) or unavailable boxscore with no prior data.
+    if (blob && needsRefresh && redisOk) {
+      scheduleBackground(() => refreshWpblGame(id).then(() => undefined));
+      const normalized = normalizeWpblGameDetail(blob);
+      return jsonWithCache(normalized, cacheControlFor(normalized));
+    }
+
+    if (needsRefresh) {
       try {
         blob = redisOk
           ? await refreshWpblGame(id)
           : await fetchWpblGameDetail(id);
       } catch (error) {
         if (blob) {
-          return Response.json(normalizeWpblGameDetail(blob));
+          const normalized = normalizeWpblGameDetail(blob);
+          return jsonWithCache(normalized, cacheControlFor(normalized));
         }
         return gameFetchErrorResponse(error);
       }
     }
 
-    return Response.json(normalizeWpblGameDetail(blob));
+    const normalized = normalizeWpblGameDetail(blob!);
+    return jsonWithCache(normalized, cacheControlFor(normalized));
   } catch (error) {
     return wpblApiErrorResponse(error);
   }

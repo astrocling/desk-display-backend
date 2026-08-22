@@ -148,27 +148,36 @@ function LatestPlayBanner({
 
 export type GameDetailClientProps = {
   gameId: string;
+  /** Redis-hot blob from the server so the page paints without a client round-trip. */
+  initialData?: WpblGameDetailResponse | null;
 };
 
-export function GameDetailClient({ gameId }: GameDetailClientProps) {
+export function GameDetailClient({
+  gameId,
+  initialData = null,
+}: GameDetailClientProps) {
   const searchParams = useSearchParams();
   const initialView: DetailView =
     searchParams.get("view") === "box" ? "box" : "gameday";
 
   const [view, setView] = useState<DetailView>(initialView);
-  const [data, setData] = useState<WpblGameDetailResponse | null>(null);
+  const [data, setData] = useState<WpblGameDetailResponse | null>(initialData);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const hasDataRef = useRef(false);
+  const [loading, setLoading] = useState(!initialData);
+  const hasDataRef = useRef(Boolean(initialData));
 
   useEffect(() => {
+    // replaceState does not update useSearchParams; keep tab in sync with the URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- URL ↔ tab sync
     setView(searchParams.get("view") === "box" ? "box" : "gameday");
   }, [searchParams]);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/wpbl/games/${gameId}`);
+      const res = await fetch(`/api/wpbl/games/${gameId}`, {
+        cache: "no-store",
+      });
 
       if (res.status === 404) {
         if (!hasDataRef.current) {
@@ -214,13 +223,11 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
   useEffect(() => {
     let cancelled = false;
-    hasDataRef.current = false;
-    setData(null);
-    setNotFound(false);
-    setError(null);
 
     void (async () => {
-      setLoading(true);
+      if (!initialData) {
+        setLoading(true);
+      }
       await load();
       if (!cancelled) setLoading(false);
     })();
@@ -228,7 +235,7 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [initialData, load]);
 
   const isLive = data?.game.status === "live";
 
