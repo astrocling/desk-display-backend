@@ -7,15 +7,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   WpblGameDetailResponse,
   WpblGameStatus,
-  WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
-import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
+import { latestWpblPlay, pitchesFromPlay } from "@/lib/wpbl-plays";
 
 import { BoxTables } from "./BoxTables";
+import { GamedayScoreboard } from "./GamedayScoreboard";
 import { LineScore } from "./LineScore";
-import { LatestPlayBanner, PlayByPlayPanel } from "./PlayByPlayPanel";
-import { TeamLogo } from "./TeamLogo";
-import { keyPlayersFromDetail } from "./liveGameCard";
+import { PitchLog } from "./PitchLog";
+import { PlayByPlayPanel } from "./PlayByPlayPanel";
 
 const POLL_MS = 30_000;
 
@@ -50,92 +49,6 @@ function StatusBadge({ status }: { status: WpblGameStatus }) {
     >
       {labels[status]}
     </span>
-  );
-}
-
-function scoreLine(game: WpblGameDetailResponse["game"]): string {
-  if (game.status === "scheduled" || game.awayRuns == null || game.homeRuns == null) {
-    return "—";
-  }
-  return `${game.awayRuns}–${game.homeRuns}`;
-}
-
-function SituationBoard({ situation }: { situation: WpblLiveSituation }) {
-  const baseClass = (on: boolean) =>
-    `absolute h-4 w-4 rotate-45 border border-slate-400 ${
-      on
-        ? "bg-amber-400 border-amber-500 dark:bg-amber-300 dark:border-amber-200"
-        : "bg-transparent"
-    }`;
-
-  const first = shortRunnerLabel(situation.runnerFirst);
-  const second = shortRunnerLabel(situation.runnerSecond);
-  const third = shortRunnerLabel(situation.runnerThird);
-  const outs = situation.outs == null ? 0 : Math.min(3, Math.max(0, situation.outs));
-
-  return (
-    <div className="flex flex-wrap items-center gap-6">
-      <div className="flex flex-col items-center gap-1.5">
-        <div
-          className="relative h-12 w-12"
-          aria-label={[
-            situation.runnerFirst
-              ? `${situation.runnerFirst} on first`
-              : situation.onFirst
-                ? "runner on first"
-                : null,
-            situation.runnerSecond
-              ? `${situation.runnerSecond} on second`
-              : situation.onSecond
-                ? "runner on second"
-                : null,
-            situation.runnerThird
-              ? `${situation.runnerThird} on third`
-              : situation.onThird
-                ? "runner on third"
-                : null,
-          ]
-            .filter(Boolean)
-            .join(", ") || "bases empty"}
-        >
-          <span className={`${baseClass(situation.onSecond)} left-1/2 top-0 -translate-x-1/2`} />
-          <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
-          <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
-        </div>
-        {(first || second || third) && (
-          <p className="max-w-[10rem] text-center text-[11px] leading-tight text-slate-500">
-            {[
-              third ? `3B ${third}` : null,
-              second ? `2B ${second}` : null,
-              first ? `1B ${first}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
-        {situation.balls != null || situation.strikes != null ? (
-          <p className="font-mono tabular-nums">
-            Count {situation.balls ?? "—"}-{situation.strikes ?? "—"}
-          </p>
-        ) : null}
-        <div className="flex items-center gap-1.5" aria-label={`${outs} out`}>
-          <span>Outs</span>
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className={`h-2.5 w-2.5 rounded-full ${
-                i < outs
-                  ? "bg-red-600 dark:bg-red-500"
-                  : "border border-slate-400 bg-transparent"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -183,6 +96,42 @@ function ViewTabs({
       >
         Box score
       </button>
+    </div>
+  );
+}
+
+function LatestPlayBanner({
+  play,
+}: {
+  play: NonNullable<ReturnType<typeof latestWpblPlay>>;
+}) {
+  const pitches = pitchesFromPlay(play);
+
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2.5 ${
+        play.isScoringPlay
+          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
+          : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
+      }`}
+    >
+      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        Latest play ·{" "}
+        {play.half === "top"
+          ? `Top ${play.inning}`
+          : play.half === "bottom"
+            ? `Bot ${play.inning}`
+            : `Inn ${play.inning}`}
+        {play.isScoringPlay ? " · Scoring" : ""}
+      </p>
+      <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
+        {play.narrative}
+      </p>
+      {pitches.length > 0 ? (
+        <div className="mt-2">
+          <PitchLog pitches={pitches} compact />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -288,19 +237,16 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
     [data],
   );
 
-  const setViewAndUrl = useCallback(
-    (next: DetailView) => {
-      setView(next);
-      const url = new URL(window.location.href);
-      if (next === "box") {
-        url.searchParams.set("view", "box");
-      } else {
-        url.searchParams.delete("view");
-      }
-      window.history.replaceState(null, "", url.pathname + url.search);
-    },
-    [],
-  );
+  const setViewAndUrl = useCallback((next: DetailView) => {
+    setView(next);
+    const url = new URL(window.location.href);
+    if (next === "box") {
+      url.searchParams.set("view", "box");
+    } else {
+      url.searchParams.delete("view");
+    }
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, []);
 
   if (loading) {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
@@ -309,7 +255,10 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
   if (notFound) {
     return (
       <div className="mt-8 space-y-4">
-        <Link href="/wpbl" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+        <Link
+          href="/wpbl"
+          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
           ← Back to WPBL
         </Link>
         <p className="text-sm text-slate-500">Game not found.</p>
@@ -320,7 +269,10 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
   if (error && !data) {
     return (
       <div className="mt-8 space-y-4">
-        <Link href="/wpbl" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+        <Link
+          href="/wpbl"
+          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+        >
           ← Back to WPBL
         </Link>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
@@ -336,70 +288,35 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
   const { game, boxscore, updatedAt } = data;
   const situation = game.situation;
-  const keys = keyPlayersFromDetail(data);
 
   return (
     <div className="mt-8 space-y-6">
-      <Link href="/wpbl" className="inline-block text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+      <Link
+        href="/wpbl"
+        className="inline-block text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+      >
         ← Back to WPBL
       </Link>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={game.status} />
-          {game.inning ? (
-            <span className="text-sm font-medium text-red-600 dark:text-red-400">{game.inning}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge status={game.status} />
+        <span className="text-xs text-slate-500">
+          {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
+          {isLive ? (
+            <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
           ) : null}
-          <span className="text-xs text-slate-500">
-            {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
-            {isLive ? (
-              <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
-            ) : null}
-          </span>
-        </div>
-
-        <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight">
-          <span className="inline-flex items-center gap-2">
-            <TeamLogo abbr={game.awayAbbr} size="lg" />
-            {game.awayAbbr}
-          </span>
-          <span className="font-mono tabular-nums text-slate-600 dark:text-slate-300">
-            {scoreLine(game)}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <TeamLogo abbr={game.homeAbbr} size="lg" />
-            {game.homeAbbr}
-          </span>
-        </h1>
-
-        <p className="text-sm text-slate-500">
-          {game.awayName} at {game.homeName}
-          {game.whenEt ? <span className="ml-2">· {game.whenEt}</span> : null}
-          {game.venue ? <span className="ml-2">· {game.venue}</span> : null}
-        </p>
-
-        {situation && isLive ? (
-          <div className="space-y-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-            <SituationBoard situation={situation} />
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
-              {keys.pitcherName ? (
-                <span>
-                  P {keys.pitcherName}
-                  {keys.pitcherStats ? ` (${keys.pitcherStats})` : ""}
-                </span>
-              ) : null}
-              {keys.batterName ? (
-                <span>
-                  AB {keys.batterName}
-                  {keys.batterStats ? ` (${keys.batterStats})` : ""}
-                </span>
-              ) : null}
-            </div>
-          </div>
+        </span>
+        {game.venue ? (
+          <span className="text-xs text-slate-500">· {game.venue}</span>
         ) : null}
+        {game.whenEt && game.status !== "live" ? (
+          <span className="text-xs text-slate-500">· {game.whenEt}</span>
+        ) : null}
+      </div>
 
-        {lastPlay ? <LatestPlayBanner play={lastPlay} /> : null}
-      </header>
+      <GamedayScoreboard detail={data} />
+
+      {lastPlay ? <LatestPlayBanner play={lastPlay} /> : null}
 
       {boxscore.available && boxscore.lineScore ? (
         <section>

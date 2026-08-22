@@ -347,6 +347,8 @@ Game detail with line score and box score. Per-game Redis key `wpbl:game:{id}`. 
 | `boxscore.available` | boolean | `false` when box not yet published |
 | `boxscore.lineScore` | object \| null | Inning-by-inning R/H/E/LOB |
 | `boxscore.batting` | array | Hitting lines (upstream `hitting` mapped here) |
+| `boxscore.batting[].battingOrder` | number \| null | Lineup spot when present |
+| `boxscore.batting[].uniform` | string \| null | Jersey number when present |
 | `boxscore.pitching` | array | Pitching lines |
 | `boxscore.plays` | array | Chronological play-by-play from the official feed (oldest first); empty when unpublished |
 | `boxscore.plays[].narrative` | string | Official play description |

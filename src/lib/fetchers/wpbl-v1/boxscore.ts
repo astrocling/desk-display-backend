@@ -35,6 +35,8 @@ interface WpblBoxscorePlayer {
   id?: string;
   name: string;
   position?: string;
+  spot?: string | number;
+  uniform?: string;
   hitting?: Record<string, string>;
   pitching?: Record<string, string>;
 }
@@ -125,6 +127,17 @@ function mapStatGroup(
   return stats;
 }
 
+function parseBattingOrder(spot: string | number | undefined): number | null {
+  if (typeof spot === "number" && Number.isFinite(spot) && spot > 0) {
+    return Math.floor(spot);
+  }
+  if (typeof spot === "string" && spot.trim()) {
+    const n = Number(spot.trim());
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  return null;
+}
+
 function mapPlayerLines(
   teams: WpblBoxscoreTeam[],
   statKey: "hitting" | "pitching",
@@ -141,6 +154,9 @@ function mapPlayerLines(
         name: player.name,
         playerId: player.id?.trim() ? player.id.trim() : null,
         position: formatWpblPosition(player.position),
+        battingOrder:
+          statKey === "hitting" ? parseBattingOrder(player.spot) : null,
+        uniform: player.uniform?.trim() ? player.uniform.trim() : null,
         stats: mapStatGroup(rawStats, statKeys),
       });
     }
