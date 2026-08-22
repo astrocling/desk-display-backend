@@ -1,9 +1,15 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mapWpblGames } from "./games";
-import { formatInningLabel, mapWpblBoxscore, mapWpblLiveSituation } from "./boxscore";
+import {
+  enrichLiveKeyPlayerSeasonRates,
+  formatInningLabel,
+  formatSeasonAvg,
+  mapWpblBoxscore,
+  mapWpblLiveSituation,
+} from "./boxscore";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -44,12 +50,14 @@ describe("mapWpblBoxscore", () => {
       side: "away",
       stats: { ab: "4", h: "2", r: "1", rbi: "4" },
     });
+    expect(amiraBatting?.playerId).toBeTruthy();
 
     const ayamiPitching = box.pitching.find((p) => p.name === "Ayami Sato");
     expect(ayamiPitching).toMatchObject({
       side: "away",
       stats: { ip: "3.0", h: "10", r: "7", er: "4" },
     });
+    expect(ayamiPitching?.playerId).toBeTruthy();
 
     expect(box.batting.some((p) => p.name === "Caitlin Eynon")).toBe(false);
     expect(box.pitching.some((p) => p.name === "Caitlin Eynon")).toBe(false);
@@ -91,6 +99,100 @@ describe("mapWpblBoxscore", () => {
     );
     expect(box.available).toBe(false);
     expect(box.lineScore).toBeNull();
+  });
+});
+
+describe("formatSeasonAvg", () => {
+  it("formats hits/ab like leaders AVG", () => {
+    expect(formatSeasonAvg(11, 27)).toBe(".407");
+    expect(formatSeasonAvg(1, 1)).toBe("1.000");
+  });
+
+  it("returns null when there are no at-bats", () => {
+    expect(formatSeasonAvg(0, 0)).toBeNull();
+  });
+});
+
+describe("enrichLiveKeyPlayerSeasonRates", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("patches batter avg and pitcher era from season player stats", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/players/batter-id/stats")) {
+        return {
+          ok: true,
+          json: async () => ({
+            player_id: "batter-id",
+            batting: { at_bats: 20, hits: 6 },
+            pitching: {},
+          }),
+        };
+      }
+      if (String(url).includes("/players/pitcher-id/stats")) {
+        return {
+          ok: true,
+          json: async () => ({
+            player_id: "pitcher-id",
+            batting: {},
+            pitching: { era: 2.45 },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const boxscore = {
+      available: true,
+      lineScore: null,
+      batting: [
+        {
+          side: "home" as const,
+          name: "Edith De Leija",
+          playerId: "batter-id",
+          position: "lf",
+          stats: {
+            ab: "0",
+            h: "0",
+            obp: "1.000",
+            slg: ".000",
+          } as Record<string, string | number | null>,
+        },
+      ],
+      pitching: [
+        {
+          side: "away" as const,
+          name: "Niki Eckert",
+          playerId: "pitcher-id",
+          position: "p",
+          stats: { ip: "2.1" } as Record<string, string | number | null>,
+        },
+      ],
+    };
+
+    await enrichLiveKeyPlayerSeasonRates(
+      boxscore,
+      {
+        inningNumber: 3,
+        half: "bottom",
+        balls: 1,
+        strikes: 2,
+        outs: 1,
+        onFirst: false,
+        onSecond: false,
+        onThird: false,
+        batterName: "De Leija",
+        pitcherName: "Eckert",
+      },
+      "c9sgab9f9yx00z75",
+    );
+
+    expect(boxscore.batting[0]!.stats.avg).toBe(".300");
+    expect(boxscore.pitching[0]!.stats.era).toBe("2.45");
+    // Game OBP/SLG left alone — they must not be used as AVG
+    expect(boxscore.batting[0]!.stats.obp).toBe("1.000");
   });
 });
 

@@ -2,44 +2,9 @@ import type {
   WpblBoxPlayerLine,
   WpblGameDetailResponse,
 } from "@/lib/types/wpbl-display";
+import { findPlayerLine, normalizePlayerName } from "@/lib/wpbl-player-match";
 
-/** Normalize names for loose matching (short vs full). */
-export function normalizePlayerName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Prefer exact match, then last-token / substring matches. */
-export function findPlayerLine(
-  lines: WpblBoxPlayerLine[],
-  name: string | null | undefined,
-): WpblBoxPlayerLine | null {
-  if (!name?.trim()) return null;
-  const needle = normalizePlayerName(name);
-  if (!needle) return null;
-
-  const exact = lines.find((line) => normalizePlayerName(line.name) === needle);
-  if (exact) return exact;
-
-  const needleParts = needle.split(" ");
-  const needleLast = needleParts[needleParts.length - 1] ?? needle;
-
-  const byLast = lines.find((line) => {
-    const parts = normalizePlayerName(line.name).split(" ");
-    return parts[parts.length - 1] === needleLast;
-  });
-  if (byLast) return byLast;
-
-  return (
-    lines.find((line) => {
-      const hay = normalizePlayerName(line.name);
-      return hay.includes(needle) || needle.includes(hay);
-    }) ?? null
-  );
-}
+export { findPlayerLine, normalizePlayerName };
 
 export function batterGameLine(line: WpblBoxPlayerLine | null): string | null {
   if (!line) return null;
@@ -49,15 +14,11 @@ export function batterGameLine(line: WpblBoxPlayerLine | null): string | null {
   return `${h}-${ab}`;
 }
 
+/** Season batting average only — never game OBP/SLG/OPS from the boxscore. */
 export function batterRateLine(line: WpblBoxPlayerLine | null): string | null {
   if (!line) return null;
   const avg = line.stats.avg;
   if (typeof avg === "string" && avg.trim()) return avg.trim();
-  const obp = Number(line.stats.obp);
-  const slg = Number(line.stats.slg);
-  if (Number.isFinite(obp) && Number.isFinite(slg)) {
-    return (obp + slg).toFixed(3).replace(/^0/, "");
-  }
   return null;
 }
 
