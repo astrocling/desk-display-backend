@@ -14,68 +14,151 @@ export type ScheduleListProps = {
   now?: Date;
 };
 
-function StatusBadge({ status }: { status: WpblScheduleGame["status"] }) {
-  const styles: Record<WpblScheduleGame["status"], string> = {
-    live: "bg-red-600 text-white",
-    final: "bg-slate-500 text-white dark:bg-slate-600",
-    scheduled: "bg-emerald-600 text-white",
-    other: "bg-amber-500 text-white",
-  };
-  const labels: Record<WpblScheduleGame["status"], string> = {
-    live: "Live",
-    final: "Final",
-    scheduled: "Scheduled",
-    other: "Other",
-  };
+/** Split "Wed 8/12 6:30 PM" into date + time for a two-line status rail. */
+function splitWhenEt(whenEt: string | null): {
+  primary: string;
+  secondary: string | null;
+} {
+  if (!whenEt) return { primary: "TBD", secondary: null };
+  const match = whenEt.match(
+    /^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M(?:\s*ET)?)$/i,
+  );
+  if (match) return { primary: match[1], secondary: match[2] };
+  return { primary: whenEt, secondary: null };
+}
 
+function StatusRail({ game }: { game: WpblScheduleGame }) {
+  if (game.status === "live") {
+    return (
+      <div className="flex flex-col items-start justify-center gap-0.5">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-600" />
+          </span>
+          Live
+        </span>
+      </div>
+    );
+  }
+
+  if (game.status === "final") {
+    return (
+      <div className="flex flex-col items-start justify-center">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Final
+        </span>
+      </div>
+    );
+  }
+
+  if (game.status === "other") {
+    return (
+      <div className="flex flex-col items-start justify-center">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+          TBD
+        </span>
+      </div>
+    );
+  }
+
+  const { primary, secondary } = splitWhenEt(game.whenEt);
   return (
-    <span
-      className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[status]}`}
-    >
-      {labels[status]}
-    </span>
+    <div className="flex flex-col items-start justify-center gap-0.5">
+      <span className="text-[11px] font-medium tabular-nums text-slate-700 dark:text-slate-200">
+        {primary}
+      </span>
+      {secondary ? (
+        <span className="text-[11px] tabular-nums text-slate-500">
+          {secondary}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
-function scoreLine(game: WpblScheduleGame): string {
-  if (game.status === "scheduled" || game.awayRuns == null || game.homeRuns == null) {
-    return "—";
-  }
-  return `${game.awayRuns}–${game.homeRuns}`;
+function TeamLine({
+  abbr,
+  name,
+  runs,
+  showScore,
+  isWinner,
+}: {
+  abbr: string;
+  name: string;
+  runs: number | null;
+  showScore: boolean;
+  isWinner: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[2rem_minmax(0,1fr)_1.75rem] items-center gap-x-2">
+      <TeamLogo abbr={abbr} size="sm" />
+      <span
+        className={`truncate text-sm tracking-tight ${
+          isWinner
+            ? "font-semibold text-slate-900 dark:text-slate-50"
+            : "font-medium text-slate-700 dark:text-slate-200"
+        }`}
+      >
+        {name}
+      </span>
+      <span
+        className={`w-7 justify-self-end text-right font-mono text-sm tabular-nums ${
+          isWinner
+            ? "font-semibold text-slate-900 dark:text-slate-50"
+            : "text-slate-500"
+        }`}
+      >
+        {showScore ? (runs == null ? "—" : runs) : null}
+      </span>
+    </div>
+  );
 }
 
 function GameRow({ game }: { game: WpblScheduleGame }) {
+  const showScore =
+    game.status === "live" ||
+    game.status === "final" ||
+    (game.awayRuns != null && game.homeRuns != null);
+  const awayWins =
+    game.status === "final" &&
+    game.awayRuns != null &&
+    game.homeRuns != null &&
+    game.awayRuns > game.homeRuns;
+  const homeWins =
+    game.status === "final" &&
+    game.awayRuns != null &&
+    game.homeRuns != null &&
+    game.homeRuns > game.awayRuns;
+
   return (
     <li>
       <Link
         href={`/wpbl/games/${game.id}`}
-        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+        className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-center gap-x-3 px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
       >
-        <div className="flex flex-col items-start gap-1 self-center">
-          <StatusBadge status={game.status} />
-          <span className="text-[11px] tabular-nums text-slate-500">
-            {game.whenEt ?? "TBD"}
-          </span>
+        <StatusRail game={game} />
+        <div className="min-w-0 space-y-1.5">
+          <TeamLine
+            abbr={game.awayAbbr}
+            name={game.awayName}
+            runs={game.awayRuns}
+            showScore={showScore}
+            isWinner={awayWins}
+          />
+          <TeamLine
+            abbr={game.homeAbbr}
+            name={game.homeName}
+            runs={game.homeRuns}
+            showScore={showScore}
+            isWinner={homeWins}
+          />
+          {game.venue ? (
+            <p className="truncate pl-10 text-[11px] text-slate-500">
+              {game.venue}
+            </p>
+          ) : null}
         </div>
-        <div className="min-w-0">
-          {/* Fixed columns so logos / abbrs / @ line up across every row */}
-          <div className="grid grid-cols-[2.75rem_2.75rem_1rem_2.75rem_2.75rem] items-center justify-items-center gap-x-1.5 text-sm font-medium">
-            <TeamLogo abbr={game.awayAbbr} size="md" />
-            <span className="tabular-nums tracking-wide">{game.awayAbbr}</span>
-            <span className="text-slate-400" aria-hidden>
-              @
-            </span>
-            <TeamLogo abbr={game.homeAbbr} size="md" />
-            <span className="tabular-nums tracking-wide">{game.homeAbbr}</span>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-slate-500">
-            {game.awayName} at {game.homeName}
-            {game.venue ? ` · ${game.venue}` : ""}
-          </p>
-        </div>
-        <span className="self-center font-mono text-sm tabular-nums">
-          {scoreLine(game)}
-        </span>
       </Link>
     </li>
   );
