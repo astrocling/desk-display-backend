@@ -135,30 +135,35 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
     <li>
       <Link
         href={`/wpbl/games/${game.id}`}
-        className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-center gap-x-3 px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+        className="block px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
       >
-        <StatusRail game={game} />
-        <div className="min-w-0 space-y-1.5">
-          <TeamLine
-            abbr={game.awayAbbr}
-            name={game.awayName}
-            runs={game.awayRuns}
-            showScore={showScore}
-            isWinner={awayWins}
-          />
-          <TeamLine
-            abbr={game.homeAbbr}
-            name={game.homeName}
-            runs={game.homeRuns}
-            showScore={showScore}
-            isWinner={homeWins}
-          />
-          {game.venue ? (
-            <p className="truncate pl-10 text-[11px] text-slate-500">
-              {game.venue}
-            </p>
-          ) : null}
+        <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-start gap-x-3">
+          {/* Match height of the two team lines so status stays optically centered */}
+          <div className="flex min-h-[4.25rem] flex-col justify-center">
+            <StatusRail game={game} />
+          </div>
+          <div className="min-w-0 space-y-1.5">
+            <TeamLine
+              abbr={game.awayAbbr}
+              name={game.awayName}
+              runs={game.awayRuns}
+              showScore={showScore}
+              isWinner={awayWins}
+            />
+            <TeamLine
+              abbr={game.homeAbbr}
+              name={game.homeName}
+              runs={game.homeRuns}
+              showScore={showScore}
+              isWinner={homeWins}
+            />
+          </div>
         </div>
+        {game.venue ? (
+          <p className="mt-1.5 truncate pl-[calc(4.75rem+0.75rem+2.5rem)] text-[11px] text-slate-500">
+            {game.venue}
+          </p>
+        ) : null}
       </Link>
     </li>
   );
