@@ -4,6 +4,14 @@ import { TeamLogo } from "./TeamLogo";
 
 export type WpblTeamFilter = "ALL" | "LA" | "NY" | "SF" | "BOS";
 
+export function gameInvolvesTeam(
+  game: { awayAbbr: string; homeAbbr: string },
+  abbr: WpblTeamFilter,
+): boolean {
+  if (abbr === "ALL") return true;
+  return game.awayAbbr === abbr || game.homeAbbr === abbr;
+}
+
 const OPTIONS: { value: WpblTeamFilter; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "LA", label: "LA" },

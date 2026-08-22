@@ -12,6 +12,11 @@ export type ScheduleListProps = {
   games: WpblScheduleGame[];
   /** Injected for tests; defaults to now. */
   now?: Date;
+  /**
+   * `week` — this-week focus with expand (schedule page).
+   * `flat` — render the given games as a simple list (home teaser).
+   */
+  variant?: "week" | "flat";
 };
 
 /** Split "Wed 8/12 6:30 PM" into date + time for a two-line status rail. */
@@ -191,7 +196,11 @@ function GameGroup({
   );
 }
 
-export function ScheduleList({ games, now }: ScheduleListProps) {
+export function ScheduleList({
+  games,
+  now,
+  variant = "week",
+}: ScheduleListProps) {
   const [expanded, setExpanded] = useState(false);
   const partition = useMemo(
     () => partitionScheduleByWeek(games, now ?? new Date()),
@@ -200,6 +209,16 @@ export function ScheduleList({ games, now }: ScheduleListProps) {
 
   if (games.length === 0) {
     return <p className="text-sm text-slate-500">No games for this filter.</p>;
+  }
+
+  if (variant === "flat") {
+    return (
+      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        {games.map((game) => (
+          <GameRow key={game.id} game={game} />
+        ))}
+      </ul>
+    );
   }
 
   const { past, thisWeek, future, weekLabel } = partition;

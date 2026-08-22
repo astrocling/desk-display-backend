@@ -5,6 +5,7 @@ import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
 import {
   etYmd,
   gameStartYmd,
+  homeScheduleTeaserGames,
   mondayOfWeekEt,
   partitionScheduleByWeek,
   sundayOfWeekEt,
@@ -185,5 +186,67 @@ describe("partitionScheduleByWeek", () => {
       "week-sun",
     ]);
     expect(part.future.map((g) => g.id)).toEqual(["future", "undated"]);
+  });
+});
+
+describe("homeScheduleTeaserGames", () => {
+  it("prefers upcoming then pads with recent finals", () => {
+    const games = [
+      game({
+        id: "final-a",
+        status: "final",
+        startIso: "2026-08-18T23:00:00Z",
+        awayRuns: 2,
+        homeRuns: 1,
+      }),
+      game({
+        id: "final-b",
+        status: "final",
+        startIso: "2026-08-19T23:00:00Z",
+        awayRuns: 4,
+        homeRuns: 3,
+      }),
+      game({
+        id: "next-1",
+        status: "scheduled",
+        startIso: "2026-08-22T23:00:00Z",
+      }),
+      game({
+        id: "next-2",
+        status: "scheduled",
+        startIso: "2026-08-24T23:00:00Z",
+      }),
+      game({
+        id: "live",
+        status: "live",
+        startIso: "2026-08-21T20:00:00Z",
+        awayRuns: 1,
+        homeRuns: 0,
+      }),
+    ];
+
+    const teaser = homeScheduleTeaserGames(games, { limit: 3 });
+    expect(teaser.map((g) => g.id)).toEqual(["next-1", "next-2", "final-b"]);
+  });
+
+  it("excludes today's slate ids", () => {
+    const games = [
+      game({
+        id: "today",
+        status: "scheduled",
+        startIso: "2026-08-21T23:00:00Z",
+      }),
+      game({
+        id: "later",
+        status: "scheduled",
+        startIso: "2026-08-25T23:00:00Z",
+      }),
+    ];
+
+    const teaser = homeScheduleTeaserGames(games, {
+      limit: 5,
+      excludeIds: new Set(["today"]),
+    });
+    expect(teaser.map((g) => g.id)).toEqual(["later"]);
   });
 });

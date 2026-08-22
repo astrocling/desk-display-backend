@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { WpblLeagueHeader } from "@/components/wpbl/WpblLeagueHeader";
+import { WpblNav } from "@/components/wpbl/WpblNav";
 import { WpblThemeProvider } from "@/components/wpbl/WpblThemeProvider";
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function WpblLayout({ children }: { children: React.ReactNode }) 
     <WpblThemeProvider>
       <main className="mx-auto min-h-[100dvh] w-full max-w-5xl px-4 py-8">
         <WpblLeagueHeader />
+        <WpblNav />
         {children}
       </main>
     </WpblThemeProvider>

@@ -5,6 +5,8 @@ import { TeamLogo } from "./TeamLogo";
 
 export type StandingsTableProps = {
   rows: WpblStandingRow[];
+  /** `compact` = home digest (W‑L · PCT · GB). Default full table. */
+  variant?: "full" | "compact";
 };
 
 const stickyHead =
@@ -15,9 +17,53 @@ const stickyEdge =
   "shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.45)]";
 const rowBorder = "border-t border-slate-200 dark:border-slate-700";
 
-export function StandingsTable({ rows }: StandingsTableProps) {
+export function StandingsTable({
+  rows,
+  variant = "full",
+}: StandingsTableProps) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500">No standings available.</p>;
+  }
+
+  if (variant === "compact") {
+    return (
+      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+            <tr>
+              <th className="w-9 px-2 py-2 font-medium">#</th>
+              <th className="w-10 px-1 py-2 font-medium" aria-label="Logo" />
+              <th className="px-2 py-2 font-medium">Team</th>
+              <th className="px-2 py-2 font-medium">W‑L</th>
+              <th className="px-2 py-2 font-medium">Pct</th>
+              <th className="px-2 py-2 font-medium">GB</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.teamId}
+                className="border-t border-slate-200 dark:border-slate-700"
+              >
+                <td className="px-2 py-2 tabular-nums text-slate-500">
+                  {row.rank}
+                </td>
+                <td className="px-1 py-2">
+                  <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
+                </td>
+                <td className="px-2 py-2 font-medium">{row.abbr}</td>
+                <td className="px-2 py-2 tabular-nums">
+                  {row.w}‑{row.l}
+                  {row.t > 0 ? `‑${row.t}` : ""}
+                </td>
+                <td className="px-2 py-2 tabular-nums">{row.pct ?? "—"}</td>
+                <td className="px-2 py-2 tabular-nums">{row.gb ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   return (

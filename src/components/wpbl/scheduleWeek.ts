@@ -118,6 +118,51 @@ function byStartDesc(a: WpblScheduleGame, b: WpblScheduleGame): number {
   return byStartAsc(b, a);
 }
 
+export const HOME_SCHEDULE_TEASER_LIMIT = 5;
+
+/**
+ * Compact home schedule rows: next upcoming games, padded with recent finals
+ * when the slate is quiet. Optionally skip games already shown on today's slate.
+ */
+export function homeScheduleTeaserGames(
+  games: WpblScheduleGame[],
+  options: {
+    limit?: number;
+    excludeIds?: ReadonlySet<string>;
+  } = {},
+): WpblScheduleGame[] {
+  const limit = options.limit ?? HOME_SCHEDULE_TEASER_LIMIT;
+  const excludeIds = options.excludeIds;
+  const rest = excludeIds
+    ? games.filter((g) => !excludeIds.has(g.id))
+    : games;
+
+  const upcoming = rest
+    .filter((g) => g.status === "scheduled" || g.status === "other")
+    .sort(byStartAsc);
+
+  const recentFinals = rest
+    .filter((g) => g.status === "final")
+    .sort(byStartDesc);
+
+  const out: WpblScheduleGame[] = [];
+  for (const game of upcoming) {
+    if (out.length >= limit) break;
+    out.push(game);
+  }
+  for (const game of recentFinals) {
+    if (out.length >= limit) break;
+    out.push(game);
+  }
+
+  // Quiet board with only live games excluded: still show something chronological.
+  if (out.length === 0) {
+    return [...rest].sort(byStartAsc).slice(0, limit);
+  }
+
+  return out;
+}
+
 /**
  * Split schedule into past / this week (Mon–Sun ET) / future.
  * Games without a usable start date go to `future` so they remain discoverable when expanded.
