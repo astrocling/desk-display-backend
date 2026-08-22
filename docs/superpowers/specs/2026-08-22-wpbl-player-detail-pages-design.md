@@ -1,7 +1,7 @@
 # WPBL player detail pages (MLB-style)
 
 **Date:** 2026-08-22  
-**Status:** Draft — investigation / proposed for approval  
+**Status:** Implemented  
 **Repo:** `desk-display-backend`  
 **Scope:** Add `/wpbl/players/[id]` detail pages and supporting API/cache, modeled on [MLB.com player pages](https://www.mlb.com/player/), wired from leaders and (optionally) box scores. Extends the WPBL stats board that deliberately deferred profiles in the 2026-08-21 design.
 

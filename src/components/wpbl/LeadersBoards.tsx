@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
@@ -140,9 +141,12 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
       </span>
       <PlayerHeadshot entry={entry} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold text-white">
+        <Link
+          href={`/wpbl/players/${encodeURIComponent(entry.playerId)}`}
+          className="block truncate text-[15px] font-semibold text-white hover:text-[#41B6E6] hover:underline"
+        >
           {entry.name}
-        </span>
+        </Link>
         <span className="mt-0.5 block text-xs text-neutral-400">
           {[formatWpblPosition(entry.position), entry.teamAbbr]
             .filter(Boolean)

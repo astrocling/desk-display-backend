@@ -124,3 +124,98 @@ export interface WpblBoxPlayerLine {
   position: string | null;
   stats: Record<string, string | number | null>; // mapped display columns
 }
+
+/** Season player detail page payload (`GET /api/wpbl/players/[id]`). */
+export interface WpblPlayerDetailResponse {
+  updatedAt: string;
+  seasonId: string;
+  partial: boolean;
+  player: {
+    id: string;
+    name: string;
+    firstName: string;
+    lastName: string;
+    teamId: string;
+    teamAbbr: string;
+    teamName: string;
+    position: string | null;
+    uniform: string | null;
+    bats: string | null;
+    throws: string | null;
+    hometown: string | null;
+    birthdate: string | null;
+    status: string | null;
+    headshotUrl: string | null;
+    profileUrl: string | null;
+  };
+  season: {
+    sourceThrough: string | null;
+    batting: WpblPlayerBattingSeason | null;
+    pitching: WpblPlayerPitchingSeason | null;
+    fielding: WpblPlayerFieldingSeason | null;
+  };
+  gameLog: WpblPlayerGameLogEntry[];
+}
+
+export interface WpblPlayerBattingSeason {
+  g: number;
+  ab: number;
+  r: number;
+  h: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  so: number;
+  hbp: number;
+  sf: number;
+  sb: number;
+  cs: number;
+  avg: string | null;
+  obp: string | null;
+  slg: string | null;
+  ops: string | null;
+}
+
+export interface WpblPlayerPitchingSeason {
+  g: number;
+  gs: number;
+  w: number;
+  l: number;
+  sv: number;
+  ip: string;
+  h: number;
+  r: number;
+  er: number;
+  bb: number;
+  so: number;
+  hr: number;
+  era: string | null;
+  whip: string | null;
+}
+
+export interface WpblPlayerFieldingSeason {
+  g: number;
+  po: number;
+  a: number;
+  e: number;
+  tc: number;
+  dp: number;
+  fpct: string | null;
+}
+
+export interface WpblPlayerGameLogEntry {
+  gameId: string;
+  startIso: string | null;
+  side: "away" | "home";
+  result: "W" | "L" | "T" | null;
+  teamRuns: number | null;
+  opponentRuns: number | null;
+  opponentAbbr: string;
+  opponentName: string;
+  isFinal: boolean;
+  batting: Record<string, string | number | null> | null;
+  pitching: Record<string, string | number | null> | null;
+  fielding: Record<string, string | number | null> | null;
+}

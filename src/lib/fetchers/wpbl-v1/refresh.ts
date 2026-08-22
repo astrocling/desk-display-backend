@@ -1,9 +1,10 @@
-import { REDIS_KEYS, wpblGameKey } from "@/lib/config";
+import { REDIS_KEYS, wpblGameKey, wpblPlayerKey } from "@/lib/config";
 import { getRedis } from "@/lib/redis";
 import type {
   WpblGameDetailResponse,
   WpblLeadersResponse,
   WpblLeagueResponse,
+  WpblPlayerDetailResponse,
 } from "@/lib/types/wpbl-display";
 import { fetchWpblGameDetail } from "./boxscore";
 import { fetchWpblJson } from "./client";
@@ -13,13 +14,17 @@ import {
   type WpblGamesPayload,
 } from "./games";
 import { fetchWpblLeaders } from "./leaders";
+import { fetchWpblPlayerDetail } from "./player";
 import { fetchWpblStandings } from "./standings";
 import { FALLBACK_SEASON_ID } from "./teams";
 
-export { wpblGameKey };
+export { wpblGameKey, wpblPlayerKey };
 
 /** Max age of a live game blob before refresh. */
 export const WPBL_LIVE_TTL_MS = 30_000;
+
+/** Max age of a player detail blob before on-read refresh. */
+export const WPBL_PLAYER_TTL_MS = 5 * 60_000;
 
 export function shouldRefreshWpblGame(
   blob: WpblGameDetailResponse,
@@ -208,6 +213,45 @@ export async function refreshWpblGame(
       // Redis optional for local live fallback
     }
     return next;
+  } catch (error) {
+    if (prior) {
+      return prior;
+    }
+    throw error;
+  }
+}
+
+export function shouldRefreshWpblPlayer(
+  blob: WpblPlayerDetailResponse,
+  now: Date = new Date(),
+): boolean {
+  const updatedMs = Date.parse(blob.updatedAt);
+  if (!Number.isFinite(updatedMs)) {
+    return true;
+  }
+  return now.getTime() - updatedMs >= WPBL_PLAYER_TTL_MS;
+}
+
+export async function refreshWpblPlayer(
+  id: string,
+  seasonId: string = FALLBACK_SEASON_ID,
+): Promise<WpblPlayerDetailResponse> {
+  const key = wpblPlayerKey(id);
+  let prior: WpblPlayerDetailResponse | null = null;
+  try {
+    prior = await getRedis().get<WpblPlayerDetailResponse>(key);
+  } catch {
+    prior = null;
+  }
+
+  try {
+    const detail = await fetchWpblPlayerDetail(id, seasonId);
+    try {
+      await getRedis().set(key, detail);
+    } catch {
+      // Redis optional for local live fallback
+    }
+    return detail;
   } catch (error) {
     if (prior) {
       return prior;

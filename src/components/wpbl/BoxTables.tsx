@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
@@ -59,8 +60,19 @@ function PlayerStatsTable({
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {players.map((player) => (
-                <tr key={`${player.name}-${player.position ?? ""}`} className="whitespace-nowrap">
-                  <td className="px-3 py-2">{player.name}</td>
+                <tr key={`${player.playerId ?? player.name}-${player.position ?? ""}`} className="whitespace-nowrap">
+                  <td className="px-3 py-2">
+                    {player.playerId ? (
+                      <Link
+                        href={`/wpbl/players/${encodeURIComponent(player.playerId)}`}
+                        className="text-slate-900 hover:underline dark:text-slate-100"
+                      >
+                        {player.name}
+                      </Link>
+                    ) : (
+                      player.name
+                    )}
+                  </td>
                   <td className="px-2 py-2 text-slate-500">
                     {formatWpblPosition(player.position) ?? "—"}
                   </td>
