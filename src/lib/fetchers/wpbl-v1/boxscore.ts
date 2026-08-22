@@ -9,6 +9,7 @@ import { fetchWpblJson } from "./client";
 import { mapWpblGames, type WpblGamesPayload } from "./games";
 import { mapWpblStatus } from "./status";
 import { teamFromId } from "./teams";
+import { formatWpblPosition } from "@/lib/wpbl-position";
 
 const BATTING_STAT_KEYS = ["ab", "r", "h", "rbi", "bb", "so", "avg", "obp", "slg"] as const;
 const PITCHING_STAT_KEYS = ["ip", "h", "r", "er", "bb", "so", "era"] as const;
@@ -85,7 +86,7 @@ function mapPlayerLines(
       lines.push({
         side,
         name: player.name,
-        position: player.position?.trim() ? player.position : null,
+        position: formatWpblPosition(player.position),
         stats: mapStatGroup(rawStats, statKeys),
       });
     }

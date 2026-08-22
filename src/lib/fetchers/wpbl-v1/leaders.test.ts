@@ -109,7 +109,7 @@ describe("mapPlayerStatsToInput", () => {
       playerId: "bpyqct4a85lh306g",
       name: "Jill Albayati",
       teamId: "vhubhz8li07tmgq8",
-      position: "P/Ut.",
+      position: "P/UT.",
       headshotUrl: "https://example.com/jill.webp",
       batting: {
         at_bats: 27,
@@ -132,6 +132,6 @@ describe("mapPlayerStatsToInput", () => {
     expect(leaders.batting.avg[0].headshotUrl).toBe(
       "https://example.com/jill.webp",
     );
-    expect(leaders.batting.avg[0].position).toBe("P/Ut.");
+    expect(leaders.batting.avg[0].position).toBe("P/UT.");
   });
 });

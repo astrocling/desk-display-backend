@@ -1,4 +1,5 @@
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
+import { formatWpblPosition } from "@/lib/wpbl-position";
 import { fetchWpblJson } from "./client";
 import {
   fetchWpblHeadshotMap,
@@ -183,7 +184,7 @@ export function mapPlayerStatsToInput(
     playerId: stats.player_id,
     name,
     teamId,
-    position: extras?.position ?? null,
+    position: formatWpblPosition(extras?.position),
     headshotUrl: extras?.headshotUrl ?? null,
     batting: {
       at_bats: batting.at_bats ?? 0,
@@ -234,7 +235,7 @@ export async function fetchWpblLeaders(
         playerId: player.player_id,
         teamId,
         fallbackName,
-        position: player.position?.trim() || null,
+        position: formatWpblPosition(player.position),
         rosterHeadshotUrl: player.headshot_url?.trim() || null,
       });
     }
