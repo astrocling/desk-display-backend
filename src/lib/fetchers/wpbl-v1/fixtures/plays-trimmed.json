@@ -1,0 +1,140 @@
+{
+  "plays": [
+    {
+      "inning": 1,
+      "half": "top",
+      "team_id": "v4gisr4rbgmn67b0",
+      "sequence": 1,
+      "batter_name": "Mo'ne Davis",
+      "pitcher_name": "Rakyung Kim",
+      "outs": 0,
+      "first_base": "",
+      "second_base": "",
+      "third_base": "",
+      "bases_occupied": [],
+      "bases_loaded": false,
+      "narrative": "Mo'ne Davis reached first on an error by ss (0-1 F).",
+      "event_type": "unknown",
+      "is_hit": false,
+      "is_scoring_play": false,
+      "runs_scored": 0,
+      "pitch_sequence": "FP",
+      "pitch_events": [
+        {
+          "sequence": 1,
+          "code": "F",
+          "type": "foul",
+          "description": "Foul"
+        },
+        {
+          "sequence": 2,
+          "code": "P",
+          "type": "pitchout",
+          "description": "Pitchout"
+        }
+      ],
+      "fouls": 1,
+      "balls": 0,
+      "strikes": 1
+    },
+    {
+      "inning": 1,
+      "half": "top",
+      "team_id": "v4gisr4rbgmn67b0",
+      "sequence": 2,
+      "batter_name": "Ashton Lansdell",
+      "pitcher_name": "Rakyung Kim",
+      "outs": 0,
+      "first_base": "Mo'ne Davis",
+      "second_base": "",
+      "third_base": "",
+      "bases_occupied": [
+        1
+      ],
+      "bases_loaded": false,
+      "narrative": "Mo'ne Davis Failed pickoff attempt.",
+      "event_type": "unknown",
+      "is_hit": false,
+      "is_scoring_play": false,
+      "runs_scored": 0,
+      "pitch_sequence": "",
+      "fouls": 0,
+      "balls": 0,
+      "strikes": 0
+    },
+    {
+      "inning": 1,
+      "half": "top",
+      "team_id": "v4gisr4rbgmn67b0",
+      "sequence": 3,
+      "batter_name": "Ashton Lansdell",
+      "pitcher_name": "Rakyung Kim",
+      "outs": 0,
+      "first_base": "Mo'ne Davis",
+      "second_base": "",
+      "third_base": "",
+      "bases_occupied": [
+        1
+      ],
+      "bases_loaded": false,
+      "narrative": "Ashton Lansdell walked (3-2 BBBKFB); Mo'ne Davis advanced to second.",
+      "event_type": "walk",
+      "is_hit": false,
+      "is_scoring_play": false,
+      "runs_scored": 0,
+      "pitch_sequence": "BBBKFB",
+      "fouls": 1,
+      "balls": 4,
+      "strikes": 2
+    },
+    {
+      "inning": 1,
+      "half": "top",
+      "team_id": "v4gisr4rbgmn67b0",
+      "sequence": 7,
+      "batter_name": "Maggie Fox",
+      "pitcher_name": "Rakyung Kim",
+      "outs": 2,
+      "first_base": "",
+      "second_base": "Ashton Lansdell",
+      "third_base": "Mo'ne Davis",
+      "bases_occupied": [
+        2,
+        3
+      ],
+      "bases_loaded": false,
+      "narrative": "Maggie Fox singled up the middle, 2 RBI (1-0 B); Ashton Lansdell scored, unearned; Mo'ne Davis scored, unearned.",
+      "event_type": "single",
+      "is_hit": true,
+      "is_scoring_play": true,
+      "runs_scored": 2,
+      "pitch_sequence": "BP",
+      "fouls": 0,
+      "balls": 1,
+      "strikes": 0
+    },
+    {
+      "inning": 7,
+      "half": "bottom",
+      "team_id": "fttth861nft1j2s7",
+      "sequence": 112,
+      "batter_name": "Elodie Ciamarro",
+      "pitcher_name": "Meggie Meidlinger",
+      "outs": 3,
+      "first_base": "",
+      "second_base": "",
+      "third_base": "",
+      "bases_occupied": [],
+      "bases_loaded": false,
+      "narrative": "Maggie Fox to p.",
+      "event_type": "unknown",
+      "is_hit": false,
+      "is_scoring_play": false,
+      "runs_scored": 0,
+      "pitch_sequence": "",
+      "fouls": 0,
+      "balls": 0,
+      "strikes": 0
+    }
+  ]
+}

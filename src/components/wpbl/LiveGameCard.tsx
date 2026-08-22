@@ -6,6 +6,7 @@ import type {
   WpblGameDetailResponse,
   WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
+import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
 
 import { LineScore } from "./LineScore";
 import { TeamLogo } from "./TeamLogo";
@@ -23,23 +24,49 @@ function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
         : "bg-transparent"
     }`;
 
+  const first = shortRunnerLabel(situation.runnerFirst);
+  const second = shortRunnerLabel(situation.runnerSecond);
+  const third = shortRunnerLabel(situation.runnerThird);
+
   return (
-    <div
-      className="relative mx-auto h-10 w-10"
-      aria-label={[
-        situation.onFirst ? "runner on first" : null,
-        situation.onSecond ? "runner on second" : null,
-        situation.onThird ? "runner on third" : null,
-      ]
-        .filter(Boolean)
-        .join(", ") || "bases empty"}
-    >
-      {/* Second */}
-      <span className={`${baseClass(situation.onSecond)} left-1/2 top-0 -translate-x-1/2`} />
-      {/* Third */}
-      <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
-      {/* First */}
-      <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className="relative mx-auto h-10 w-10"
+        aria-label={[
+          situation.runnerFirst
+            ? `${situation.runnerFirst} on first`
+            : situation.onFirst
+              ? "runner on first"
+              : null,
+          situation.runnerSecond
+            ? `${situation.runnerSecond} on second`
+            : situation.onSecond
+              ? "runner on second"
+              : null,
+          situation.runnerThird
+            ? `${situation.runnerThird} on third`
+            : situation.onThird
+              ? "runner on third"
+              : null,
+        ]
+          .filter(Boolean)
+          .join(", ") || "bases empty"}
+      >
+        <span className={`${baseClass(situation.onSecond)} left-1/2 top-0 -translate-x-1/2`} />
+        <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
+        <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
+      </div>
+      {(first || second || third) && (
+        <p className="max-w-[7rem] truncate text-center text-[9px] leading-tight text-slate-500">
+          {[
+            third ? `3:${third}` : null,
+            second ? `2:${second}` : null,
+            first ? `1:${first}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
     </div>
   );
 }
@@ -124,6 +151,7 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
   const { game, boxscore } = detail;
   const situation = game.situation;
   const keys = keyPlayersFromDetail(detail);
+  const lastPlay = latestWpblPlay(boxscore.plays);
 
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -189,6 +217,18 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
         </div>
       )}
 
+      {lastPlay ? (
+        <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Latest play
+            {lastPlay.isScoringPlay ? " · Scoring" : ""}
+          </p>
+          <p className="line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
+            {lastPlay.narrative}
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
         <Link
           href={`/wpbl/games/${game.id}`}
@@ -197,7 +237,7 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
           Gameday
         </Link>
         <Link
-          href={`/wpbl/games/${game.id}`}
+          href={`/wpbl/games/${game.id}?view=box`}
           className="text-slate-600 hover:underline dark:text-slate-300"
         >
           Box score

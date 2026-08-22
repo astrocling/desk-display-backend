@@ -9,6 +9,31 @@ import { getRedis } from "@/lib/redis";
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 import { wpblApiErrorResponse } from "@/lib/wpbl-api-error";
 
+/** Backfill fields added after older Redis game blobs were cached. */
+export function normalizeWpblGameDetail(
+  blob: WpblGameDetailResponse,
+): WpblGameDetailResponse {
+  const situation = blob.game.situation;
+  return {
+    ...blob,
+    game: {
+      ...blob.game,
+      situation: situation
+        ? {
+            ...situation,
+            runnerFirst: situation.runnerFirst ?? null,
+            runnerSecond: situation.runnerSecond ?? null,
+            runnerThird: situation.runnerThird ?? null,
+          }
+        : null,
+    },
+    boxscore: {
+      ...blob.boxscore,
+      plays: Array.isArray(blob.boxscore.plays) ? blob.boxscore.plays : [],
+    },
+  };
+}
+
 function gameFetchErrorResponse(error: unknown): Response {
   if (error instanceof WpblHttpError) {
     if (error.status === 404) {
@@ -61,13 +86,13 @@ export async function GET(
           : await fetchWpblGameDetail(id);
       } catch (error) {
         if (blob) {
-          return Response.json(blob);
+          return Response.json(normalizeWpblGameDetail(blob));
         }
         return gameFetchErrorResponse(error);
       }
     }
 
-    return Response.json(blob);
+    return Response.json(normalizeWpblGameDetail(blob));
   } catch (error) {
     return wpblApiErrorResponse(error);
   }

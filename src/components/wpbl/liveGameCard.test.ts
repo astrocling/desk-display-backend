@@ -87,6 +87,9 @@ describe("keyPlayersFromDetail", () => {
           onFirst: false,
           onSecond: true,
           onThird: false,
+          runnerFirst: null,
+          runnerSecond: "Acuña",
+          runnerThird: null,
           batterName: "Olson",
           pitcherName: "Misiorowski",
         },
@@ -112,6 +115,7 @@ describe("keyPlayersFromDetail", () => {
             stats: { ip: "5.1", era: "1.68" },
           },
         ],
+        plays: [],
       },
     };
 
@@ -152,6 +156,9 @@ describe("keyPlayersFromDetail", () => {
           onFirst: false,
           onSecond: false,
           onThird: false,
+          runnerFirst: null,
+          runnerSecond: null,
+          runnerThird: null,
           batterName: "Edith De Leija",
           pitcherName: "Niki Eckert",
         },
@@ -178,6 +185,7 @@ describe("keyPlayersFromDetail", () => {
             stats: { ip: "2.1" },
           },
         ],
+        plays: [],
       },
     };
 

@@ -343,10 +343,15 @@ Game detail with line score and box score. Per-game Redis key `wpbl:game:{id}`. 
 |-------|------|-------|
 | `game.inning` | string \| null | e.g. `"Top 5"` while live |
 | `game.situation` | object \| null | Live count/bases/batter/pitcher while in progress; null otherwise |
+| `game.situation.runnerFirst` / `runnerSecond` / `runnerThird` | string \| null | Runner names when bases are occupied |
 | `boxscore.available` | boolean | `false` when box not yet published |
 | `boxscore.lineScore` | object \| null | Inning-by-inning R/H/E/LOB |
 | `boxscore.batting` | array | Hitting lines (upstream `hitting` mapped here) |
 | `boxscore.pitching` | array | Pitching lines |
+| `boxscore.plays` | array | Chronological play-by-play from the official feed (oldest first); empty when unpublished |
+| `boxscore.plays[].narrative` | string | Official play description |
+| `boxscore.plays[].isScoringPlay` | boolean | True for scoring plays |
+| `boxscore.plays[].pitchSequence` | string \| null | Compact pitch codes when present |
 | `updatedAt` | string | ISO timestamp when cache was written |
 
 **Errors**:

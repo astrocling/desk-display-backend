@@ -9,11 +9,19 @@ import {
   formatSeasonAvg,
   mapWpblBoxscore,
   mapWpblLiveSituation,
+  mapWpblPlays,
 } from "./boxscore";
 
 const fixture = JSON.parse(
   readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), "fixtures/boxscore-trimmed.json"),
+    "utf8",
+  ),
+);
+
+const playsFixture = JSON.parse(
+  readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "fixtures/plays-trimmed.json"),
     "utf8",
   ),
 );
@@ -63,6 +71,34 @@ describe("mapWpblBoxscore", () => {
 
     expect(box.batting.some((p) => p.name === "Caitlin Eynon")).toBe(false);
     expect(box.pitching.some((p) => p.name === "Caitlin Eynon")).toBe(false);
+    expect(box.plays).toEqual([]);
+  });
+
+  it("maps plays from boxscore when present", () => {
+    const box = mapWpblBoxscore(
+      { boxscore: { ...fixture.boxscore, plays: playsFixture.plays } },
+      gameMeta,
+    );
+    expect(box.plays).toHaveLength(5);
+    expect(box.plays[0]).toMatchObject({
+      sequence: 1,
+      inning: 1,
+      half: "top",
+      batterName: "Mo'ne Davis",
+      narrative: "Mo'ne Davis reached first on an error by ss (0-1 F).",
+      pitchSequence: "FP",
+    });
+    expect(box.plays[0]!.pitchEvents).toEqual([
+      { sequence: 1, code: "F", type: "foul", description: "Foul" },
+      { sequence: 2, code: "P", type: "pitchout", description: "Pitchout" },
+    ]);
+    const scoring = box.plays.find((p) => p.isScoringPlay);
+    expect(scoring).toMatchObject({
+      sequence: 7,
+      eventType: "single",
+      isHit: true,
+      runsScored: 2,
+    });
   });
 
   it("includes rate stats when present in hitting map", () => {
@@ -111,6 +147,49 @@ describe("mapWpblBoxscore", () => {
     );
     expect(box.available).toBe(false);
     expect(box.lineScore).toBeNull();
+    expect(box.plays).toEqual([]);
+  });
+});
+
+describe("mapWpblPlays", () => {
+  it("skips plays missing narrative or sequence", () => {
+    expect(
+      mapWpblPlays([
+        { sequence: 1, inning: 1, half: "top", narrative: "" },
+        { inning: 1, half: "top", narrative: "No sequence" },
+        {
+          sequence: 2,
+          inning: 1,
+          half: "top",
+          narrative: "Valid walk",
+          event_type: "walk",
+          is_scoring_play: false,
+          runs_scored: 0,
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        sequence: 2,
+        narrative: "Valid walk",
+        eventType: "walk",
+        isScoringPlay: false,
+      }),
+    ]);
+  });
+
+  it("treats runs_scored > 0 as a scoring play", () => {
+    const [play] = mapWpblPlays([
+      {
+        sequence: 9,
+        inning: 3,
+        half: "bottom",
+        narrative: "Home run",
+        is_scoring_play: false,
+        runs_scored: 1,
+      },
+    ]);
+    expect(play?.isScoringPlay).toBe(true);
+    expect(play?.runsScored).toBe(1);
   });
 });
 
@@ -182,6 +261,7 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
           stats: { ip: "2.1" } as Record<string, string | number | null>,
         },
       ],
+      plays: [],
     };
 
     await enrichLiveKeyPlayerSeasonRates(
@@ -195,6 +275,9 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
         onFirst: false,
         onSecond: false,
         onThird: false,
+        runnerFirst: null,
+        runnerSecond: null,
+        runnerThird: null,
         batterName: "De Leija",
         pitcherName: "Eckert",
       },
@@ -262,6 +345,9 @@ describe("mapWpblLiveSituation", () => {
       onFirst: true,
       onSecond: false,
       onThird: false,
+      runnerFirst: "Runner",
+      runnerSecond: null,
+      runnerThird: null,
       batterName: "Olson",
       pitcherName: "Misiorowski",
     });
@@ -283,6 +369,9 @@ describe("mapWpblLiveSituation", () => {
       onFirst: false,
       onSecond: true,
       onThird: true,
+      runnerFirst: null,
+      runnerSecond: null,
+      runnerThird: null,
       outs: 2,
     });
   });

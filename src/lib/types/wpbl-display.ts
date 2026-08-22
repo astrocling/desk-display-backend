@@ -84,8 +84,47 @@ export interface WpblLiveSituation {
   onFirst: boolean;
   onSecond: boolean;
   onThird: boolean;
+  /** Runner name on first when occupied; null when empty/unknown. */
+  runnerFirst: string | null;
+  runnerSecond: string | null;
+  runnerThird: string | null;
   batterName: string | null;
   pitcherName: string | null;
+}
+
+/** Single pitch within an at-bat from the official play feed. */
+export interface WpblPitchEvent {
+  sequence: number;
+  code: string;
+  type: string;
+  description: string;
+}
+
+/**
+ * One play from the WPBL boxscore `plays` array (official narrative feed).
+ * Sequence increases through the game; UI usually shows newest first.
+ */
+export interface WpblPlay {
+  sequence: number;
+  inning: number;
+  half: "top" | "bottom" | null;
+  outs: number | null;
+  batterName: string | null;
+  pitcherName: string | null;
+  runnerFirst: string | null;
+  runnerSecond: string | null;
+  runnerThird: string | null;
+  narrative: string;
+  eventType: string;
+  isHit: boolean;
+  isScoringPlay: boolean;
+  runsScored: number;
+  /** Compact pitch codes, e.g. "BBKSBP". */
+  pitchSequence: string | null;
+  pitchEvents: WpblPitchEvent[];
+  finalBalls: number | null;
+  finalStrikes: number | null;
+  finalFouls: number | null;
 }
 
 export interface WpblGameDetailResponse {
@@ -113,6 +152,8 @@ export interface WpblGameDetailResponse {
     } | null;
     batting: WpblBoxPlayerLine[];
     pitching: WpblBoxPlayerLine[];
+    /** Chronological play-by-play (oldest first). Empty when not yet published. */
+    plays: WpblPlay[];
   };
 }
 

@@ -39,6 +39,7 @@ function detail(
       lineScore: null,
       batting: [],
       pitching: [],
+      plays: [],
     },
   };
 }
@@ -112,6 +113,8 @@ function richLeaders(): WpblLeadersResponse {
           teamAbbr: "SF",
           value: ".400",
           sortValue: 0.4,
+          position: null,
+          headshotUrl: null,
         },
       ],
       hr: [],
@@ -149,6 +152,7 @@ describe("shouldRefreshWpblGame", () => {
         lineScore: null,
         batting: [],
         pitching: [],
+        plays: [],
       },
     });
     expect(shouldRefreshWpblGame(d, now)).toBe(true);
@@ -163,6 +167,7 @@ describe("shouldRefreshWpblGame", () => {
         lineScore: null,
         batting: [],
         pitching: [],
+        plays: [],
       },
     });
     expect(shouldRefreshWpblGame(d, now)).toBe(false);

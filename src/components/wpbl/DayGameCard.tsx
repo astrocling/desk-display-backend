@@ -130,7 +130,7 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
         </Link>
         {isFinal ? (
           <Link
-            href={`/wpbl/games/${game.id}`}
+            href={`/wpbl/games/${game.id}?view=box`}
             className="text-slate-600 hover:underline dark:text-slate-300"
           >
             Box score
