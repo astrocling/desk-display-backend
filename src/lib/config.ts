@@ -20,6 +20,10 @@ export function wpblGameKey(id: string): string {
   return `wpbl:game:${id}`;
 }
 
+export function wpblPlayerKey(id: string): string {
+  return `wpbl:player:${id}`;
+}
+
 export const TIMEZONE_CITIES = [
   { id: "America/New_York", lat: 40.7128, lon: -74.006 },
   { id: "America/Chicago", lat: 41.8781, lon: -87.6298 },

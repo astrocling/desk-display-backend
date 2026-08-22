@@ -1,0 +1,26 @@
+{
+  "player_id": "bpyqct4a85lh306g",
+  "team_id": "vhubhz8li07tmgq8",
+  "profile_url": "https://www.womensprobaseballleague.com/players/jill-albayati/",
+  "first_name": "Jill",
+  "last_name": "Albayati",
+  "position": "P/Ut.",
+  "uniform": "18",
+  "headshot_url": "",
+  "dob": "",
+  "hometown": "",
+  "is_active": true,
+  "player_status": "ACTIVE",
+  "presto_data": {
+    "data": {
+      "bats": "R",
+      "born": "",
+      "height": "",
+      "throws": "R",
+      "weight": "",
+      "hometown": "Anaheim, Calif."
+    },
+    "show": false
+  },
+  "updated_at": "2026-08-22T18:39:11.853578Z"
+}

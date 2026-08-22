@@ -4,12 +4,15 @@ import type {
   WpblGameStatus,
   WpblLeadersResponse,
   WpblLeagueResponse,
+  WpblPlayerDetailResponse,
 } from "@/lib/types/wpbl-display";
 import {
   mergeWpblLeadersBlob,
   mergeWpblLeagueBlob,
   shouldRefreshWpblGame,
+  shouldRefreshWpblPlayer,
   WPBL_LIVE_TTL_MS,
+  WPBL_PLAYER_TTL_MS,
 } from "./refresh";
 
 function detail(
@@ -113,7 +116,7 @@ function richLeaders(): WpblLeadersResponse {
           teamAbbr: "SF",
           value: ".400",
           sortValue: 0.4,
-          position: null,
+          position: "CF",
           headshotUrl: null,
         },
       ],
@@ -209,5 +212,54 @@ describe("mergeWpblLeadersBlob", () => {
     };
     const merged = mergeWpblLeadersBlob(fresh, prior);
     expect(merged.batting.avg[0].value).toBe(".400");
+  });
+});
+
+describe("shouldRefreshWpblPlayer", () => {
+  const player = (updatedAt: string): WpblPlayerDetailResponse => ({
+    updatedAt,
+    seasonId: "c9sgab9f9yx00z75",
+    partial: false,
+    player: {
+      id: "p1",
+      name: "Test",
+      firstName: "Test",
+      lastName: "",
+      teamId: "vhubhz8li07tmgq8",
+      teamAbbr: "SF",
+      teamName: "Firebells",
+      position: "CF",
+      uniform: "1",
+      bats: "R",
+      throws: "R",
+      hometown: null,
+      birthdate: null,
+      status: "ACTIVE",
+      headshotUrl: null,
+      profileUrl: null,
+    },
+    season: {
+      sourceThrough: null,
+      batting: null,
+      pitching: null,
+      fielding: null,
+    },
+    gameLog: [],
+  });
+
+  it("refreshes when older than TTL", () => {
+    const now = new Date("2026-08-22T12:10:00.000Z");
+    const updatedAt = new Date(
+      now.getTime() - WPBL_PLAYER_TTL_MS - 1,
+    ).toISOString();
+    expect(shouldRefreshWpblPlayer(player(updatedAt), now)).toBe(true);
+  });
+
+  it("skips refresh when fresh", () => {
+    const now = new Date("2026-08-22T12:10:00.000Z");
+    const updatedAt = new Date(
+      now.getTime() - WPBL_PLAYER_TTL_MS + 60_000,
+    ).toISOString();
+    expect(shouldRefreshWpblPlayer(player(updatedAt), now)).toBe(false);
   });
 });

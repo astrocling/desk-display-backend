@@ -3,7 +3,7 @@
 ## Stack
 
 - **Runtime**: Next.js App Router (TypeScript) on Vercel
-- **Cache**: Upstash Redis (keys: `weather`, `timezones`, `scores`, `airports`, `wpbl:league`, `wpbl:leaders`, `wpbl:game:{id}`)
+- **Cache**: Upstash Redis (keys: `weather`, `timezones`, `scores`, `airports`, `wpbl:league`, `wpbl:leaders`, `wpbl:game:{id}`, `wpbl:player:{id}`)
 - **Cron**: Vercel Cron (`vercel.json`) invoking `/api/cron/*` routes
 - **Auth**: `Authorization: Bearer <CRON_SECRET>` on all cron endpoints (required; `x-vercel-cron` alone is not accepted)
 - **Flagstand**: Read-only Neon connection to SSR Hub (`DATABASE_URL`)
@@ -358,6 +358,15 @@ Game detail with line score and box score. Per-game Redis key `wpbl:game:{id}`. 
 
 - `404`: `{ "error": "Game not found" }` (no cache and upstream failed)
 - `503`: not used on this route (stale cache served on failure)
+
+### `GET /api/wpbl/players/[id]`
+
+Player detail (identity, season batting/pitching/fielding, game log). Per-player Redis key `wpbl:player:{id}`. Refreshes on read when `updatedAt` is older than ~5 minutes; on upstream failure returns last-good blob when present.
+
+**Errors**:
+
+- `404`: `{ "error": "Player not found" }`
+- `502` / `503`: upstream or Redis failures when no last-good cache
 
 ### `GET /api/airport?code=<ICAO>`
 
