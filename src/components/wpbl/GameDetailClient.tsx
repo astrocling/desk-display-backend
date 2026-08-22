@@ -22,9 +22,10 @@ import {
 } from "./linkifyPlayerNames";
 import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
+import { TrackingPanel } from "./TrackingPanel";
 import { useWpblLiveGame } from "./useWpblLiveGame";
 
-type DetailView = "gameday" | "box";
+type DetailView = "gameday" | "box" | "trackman";
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
@@ -91,18 +92,33 @@ function FeedBadge({
   );
 }
 
+function viewFromSearchParam(value: string | null): DetailView {
+  if (value === "box") return "box";
+  if (value === "trackman") return "trackman";
+  return "gameday";
+}
+
 function ViewTabs({
   view,
   onChange,
   playCount,
+  trackingCount,
 }: {
   view: DetailView;
   onChange: (next: DetailView) => void;
   playCount: number;
+  trackingCount: number;
 }) {
+  const tabClass = (active: boolean) =>
+    `rounded-md px-3 py-1.5 font-medium transition-colors ${
+      active
+        ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
+        : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+    }`;
+
   return (
     <div
-      className="inline-flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-700"
+      className="inline-flex flex-wrap rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-700"
       role="tablist"
       aria-label="Game detail view"
     >
@@ -111,11 +127,7 @@ function ViewTabs({
         role="tab"
         aria-selected={view === "gameday"}
         onClick={() => onChange("gameday")}
-        className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-          view === "gameday"
-            ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-            : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-        }`}
+        className={tabClass(view === "gameday")}
       >
         Gameday
         {playCount > 0 ? (
@@ -125,13 +137,21 @@ function ViewTabs({
       <button
         type="button"
         role="tab"
+        aria-selected={view === "trackman"}
+        onClick={() => onChange("trackman")}
+        className={tabClass(view === "trackman")}
+      >
+        TrackMan
+        {trackingCount > 0 ? (
+          <span className="ml-1.5 text-xs opacity-70">{trackingCount}</span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        role="tab"
         aria-selected={view === "box"}
         onClick={() => onChange("box")}
-        className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-          view === "box"
-            ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-            : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-        }`}
+        className={tabClass(view === "box")}
       >
         Box score
       </button>
@@ -191,8 +211,9 @@ export function GameDetailClient({
   initialData = null,
 }: GameDetailClientProps) {
   const searchParams = useSearchParams();
-  const initialView: DetailView =
-    searchParams.get("view") === "box" ? "box" : "gameday";
+  const initialView: DetailView = viewFromSearchParam(
+    searchParams.get("view"),
+  );
 
   const [view, setView] = useState<DetailView>(initialView);
   const { data, loading, notFound, error, connection } = useWpblLiveGame(
@@ -203,7 +224,7 @@ export function GameDetailClient({
   useEffect(() => {
     // replaceState does not update useSearchParams; keep tab in sync with the URL.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- URL ↔ tab sync
-    setView(searchParams.get("view") === "box" ? "box" : "gameday");
+    setView(viewFromSearchParam(searchParams.get("view")));
   }, [searchParams]);
 
   const isLive = data?.game.status === "live";
@@ -216,8 +237,8 @@ export function GameDetailClient({
   const setViewAndUrl = useCallback((next: DetailView) => {
     setView(next);
     const url = new URL(window.location.href);
-    if (next === "box") {
-      url.searchParams.set("view", "box");
+    if (next === "box" || next === "trackman") {
+      url.searchParams.set("view", next);
     } else {
       url.searchParams.delete("view");
     }
@@ -315,6 +336,7 @@ export function GameDetailClient({
           view={view}
           onChange={setViewAndUrl}
           playCount={boxscore.plays.length}
+          trackingCount={boxscore.tracking?.length ?? 0}
         />
 
         {view === "gameday" ? (
@@ -324,6 +346,17 @@ export function GameDetailClient({
             </h2>
             <PlayByPlayPanel
               plays={boxscore.plays}
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+            />
+          </div>
+        ) : view === "trackman" ? (
+          <div>
+            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+              TrackMan
+            </h2>
+            <TrackingPanel
+              tracking={boxscore.tracking ?? []}
               batting={boxscore.batting}
               pitching={boxscore.pitching}
             />

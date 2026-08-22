@@ -14,8 +14,11 @@ import {
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 import {
   buildPitchChips,
+  displayTrackingName,
+  filterTrackingFeed,
   pitchTypeAbbr,
   trackingForPlateAppearance,
+  trackingMetricChips,
 } from "@/lib/wpbl-tracking";
 
 const trackingFixture = JSON.parse(
@@ -161,5 +164,40 @@ describe("pitch chips + live tracking merge", () => {
 
     const again = applyWpblLiveEnvelope(next, envelope);
     expect(again.boxscore.tracking).toHaveLength(1);
+  });
+});
+
+describe("TrackMan feed helpers", () => {
+  const rows = () =>
+    mapWpblTrackingActivity(trackingFixture.tracking_activity);
+
+  it("flips Last, First display names", () => {
+    expect(displayTrackingName("Eccles, Claire")).toBe("Claire Eccles");
+    expect(displayTrackingName("Claire Eccles")).toBe("Claire Eccles");
+  });
+
+  it("builds metric chips for pitch and contact", () => {
+    const pitch = rows().find((r) => r.kind === "pitch")!;
+    const hit = rows().find((r) => r.kind === "hit")!;
+    expect(trackingMetricChips(pitch).map((c) => c.text)).toEqual(
+      expect.arrayContaining(["Fastball", "70.7 mph", "1937 rpm"]),
+    );
+    expect(trackingMetricChips(hit).some((c) => c.impact)).toBe(true);
+    expect(trackingMetricChips(hit).map((c) => c.text)).toEqual(
+      expect.arrayContaining([
+        "Fastball",
+        "30.6 mph exit",
+        "Ground Ball",
+      ]),
+    );
+  });
+
+  it("filters newest-first feed by kind", () => {
+    const all = filterTrackingFeed(rows(), "all");
+    expect(all[0]!.kind).toBe("hit");
+    expect(filterTrackingFeed(rows(), "hits")).toHaveLength(1);
+    expect(filterTrackingFeed(rows(), "pitches").every((r) => r.kind === "pitch")).toBe(
+      true,
+    );
   });
 });

@@ -237,3 +237,125 @@ export function latestTrackingEvent(
     return best;
   });
 }
+
+/** Newest-first for the TrackMan feed. */
+export function sortTrackingNewestFirst(
+  tracking: WpblTrackingEvent[],
+): WpblTrackingEvent[] {
+  return [...tracking].sort((a, b) => {
+    const tb = Date.parse(b.occurredAt ?? "") || 0;
+    const ta = Date.parse(a.occurredAt ?? "") || 0;
+    if (tb !== ta) return tb - ta;
+    return (b.sequence ?? 0) - (a.sequence ?? 0);
+  });
+}
+
+export type TrackingFeedMode = "all" | "pitches" | "hits";
+
+export function filterTrackingFeed(
+  tracking: WpblTrackingEvent[],
+  mode: TrackingFeedMode,
+): WpblTrackingEvent[] {
+  const sorted = sortTrackingNewestFirst(tracking);
+  if (mode === "pitches") return sorted.filter((r) => r.kind === "pitch");
+  if (mode === "hits") return sorted.filter((r) => r.kind === "hit");
+  return sorted;
+}
+
+/** TrackMan often sends "Last, First" — flip for display. */
+export function displayTrackingName(
+  name: string | null | undefined,
+): string | null {
+  const trimmed = name?.trim();
+  if (!trimmed) return null;
+  if (!trimmed.includes(",")) return trimmed;
+  const [last, ...rest] = trimmed.split(",");
+  const first = rest.join(",").trim();
+  if (!first) return last?.trim() || null;
+  return `${first} ${last?.trim()}`.trim();
+}
+
+/** Title-case snake/camel labels (ChangeUp → Change Up). */
+export function humanizeTrackingLabel(
+  value: string | null | undefined,
+): string | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+  return raw
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function formatTrackingInning(event: WpblTrackingEvent): string {
+  if (event.half === "top" && event.inning != null) return `Top ${event.inning}`;
+  if (event.half === "bottom" && event.inning != null) {
+    return `Bot ${event.inning}`;
+  }
+  if (event.inning != null) return `Inn ${event.inning}`;
+  return event.kind === "hit" ? "Hit" : "Pitch";
+}
+
+export type TrackingMetricChip = {
+  text: string;
+  /** Emphasize exit velo / impact metrics. */
+  impact?: boolean;
+};
+
+/** Metric chips for a TrackMan feed row (type, release, spin, exit, …). */
+export function trackingMetricChips(
+  event: WpblTrackingEvent,
+): TrackingMetricChip[] {
+  const chips: TrackingMetricChip[] = [];
+  const type = humanizeTrackingLabel(event.pitchType);
+  if (type) chips.push({ text: type });
+
+  const unit = event.speedUnit?.trim() || "mph";
+  const release = roundSpeed(event.releaseSpeed);
+  if (release != null) chips.push({ text: `${release} ${unit}` });
+
+  if (event.spinRateRpm != null && Number.isFinite(event.spinRateRpm)) {
+    chips.push({ text: `${Math.round(event.spinRateRpm)} rpm` });
+  }
+
+  const exit = roundSpeed(event.exitSpeed);
+  if (exit != null) {
+    chips.push({ text: `${exit} ${unit} exit`, impact: true });
+  }
+
+  if (event.launchAngleDeg != null && Number.isFinite(event.launchAngleDeg)) {
+    const angle = Math.round(event.launchAngleDeg * 10) / 10;
+    chips.push({ text: `${angle}° launch` });
+  }
+
+  const hit = humanizeTrackingLabel(event.hitType);
+  if (hit) chips.push({ text: hit });
+
+  if (
+    event.distance != null &&
+    Number.isFinite(event.distance) &&
+    event.distance >= 1
+  ) {
+    const dist = Math.round(event.distance);
+    const dUnit = event.distanceUnit?.trim() || "ft";
+    chips.push({ text: `${dist} ${dUnit}` });
+  }
+
+  const zone = humanizeTrackingLabel(event.strikeZoneDecision);
+  if (zone) chips.push({ text: `Zone: ${zone}` });
+
+  return chips;
+}
+
+export function formatTrackingClock(
+  iso: string | null | undefined,
+): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
