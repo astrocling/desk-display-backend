@@ -25,8 +25,9 @@ import {
 import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
 import { TrackingPanel } from "./TrackingPanel";
-import { useWpblLiveGame } from "./useWpblLiveGame";
 import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
+import { WpblDetailTabs } from "./WpblDetailTabs";
+import { useWpblLiveGame } from "./useWpblLiveGame";
 
 type DetailView = "gameday" | "box" | "trackman";
 
@@ -99,63 +100,6 @@ function viewFromSearchParam(value: string | null): DetailView {
   if (value === "box") return "box";
   if (value === "trackman") return "trackman";
   return "gameday";
-}
-
-function ViewTabs({
-  view,
-  onChange,
-  playCount,
-  trackingCount,
-}: {
-  view: DetailView;
-  onChange: (next: DetailView) => void;
-  playCount: number;
-  trackingCount: number;
-}) {
-  const tabClass = (active: boolean) =>
-    active ? "wpbl-chip wpbl-chip--active" : "wpbl-chip";
-
-  return (
-    <div
-      className="inline-flex flex-wrap gap-1 rounded-lg border border-[var(--wpbl-rule)] p-1 text-sm"
-      role="tablist"
-      aria-label="Game detail view"
-    >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={view === "gameday"}
-        onClick={() => onChange("gameday")}
-        className={tabClass(view === "gameday")}
-      >
-        Gameday
-        {playCount > 0 ? (
-          <span className="ml-1.5 text-xs opacity-70">{playCount}</span>
-        ) : null}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={view === "trackman"}
-        onClick={() => onChange("trackman")}
-        className={tabClass(view === "trackman")}
-      >
-        TrackMan
-        {trackingCount > 0 ? (
-          <span className="ml-1.5 text-xs opacity-70">{trackingCount}</span>
-        ) : null}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={view === "box"}
-        onClick={() => onChange("box")}
-        className={tabClass(view === "box")}
-      >
-        Box score
-      </button>
-    </div>
-  );
 }
 
 function LatestPlayBanner({
@@ -321,53 +265,46 @@ export function GameDetailClient({
       ) : null}
 
       <section className="space-y-4">
-        <ViewTabs
-          view={view}
+        <WpblDetailTabs
+          ariaLabel="Game detail view"
+          active={view}
           onChange={setViewAndUrl}
-          playCount={boxscore.plays.length}
-          trackingCount={boxscore.tracking?.length ?? 0}
+          tabs={[
+            { id: "gameday" as const, label: "Gameday", count: boxscore.plays.length },
+            {
+              id: "trackman" as const,
+              label: "TrackMan",
+              count: boxscore.tracking?.length ?? 0,
+            },
+            { id: "box" as const, label: "Box score" },
+          ]}
         />
 
         {view === "gameday" ? (
-          <div>
-            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-              Play-by-play
-            </h2>
-            <PlayByPlayPanel
-              plays={boxscore.plays}
-              tracking={boxscore.tracking ?? []}
-              batting={boxscore.batting}
-              pitching={boxscore.pitching}
-            />
-          </div>
+          <PlayByPlayPanel
+            plays={boxscore.plays}
+            tracking={boxscore.tracking ?? []}
+            batting={boxscore.batting}
+            pitching={boxscore.pitching}
+          />
         ) : view === "trackman" ? (
-          <div>
-            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-              TrackMan
-            </h2>
-            <TrackingPanel
-              tracking={boxscore.tracking ?? []}
-              batting={boxscore.batting}
-              pitching={boxscore.pitching}
-              isLive={Boolean(isLive)}
-            />
-          </div>
+          <TrackingPanel
+            tracking={boxscore.tracking ?? []}
+            batting={boxscore.batting}
+            pitching={boxscore.pitching}
+            isLive={Boolean(isLive)}
+          />
         ) : boxscore.available ? (
-          <div>
-            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-              Box score
-            </h2>
-            <BoxTables
-              batting={boxscore.batting}
-              pitching={boxscore.pitching}
-              awayLabel={`${game.awayAbbr} ${game.awayName}`}
-              homeLabel={`${game.homeAbbr} ${game.homeName}`}
-              awayAbbr={game.awayAbbr}
-              homeAbbr={game.homeAbbr}
-            />
-          </div>
+          <BoxTables
+            batting={boxscore.batting}
+            pitching={boxscore.pitching}
+            awayLabel={`${game.awayAbbr} ${game.awayName}`}
+            homeLabel={`${game.homeAbbr} ${game.homeName}`}
+            awayAbbr={game.awayAbbr}
+            homeAbbr={game.homeAbbr}
+          />
         ) : (
-          <p className="text-sm text-slate-500">Box score not available yet.</p>
+          <p className="text-sm wpbl-muted">Box score not available yet.</p>
         )}
       </section>
     </div>

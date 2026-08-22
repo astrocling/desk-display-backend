@@ -11,17 +11,17 @@ export type PitchLogProps = {
 function chipClass(kind: PitchChip["kind"]): string {
   switch (kind) {
     case "ball":
-      return "bg-sky-600 text-white";
+      return "border-sky-500/40 bg-sky-500/15 text-sky-300";
     case "strike":
-      return "bg-red-600 text-white";
+      return "border-red-500/40 bg-red-500/15 text-red-300";
     case "foul":
-      return "bg-amber-500 text-white";
+      return "border-amber-500/40 bg-amber-500/15 text-amber-200";
     case "in_play":
-      return "bg-emerald-600 text-white";
+      return "border-[color-mix(in_srgb,var(--wpbl-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--wpbl-accent)_12%,transparent)] text-[var(--wpbl-accent)]";
     case "track":
-      return "bg-slate-700 text-white dark:bg-slate-600";
+      return "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-elevated)] text-[var(--wpbl-ink-secondary)]";
     default:
-      return "bg-slate-500 text-white";
+      return "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-hover)] text-[var(--wpbl-muted)]";
   }
 }
 
@@ -38,9 +38,9 @@ export function PitchLog({ chips, label, compact }: PitchLogProps) {
   return (
     <div className={compact ? "space-y-1" : "space-y-1.5"}>
       {label ? (
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="wpbl-section-label">
           {label}
-          <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">
+          <span className="ml-1 font-normal normal-case tracking-normal wpbl-muted">
             · {chips.length} pitch{chips.length === 1 ? "" : "es"}
           </span>
         </p>
@@ -55,7 +55,7 @@ export function PitchLog({ chips, label, compact }: PitchLogProps) {
             <li key={chip.key}>
               <span
                 title={chip.title}
-                className={`inline-flex min-w-[1.6rem] flex-col items-center justify-center rounded px-1 py-0.5 font-mono font-semibold tabular-nums ${chipClass(chip.kind)}`}
+                className={`inline-flex min-w-[1.6rem] flex-col items-center justify-center rounded border px-1 py-0.5 font-mono font-semibold tabular-nums ${chipClass(chip.kind)}`}
               >
                 <span className="text-[10px] leading-none">{chip.label}</span>
                 {secondary && secondary !== chip.label ? (
@@ -69,7 +69,7 @@ export function PitchLog({ chips, label, compact }: PitchLogProps) {
         })}
       </ol>
       {!compact ? (
-        <p className="text-[11px] leading-snug text-slate-500">
+        <p className="text-[11px] leading-snug wpbl-muted">
           {chips.map((c) => c.title).join(" · ")}
         </p>
       ) : null}
