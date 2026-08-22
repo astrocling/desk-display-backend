@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
 import { formatWpblPosition } from "@/lib/wpbl-position";
-import { wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
 
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
 import { teamAccentStyle } from "./teamAccent";
 
@@ -84,52 +84,6 @@ function filterEntries(entries: WpblLeaderEntry[], teamFilter: string): WpblLead
   return filtered.slice(0, LEADERS_DISPLAY_LIMIT);
 }
 
-function PlayerHeadshot({ entry }: { entry: WpblLeaderEntry }) {
-  const [failed, setFailed] = useState(false);
-  const logoSrc = wpblTeamLogoSrc(entry.teamAbbr);
-  const showPhoto = Boolean(entry.headshotUrl) && !failed;
-
-  return (
-    <span className="relative inline-flex h-11 w-11 shrink-0">
-      {showPhoto ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote WPBL CDN URLs; avoid next/image domain allowlist churn
-        <img
-          src={entry.headshotUrl!}
-          alt=""
-          width={44}
-          height={44}
-          decoding="async"
-          className="h-11 w-11 rounded-full object-cover object-top bg-neutral-700"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-neutral-700 text-sm font-semibold text-neutral-200"
-          aria-hidden
-        >
-          {entry.name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((p) => p[0]?.toUpperCase() ?? "")
-            .join("") || "?"}
-        </span>
-      )}
-      {logoSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element -- local team marks
-        <img
-          src={logoSrc}
-          alt=""
-          width={16}
-          height={16}
-          decoding="async"
-          className="absolute -left-0.5 -top-0.5 h-4 w-4 rounded-full bg-white object-contain p-px shadow-sm"
-        />
-      ) : null}
-    </span>
-  );
-}
-
 function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
   return (
     <li
@@ -139,7 +93,12 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
       <span className="w-5 shrink-0 text-right text-sm tabular-nums text-neutral-500">
         {rank}
       </span>
-      <PlayerHeadshot entry={entry} />
+      <PlayerHeadshot
+        name={entry.name}
+        headshotUrl={entry.headshotUrl}
+        teamAbbr={entry.teamAbbr}
+        size={44}
+      />
       <span className="min-w-0 flex-1">
         <PlayerNameLink
           playerId={entry.playerId}

@@ -10,13 +10,15 @@ import type {
 } from "@/lib/types/wpbl-display";
 import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
-import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
+import { latestWpblPlay, lineupFollowers, shortRunnerLabel } from "@/lib/wpbl-plays";
+import { buildPitchChips } from "@/lib/wpbl-tracking";
 
 import { LineScore } from "./LineScore";
 import {
   linkifyPlayerNames,
   rosterFromBoxLines,
 } from "./linkifyPlayerNames";
+import { PitchLog } from "./PitchLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
@@ -213,6 +215,18 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
   const keys = keyPlayersFromDetail(detail);
   const lastPlay = latestWpblPlay(boxscore.plays);
   const roster = rosterFromBoxLines(boxscore.batting, boxscore.pitching);
+  const followers = lineupFollowers(boxscore.batting, situation);
+  const pitchLog = buildPitchChips(
+    situation,
+    boxscore.plays,
+    boxscore.tracking ?? [],
+  );
+  const onDeckTeamAbbr =
+    followers.battingSide === "away"
+      ? game.awayAbbr
+      : followers.battingSide === "home"
+        ? game.homeAbbr
+        : null;
 
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -276,8 +290,8 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
         </div>
       ) : null}
 
-      {(keys.pitcherName || keys.batterName) && (
-        <div className="grid grid-cols-2 gap-4 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+      {(keys.pitcherName || keys.batterName || followers.onDeck) && (
+        <div className="grid grid-cols-2 gap-4 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:grid-cols-3">
           <KeyPlayer
             label="Pitching"
             teamAbbr={keys.pitcherTeamAbbr}
@@ -294,8 +308,30 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
             headshotUrl={keys.batterHeadshotUrl}
             stats={keys.batterStats}
           />
+          <KeyPlayer
+            label="On deck"
+            teamAbbr={onDeckTeamAbbr}
+            name={followers.onDeck?.name ?? null}
+            playerId={followers.onDeck?.playerId ?? null}
+            headshotUrl={followers.onDeck?.headshotUrl ?? null}
+            stats={
+              followers.onDeck?.position
+                ? followers.onDeck.position
+                : null
+            }
+          />
         </div>
       )}
+
+      {pitchLog.chips.length > 0 ? (
+        <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+          <PitchLog
+            chips={pitchLog.chips}
+            label={pitchLog.label}
+            compact
+          />
+        </div>
+      ) : null}
 
       {lastPlay ? (
         <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
