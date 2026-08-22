@@ -10,6 +10,7 @@ import {
   atBatPitchLog,
   latestWpblPlay,
   pitchKind,
+  pitchesFromPlay,
   type AtBatPitchLog,
 } from "@/lib/wpbl-plays";
 
@@ -108,17 +109,9 @@ function resultLabel(event: WpblPitchEvent): string {
   return event.code || "?";
 }
 
-/** Play-feed-only chips (no TrackMan), for PBP rows. */
+/** Play-feed-only chips (no TrackMan), for callers without play context. */
 export function chipsFromPitchEvents(events: WpblPitchEvent[]): PitchChip[] {
-  return events.map((event, i) => ({
-    key: `${event.sequence}-${event.code}-${i}`,
-    label: resultLabel(event),
-    kind: pitchKind(event),
-    pitchTypeAbbr: null,
-    releaseMph: null,
-    exitMph: null,
-    title: event.description || event.type || event.code,
-  }));
+  return zipPitchEventsWithTracking(events, []);
 }
 
 function chipTitle(
@@ -140,6 +133,69 @@ function chipTitle(
     bits.push(`${Math.round(track.spinRateRpm)} rpm`);
   }
   return bits.join(" · ") || "Pitch";
+}
+
+/**
+ * Zip official pitch results with TrackMan rows for one plate appearance.
+ * Pitch-kind rows align by order; contact/exit attaches to the final in-play pitch.
+ */
+export function zipPitchEventsWithTracking(
+  events: WpblPitchEvent[],
+  paTracking: WpblTrackingEvent[],
+): PitchChip[] {
+  if (!events.length) return [];
+
+  const pitchTracks = paTracking.filter((r) => r.kind === "pitch");
+  const hit =
+    paTracking.find((r) => r.kind === "hit") ??
+    paTracking.find((r) => r.exitSpeed != null) ??
+    null;
+  // Prefer pitch-only rows; fall back to chronological PA if TrackMan omitted kind.
+  const trackRows =
+    pitchTracks.length > 0
+      ? pitchTracks
+      : paTracking.filter((r) => r.kind !== "hit");
+
+  return events.map((event, i) => {
+    let track: WpblTrackingEvent | null = trackRows[i] ?? null;
+    const kind = pitchKind(event);
+    if (kind === "in_play" && hit && i === events.length - 1) {
+      track = track
+        ? {
+            ...track,
+            exitSpeed: track.exitSpeed ?? hit.exitSpeed,
+            hitType: track.hitType ?? hit.hitType,
+            launchAngleDeg: track.launchAngleDeg ?? hit.launchAngleDeg,
+            distance: track.distance ?? hit.distance,
+            distanceUnit: track.distanceUnit ?? hit.distanceUnit,
+          }
+        : hit;
+    }
+    return {
+      key: `${event.sequence}-${event.code}-${i}`,
+      label: resultLabel(event),
+      kind,
+      pitchTypeAbbr: pitchTypeAbbr(track?.pitchType),
+      releaseMph: roundSpeed(track?.releaseSpeed),
+      exitMph: roundSpeed(track?.exitSpeed),
+      title: chipTitle(event.description || event.type, track),
+    };
+  });
+}
+
+/** Enrich one completed play’s pitch chips with TrackMan for that PA. */
+export function chipsForPlay(
+  play: WpblPlay,
+  tracking: WpblTrackingEvent[],
+): PitchChip[] {
+  const events = pitchesFromPlay(play);
+  if (!events.length) return [];
+  const pa = trackingForPlateAppearance(tracking, {
+    batterName: play.batterName,
+    inning: play.inning,
+    half: play.half,
+  });
+  return zipPitchEventsWithTracking(events, pa);
 }
 
 /**
@@ -204,24 +260,11 @@ export function buildPitchChips(
           half: latestPlay?.half,
         });
 
-  const chips = playLog.pitches.map((event, i) => {
-    const track = trackRows[i] ?? null;
-    const kind = pitchKind(event);
-    return {
-      key: `${event.sequence}-${event.code}-${i}`,
-      label: resultLabel(event),
-      kind,
-      pitchTypeAbbr: pitchTypeAbbr(track?.pitchType),
-      releaseMph: roundSpeed(track?.releaseSpeed),
-      exitMph: roundSpeed(track?.exitSpeed),
-      title: chipTitle(
-        event.description || event.type,
-        track,
-      ),
-    };
-  });
-
-  return { chips, label: playLog.label, source: playLog.source };
+  return {
+    chips: zipPitchEventsWithTracking(playLog.pitches, trackRows),
+    label: playLog.label,
+    source: playLog.source,
+  };
 }
 
 /** Latest TrackMan row overall (for a one-line “last pitch” callout). */

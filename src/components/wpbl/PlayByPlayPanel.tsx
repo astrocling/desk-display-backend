@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import type { WpblBoxPlayerLine, WpblPlay } from "@/lib/types/wpbl-display";
+import type {
+  WpblBoxPlayerLine,
+  WpblPlay,
+  WpblTrackingEvent,
+} from "@/lib/types/wpbl-display";
 import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
-import {
-  filterWpblPlays,
-  formatPlayInning,
-  pitchesFromPlay,
-} from "@/lib/wpbl-plays";
-import { chipsFromPitchEvents } from "@/lib/wpbl-tracking";
+import { filterWpblPlays, formatPlayInning } from "@/lib/wpbl-plays";
+import { chipsForPlay } from "@/lib/wpbl-tracking";
 
 import {
   linkifyPlayerNames,
@@ -20,22 +20,25 @@ import { PlayerNameLink } from "./PlayerNameLink";
 
 export type PlayByPlayPanelProps = {
   plays: WpblPlay[];
+  tracking?: WpblTrackingEvent[];
   batting?: WpblBoxPlayerLine[];
   pitching?: WpblBoxPlayerLine[];
 };
 
 function PlayRow({
   play,
+  tracking,
   batting,
   pitching,
   roster,
 }: {
   play: WpblPlay;
+  tracking: WpblTrackingEvent[];
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
   roster: ReturnType<typeof rosterFromBoxLines>;
 }) {
-  const chips = chipsFromPitchEvents(pitchesFromPlay(play));
+  const chips = chipsForPlay(play, tracking);
 
   return (
     <li
@@ -98,6 +101,7 @@ function PlayRow({
 
 export function PlayByPlayPanel({
   plays,
+  tracking = [],
   batting = [],
   pitching = [],
 }: PlayByPlayPanelProps) {
@@ -162,6 +166,7 @@ export function PlayByPlayPanel({
             <PlayRow
               key={play.sequence}
               play={play}
+              tracking={tracking}
               batting={batting}
               pitching={pitching}
               roster={roster}

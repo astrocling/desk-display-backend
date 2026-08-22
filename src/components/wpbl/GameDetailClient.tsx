@@ -8,10 +8,11 @@ import type {
   WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblGameStatus,
+  WpblTrackingEvent,
 } from "@/lib/types/wpbl-display";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
-import { latestWpblPlay, pitchesFromPlay } from "@/lib/wpbl-plays";
-import { chipsFromPitchEvents } from "@/lib/wpbl-tracking";
+import { latestWpblPlay } from "@/lib/wpbl-plays";
+import { chipsForPlay } from "@/lib/wpbl-tracking";
 
 import { BoxTables } from "./BoxTables";
 import { GamedayScoreboard } from "./GamedayScoreboard";
@@ -161,14 +162,16 @@ function ViewTabs({
 
 function LatestPlayBanner({
   play,
+  tracking,
   batting,
   pitching,
 }: {
   play: NonNullable<ReturnType<typeof latestWpblPlay>>;
+  tracking: WpblTrackingEvent[];
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
 }) {
-  const chips = chipsFromPitchEvents(pitchesFromPlay(play));
+  const chips = chipsForPlay(play, tracking);
   const roster = rosterFromBoxLines(batting, pitching);
 
   return (
@@ -314,6 +317,7 @@ export function GameDetailClient({
       {lastPlay ? (
         <LatestPlayBanner
           play={lastPlay}
+          tracking={boxscore.tracking ?? []}
           batting={boxscore.batting}
           pitching={boxscore.pitching}
         />
@@ -346,6 +350,7 @@ export function GameDetailClient({
             </h2>
             <PlayByPlayPanel
               plays={boxscore.plays}
+              tracking={boxscore.tracking ?? []}
               batting={boxscore.batting}
               pitching={boxscore.pitching}
             />

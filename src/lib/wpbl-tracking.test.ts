@@ -14,6 +14,7 @@ import {
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 import {
   buildPitchChips,
+  chipsForPlay,
   displayTrackingName,
   filterTrackingFeed,
   pitchTypeAbbr,
@@ -199,5 +200,44 @@ describe("TrackMan feed helpers", () => {
     expect(filterTrackingFeed(rows(), "pitches").every((r) => r.kind === "pitch")).toBe(
       true,
     );
+  });
+
+  it("enriches a completed play’s pitch chips with TrackMan", () => {
+    const tracking = rows();
+    const chips = chipsForPlay(
+      {
+        sequence: 99,
+        inning: 7,
+        half: "bottom",
+        outs: 1,
+        batterName: "Claire Eccles",
+        pitcherName: "Meggie Meidlinger",
+        runnerFirst: null,
+        runnerSecond: null,
+        runnerThird: null,
+        narrative: "Claire Eccles grounded out (1-2).",
+        eventType: "groundout",
+        isHit: false,
+        isScoringPlay: false,
+        runsScored: 0,
+        pitchSequence: "BBBX",
+        pitchEvents: [],
+        finalBalls: 1,
+        finalStrikes: 2,
+        finalFouls: 0,
+      },
+      tracking,
+    );
+    expect(chips).toHaveLength(4);
+    expect(chips[0]).toMatchObject({
+      label: "B",
+      pitchTypeAbbr: "FB",
+      releaseMph: 71.3,
+    });
+    expect(chips[3]).toMatchObject({
+      label: "X",
+      pitchTypeAbbr: "FB",
+      exitMph: 30.6,
+    });
   });
 });
