@@ -14,9 +14,7 @@ export const LEADERS_DISPLAY_LIMIT = 10;
 export type LeadersBoardsProps = {
   leaders: WpblLeadersResponse;
   teamFilter: string;
-  /** Max rows to show (default {@link LEADERS_DISPLAY_LIMIT}). */
   limit?: number;
-  /** Initial hitting category id (e.g. `"hr"`). */
   initialCategoryId?: string;
 };
 
@@ -95,10 +93,10 @@ function filterEntries(
 function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
   return (
     <li
-      className="wpbl-team-accent flex items-center gap-3 border-b border-white/5 py-3 pl-3 pr-4 last:border-b-0"
+      className="wpbl-team-accent flex items-center gap-3 border-b border-[var(--wpbl-rule)] py-3 pl-3 pr-4 last:border-b-0"
       style={teamAccentStyle(entry.teamAbbr)}
     >
-      <span className="w-5 shrink-0 text-right text-sm tabular-nums text-neutral-500">
+      <span className="w-5 shrink-0 text-right text-sm tabular-nums wpbl-muted">
         {rank}
       </span>
       <PlayerHeadshot
@@ -111,17 +109,15 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
         <PlayerNameLink
           playerId={entry.playerId}
           name={entry.name}
-          className="block truncate text-[15px] font-semibold text-white hover:text-[#41B6E6] hover:underline"
+          className="block truncate text-[15px] font-semibold text-[var(--wpbl-ink)]"
         />
-        <span className="mt-0.5 block text-xs text-neutral-400">
+        <span className="mt-0.5 block text-xs wpbl-muted">
           {[formatWpblPosition(entry.position), entry.teamAbbr]
             .filter(Boolean)
             .join(" · ")}
         </span>
       </span>
-      <span className="shrink-0 text-2xl font-bold tabular-nums tracking-tight text-[#41B6E6]">
-        {entry.value}
-      </span>
+      <span className="wpbl-stat-value shrink-0">{entry.value}</span>
     </li>
   );
 }
@@ -142,8 +138,8 @@ export function LeadersBoards({
   const minAb = leaders.qualifiers.battingMinAb;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-800 bg-black text-white shadow-sm">
-      <div className="flex gap-6 border-b border-white/10 px-4 pt-3">
+    <div className="wpbl-panel">
+      <div className="flex gap-6 border-b border-[var(--wpbl-rule)] px-4 pt-3">
         {(
           [
             ["hitting", "Hitting"],
@@ -160,27 +156,22 @@ export function LeadersBoards({
                 const first = CATEGORIES.find((c) => c.group === id);
                 if (first) setCategoryId(first.id);
               }}
-              className={`relative pb-2.5 text-sm font-semibold transition-colors ${
-                selected ? "text-[#41B6E6]" : "text-neutral-500 hover:text-neutral-300"
-              }`}
+              className={selected ? "wpbl-tab wpbl-tab--active" : "wpbl-tab"}
             >
               {label}
-              {selected ? (
-                <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#41B6E6]" />
-              ) : null}
             </button>
           );
         })}
       </div>
 
       {active.showQualifier ? (
-        <p className="px-4 pt-2 text-[11px] text-neutral-500">
+        <p className="px-4 pt-2 text-[11px] wpbl-muted">
           min {minAb} AB for AVG
         </p>
       ) : null}
 
       {entries.length === 0 ? (
-        <p className="px-4 py-8 text-sm text-neutral-500">No leaders yet.</p>
+        <p className="px-4 py-8 text-sm wpbl-muted">No leaders yet.</p>
       ) : (
         <ol className="px-1 pt-1">
           {entries.map((entry, i) => (
@@ -193,7 +184,7 @@ export function LeadersBoards({
         </ol>
       )}
 
-      <div className="border-t border-white/10 px-3 py-3">
+      <div className="wpbl-panel-inset px-3 py-3">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {groupCategories.map((cat) => {
             const selected = cat.id === active.id;
@@ -202,11 +193,7 @@ export function LeadersBoards({
                 key={cat.id}
                 type="button"
                 onClick={() => setCategoryId(cat.id)}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
-                  selected
-                    ? "bg-[#41B6E6] text-black"
-                    : "border border-white/25 text-white hover:border-white/50"
-                }`}
+                className={selected ? "wpbl-chip wpbl-chip--active" : "wpbl-chip"}
               >
                 {cat.label}
               </button>

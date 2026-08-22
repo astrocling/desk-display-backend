@@ -6,6 +6,7 @@ import type {
   WpblGameDetailResponse,
   WpblStandingRow,
 } from "@/lib/types/wpbl-display";
+import { WPBL_LINK, WPBL_LINK_SUBTLE, WPBL_PANEL, WPBL_PANEL_FOOTER } from "@/lib/wpbl-board";
 import { latestWpblPlay } from "@/lib/wpbl-plays";
 
 import { GameCardMatchup } from "./GameCardMatchup";
@@ -27,7 +28,6 @@ function recordFor(standings: WpblStandingRow[], abbr: string): string | null {
   return `${row.w}-${row.l}`;
 }
 
-/** Today’s slate card for a completed game — line score + last play when cached. */
 export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
   const { game, boxscore } = detail;
   const awayRecord = recordFor(standings, game.awayAbbr);
@@ -49,14 +49,14 @@ export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
   const hasTracking = (boxscore.tracking?.length ?? 0) > 0;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
+    <article className={WPBL_PANEL}>
       <div className="px-4 py-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="text-[10px] font-semibold uppercase tracking-wide wpbl-muted">
             Final
           </span>
           {game.venue ? (
-            <span className="truncate text-xs text-slate-500">{game.venue}</span>
+            <span className="truncate text-xs wpbl-muted">{game.venue}</span>
           ) : null}
         </div>
 
@@ -77,49 +77,46 @@ export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
           }}
           showScores
           center={
-            <>
-              <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
-                Final
-              </p>
-            </>
+            <p className="text-sm font-semibold uppercase tracking-tight text-[var(--wpbl-ink-secondary)]">
+              Final
+            </p>
           }
         />
       </div>
 
       {boxscore.available && boxscore.lineScore ? (
-        <div className="border-t border-slate-100 px-2 py-2 dark:border-slate-800">
+        <div className={`px-2 py-2 ${WPBL_PANEL_FOOTER}`}>
           <LineScore lineScore={boxscore.lineScore} compact />
         </div>
       ) : null}
 
       {highlight ? (
-        <div className="border-t border-slate-100 px-4 py-2.5 dark:border-slate-800">
-          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className={`px-4 py-2.5 ${WPBL_PANEL_FOOTER}`}>
+          <p className="wpbl-section-label mb-0.5">
             {highlight.isScoringPlay ? "Last scoring play" : "Last play"}
           </p>
-          <p className="line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
+          <p className="line-clamp-2 text-sm leading-snug text-[var(--wpbl-ink-secondary)]">
             {linkifyPlayerNames(highlight.narrative, roster)}
           </p>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-sm dark:border-slate-800">
-        <Link
-          href={`/wpbl/games/${game.id}`}
-          className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-        >
+      <div
+        className={`flex flex-wrap gap-x-4 gap-y-1 px-4 py-2.5 text-sm ${WPBL_PANEL_FOOTER}`}
+      >
+        <Link href={`/wpbl/games/${game.id}`} className={WPBL_LINK}>
           Gameday
         </Link>
         <Link
           href={`/wpbl/games/${game.id}?view=box`}
-          className="text-slate-600 hover:underline dark:text-slate-300"
+          className={WPBL_LINK_SUBTLE}
         >
           Box score
         </Link>
         {hasTracking ? (
           <Link
             href={`/wpbl/games/${game.id}?view=trackman`}
-            className="text-slate-600 hover:underline dark:text-slate-300"
+            className={WPBL_LINK_SUBTLE}
           >
             TrackMan
           </Link>

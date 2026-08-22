@@ -36,7 +36,7 @@ function StatusRail({ game }: { game: WpblScheduleGame }) {
   if (game.status === "live") {
     return (
       <div className="flex flex-col items-start justify-center gap-0.5">
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+        <span className="wpbl-live-label">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-600" />
@@ -50,7 +50,7 @@ function StatusRail({ game }: { game: WpblScheduleGame }) {
   if (game.status === "final") {
     return (
       <div className="flex flex-col items-start justify-center">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="wpbl-section-label text-[11px]">
           Final
         </span>
       </div>
@@ -60,7 +60,10 @@ function StatusRail({ game }: { game: WpblScheduleGame }) {
   if (game.status === "other") {
     return (
       <div className="flex flex-col items-start justify-center">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+        <span
+          className="text-[11px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--wpbl-warning)" }}
+        >
           TBD
         </span>
       </div>
@@ -70,11 +73,11 @@ function StatusRail({ game }: { game: WpblScheduleGame }) {
   const { primary, secondary } = splitWhenEt(game.whenEt);
   return (
     <div className="flex flex-col items-start justify-center gap-0.5">
-      <span className="text-[11px] font-medium tabular-nums text-slate-700 dark:text-slate-200">
+      <span className="text-[11px] font-medium tabular-nums text-[var(--wpbl-ink-secondary)]">
         {primary}
       </span>
       {secondary ? (
-        <span className="text-[11px] tabular-nums text-slate-500">
+        <span className="text-[11px] tabular-nums wpbl-muted">
           {secondary}
         </span>
       ) : null}
@@ -101,8 +104,8 @@ function TeamLine({
       <span
         className={`truncate text-sm tracking-tight ${
           isWinner
-            ? "font-semibold text-slate-900 dark:text-slate-50"
-            : "font-medium text-slate-700 dark:text-slate-200"
+            ? "font-semibold text-[var(--wpbl-ink)]"
+            : "font-medium text-[var(--wpbl-ink-secondary)]"
         }`}
       >
         {name}
@@ -110,8 +113,8 @@ function TeamLine({
       <span
         className={`w-7 justify-self-end text-right font-mono text-sm tabular-nums ${
           isWinner
-            ? "font-semibold text-slate-900 dark:text-slate-50"
-            : "text-slate-500"
+            ? "font-semibold text-[var(--wpbl-ink)]"
+            : "wpbl-muted"
         }`}
       >
         {showScore ? (runs == null ? "—" : runs) : null}
@@ -140,7 +143,7 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
     <li>
       <Link
         href={`/wpbl/games/${game.id}`}
-        className="block px-3.5 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+        className="block px-3.5 py-3 hover:bg-[var(--wpbl-bg-hover)]"
       >
         <div className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-start gap-x-3">
           {/* Match height of the two team lines so status stays optically centered */}
@@ -165,7 +168,7 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
           </div>
         </div>
         {game.venue ? (
-          <p className="mt-1.5 truncate pl-[calc(4.75rem+0.75rem+2.5rem)] text-[11px] text-slate-500">
+          <p className="mt-1.5 truncate pl-[calc(4.75rem+0.75rem+2.5rem)] text-[11px] wpbl-muted">
             {game.venue}
           </p>
         ) : null}
@@ -184,10 +187,8 @@ function GameGroup({
   if (games.length === 0) return null;
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
-      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+      <h3 className="wpbl-section-label">{title}</h3>
+      <ul className="wpbl-table-wrap divide-y divide-[var(--wpbl-rule)]">
         {games.map((game) => (
           <GameRow key={game.id} game={game} />
         ))}
@@ -208,12 +209,12 @@ export function ScheduleList({
   );
 
   if (games.length === 0) {
-    return <p className="text-sm text-slate-500">No games for this filter.</p>;
+    return <p className="text-sm wpbl-muted">No games for this filter.</p>;
   }
 
   if (variant === "flat") {
     return (
-      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+      <ul className="wpbl-table-wrap divide-y divide-[var(--wpbl-rule)]">
         {games.map((game) => (
           <GameRow key={game.id} game={game} />
         ))}
@@ -228,7 +229,7 @@ export function ScheduleList({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-[var(--wpbl-ink-secondary)]">
           {expanded ? "Full schedule" : `This week · ${weekLabel}`}
         </p>
         {canExpand ? (
@@ -236,7 +237,7 @@ export function ScheduleList({
             type="button"
             aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="wpbl-filter-btn"
           >
             {expanded
               ? "Show this week only"
@@ -252,12 +253,12 @@ export function ScheduleList({
           <GameGroup title="Upcoming" games={future} />
         </div>
       ) : thisWeek.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm wpbl-muted">
           No games scheduled Mon–Sun this week.
           {canExpand ? " Expand to see past and upcoming games." : null}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        <ul className="wpbl-table-wrap divide-y divide-[var(--wpbl-rule)]">
           {thisWeek.map((game) => (
             <GameRow key={game.id} game={game} />
           ))}

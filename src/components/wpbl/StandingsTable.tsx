@@ -5,59 +5,53 @@ import { TeamLogo } from "./TeamLogo";
 
 export type StandingsTableProps = {
   rows: WpblStandingRow[];
-  /** `compact` = home digest (W‑L · PCT · GB). Default full table. */
   variant?: "full" | "compact";
 };
 
 const stickyHead =
-  "sticky z-20 bg-slate-50 dark:bg-slate-900";
+  "sticky z-20 bg-[var(--wpbl-bg-elevated)]";
 const stickyBody =
-  "sticky z-10 bg-white dark:bg-[var(--background)]";
+  "sticky z-10 bg-[var(--wpbl-bg-panel)]";
 const stickyEdge =
-  "shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.45)]";
-const rowBorder = "border-t border-slate-200 dark:border-slate-700";
+  "shadow-[2px_0_4px_-2px_rgba(0,0,0,0.45)]";
+const rowBorder = "border-t border-[var(--wpbl-rule)]";
 
 export function StandingsTable({
   rows,
   variant = "full",
 }: StandingsTableProps) {
   if (rows.length === 0) {
-    return <p className="text-sm text-slate-500">No standings available.</p>;
+    return <p className="text-sm wpbl-muted">No standings available.</p>;
   }
 
   if (variant === "compact") {
     return (
-      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+      <div className="wpbl-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <th className="w-9 px-2 py-2 font-medium">#</th>
-              <th className="w-10 px-1 py-2 font-medium" aria-label="Logo" />
-              <th className="px-2 py-2 font-medium">Team</th>
-              <th className="px-2 py-2 font-medium">W‑L</th>
-              <th className="px-2 py-2 font-medium">Pct</th>
-              <th className="px-2 py-2 font-medium">GB</th>
+              <th className="w-9">#</th>
+              <th className="w-10" aria-label="Logo" />
+              <th>Team</th>
+              <th>W‑L</th>
+              <th>Pct</th>
+              <th>GB</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr
-                key={row.teamId}
-                className="border-t border-slate-200 dark:border-slate-700"
-              >
-                <td className="px-2 py-2 tabular-nums text-slate-500">
-                  {row.rank}
-                </td>
-                <td className="px-1 py-2">
+              <tr key={row.teamId}>
+                <td className="tabular-nums wpbl-muted">{row.rank}</td>
+                <td>
                   <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
                 </td>
-                <td className="px-2 py-2 font-medium">{row.abbr}</td>
-                <td className="px-2 py-2 tabular-nums">
+                <td className="font-medium">{row.abbr}</td>
+                <td className="tabular-nums">
                   {row.w}‑{row.l}
                   {row.t > 0 ? `‑${row.t}` : ""}
                 </td>
-                <td className="px-2 py-2 tabular-nums">{row.pct ?? "—"}</td>
-                <td className="px-2 py-2 tabular-nums">{row.gb ?? "—"}</td>
+                <td className="tabular-nums">{row.pct ?? "—"}</td>
+                <td className="tabular-nums">{row.gb ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -67,28 +61,26 @@ export function StandingsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-      <table className="w-max min-w-full border-separate border-spacing-0 text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+    <div className="wpbl-table-wrap overflow-x-auto">
+      <table className="w-max min-w-full border-separate border-spacing-0">
+        <thead>
           <tr>
-            <th className={`${stickyHead} left-0 w-9 min-w-9 px-2 py-2 font-medium`}>
-              #
-            </th>
+            <th className={`${stickyHead} left-0 w-9 min-w-9`}>#</th>
             <th
-              className={`${stickyHead} ${stickyEdge} left-9 min-w-[8.5rem] px-2 py-2 font-medium`}
+              className={`${stickyHead} ${stickyEdge} left-9 min-w-[8.5rem]`}
             >
               Team
             </th>
-            <th className="px-3 py-2 font-medium">W</th>
-            <th className="px-3 py-2 font-medium">L</th>
-            <th className="px-3 py-2 font-medium">T</th>
-            <th className="px-3 py-2 font-medium">Pct</th>
-            <th className="px-3 py-2 font-medium">GB</th>
-            <th className="px-3 py-2 font-medium">RF</th>
-            <th className="px-3 py-2 font-medium">RA</th>
-            <th className="px-3 py-2 font-medium">Diff</th>
-            <th className="px-3 py-2 font-medium">L10</th>
-            <th className="px-3 py-2 font-medium">Strk</th>
+            <th>W</th>
+            <th>L</th>
+            <th>T</th>
+            <th>Pct</th>
+            <th>GB</th>
+            <th>RF</th>
+            <th>RA</th>
+            <th>Diff</th>
+            <th>L10</th>
+            <th>Strk</th>
           </tr>
         </thead>
         <tbody>
@@ -98,12 +90,12 @@ export function StandingsTable({
             return (
               <tr key={row.teamId} className="whitespace-nowrap">
                 <td
-                  className={`${stickyBody} ${rowBorder} left-0 w-9 min-w-9 px-2 py-2 tabular-nums text-slate-500`}
+                  className={`${stickyBody} ${rowBorder} left-0 w-9 min-w-9 tabular-nums wpbl-muted`}
                 >
                   {row.rank}
                 </td>
                 <td
-                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[8.5rem] px-2 py-2`}
+                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[8.5rem]`}
                 >
                   <span className="flex items-center gap-2.5">
                     <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
@@ -111,40 +103,28 @@ export function StandingsTable({
                       <span className="block text-sm font-semibold leading-tight">
                         {nickname}
                       </span>
-                      <span className="block text-[11px] leading-tight text-slate-500">
+                      <span className="block text-[11px] leading-tight wpbl-muted">
                         {row.abbr}
                       </span>
                     </span>
                   </span>
                 </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.w}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.l}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.t}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
+                <td className={`${rowBorder} tabular-nums`}>{row.w}</td>
+                <td className={`${rowBorder} tabular-nums`}>{row.l}</td>
+                <td className={`${rowBorder} tabular-nums`}>{row.t}</td>
+                <td className={`${rowBorder} tabular-nums`}>
                   {row.pct ?? "—"}
                 </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
+                <td className={`${rowBorder} tabular-nums`}>
                   {row.gb ?? "—"}
                 </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.rf}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.ra}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
-                  {row.diff}
-                </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
+                <td className={`${rowBorder} tabular-nums`}>{row.rf}</td>
+                <td className={`${rowBorder} tabular-nums`}>{row.ra}</td>
+                <td className={`${rowBorder} tabular-nums`}>{row.diff}</td>
+                <td className={`${rowBorder} tabular-nums`}>
                   {row.l10 ?? "—"}
                 </td>
-                <td className={`${rowBorder} px-3 py-2 tabular-nums`}>
+                <td className={`${rowBorder} tabular-nums`}>
                   {row.streak ?? "—"}
                 </td>
               </tr>

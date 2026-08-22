@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
 import { normalizePlayerName } from "@/lib/wpbl-player-match";
 
+import { WPBL_LINK } from "@/lib/wpbl-board";
+
 import { PlayerNameLink } from "./PlayerNameLink";
 
 export type NamedPlayer = {
@@ -35,8 +37,7 @@ export function rosterFromBoxLines(
 export function linkifyPlayerNames(
   text: string,
   roster: NamedPlayer[],
-  className =
-    "font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]",
+  className = `font-medium underline-offset-2 hover:underline ${WPBL_LINK}`,
 ): ReactNode {
   if (!text || roster.length === 0) return text;
 

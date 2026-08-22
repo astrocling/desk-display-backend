@@ -10,9 +10,11 @@ import type {
   WpblPlayerPitchingSeason,
 } from "@/lib/types/wpbl-display";
 import { wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
+import { WPBL_LINK, WPBL_PANEL } from "@/lib/wpbl-board";
 
 import { teamAccentStyle } from "./teamAccent";
 import { TeamLogo } from "./TeamLogo";
+import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
 
 type SeasonTab = "hitting" | "pitching" | "fielding";
 
@@ -52,7 +54,7 @@ function StatChip({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
         {label}
       </div>
-      <div className="text-xl font-bold tabular-nums tracking-tight text-[#41B6E6]">
+      <div className="text-xl font-bold tabular-nums tracking-tight text-[var(--wpbl-ink)]">
         {value}
       </div>
     </div>
@@ -259,7 +261,7 @@ function GameLogTable({
                 <td className="px-4 py-2.5">
                   <Link
                     href={`/wpbl/games/${row.gameId}`}
-                    className="text-[#41B6E6] hover:underline"
+                    className="text-[var(--wpbl-accent)] hover:underline"
                   >
                     {formatGameDate(row.startIso)}
                   </Link>
@@ -402,19 +404,16 @@ export function PlayerDetailClient({
   }, [initialData, load]);
 
   if (loading) {
-    return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
+    return <WpblBoardLoading />;
   }
 
   if (notFound) {
     return (
       <div className="mt-8 space-y-4">
-        <Link
-          href="/wpbl"
-          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-        >
+        <Link href="/wpbl" className={`text-sm ${WPBL_LINK}`}>
           ← Back to WPBL
         </Link>
-        <p className="text-sm text-slate-500">Player not found.</p>
+        <p className="text-sm wpbl-muted">Player not found.</p>
       </div>
     );
   }
@@ -422,15 +421,10 @@ export function PlayerDetailClient({
   if (error && !data) {
     return (
       <div className="mt-8 space-y-4">
-        <Link
-          href="/wpbl"
-          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-        >
+        <Link href="/wpbl" className={`text-sm ${WPBL_LINK}`}>
           ← Back to WPBL
         </Link>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          {error}
-        </div>
+        <WpblBoardError message={error} />
       </div>
     );
   }
@@ -464,15 +458,12 @@ export function PlayerDetailClient({
 
   return (
     <div className="mt-8 space-y-6">
-      <Link
-        href="/wpbl"
-        className="inline-block text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-      >
+      <Link href="/wpbl" className={`inline-block text-sm ${WPBL_LINK}`}>
         ← Back to WPBL
       </Link>
 
       <section
-        className="wpbl-team-accent overflow-hidden rounded-xl border border-neutral-800 bg-black text-white shadow-sm"
+        className={`wpbl-team-accent ${WPBL_PANEL}`}
         style={teamAccentStyle(player.teamAbbr)}
       >
         <div className="flex flex-col gap-5 px-4 py-5 sm:flex-row sm:items-center sm:px-6">
@@ -537,13 +528,13 @@ export function PlayerDetailClient({
                   onClick={() => setTab(id)}
                   className={`relative pb-2.5 text-sm font-semibold transition-colors ${
                     selected
-                      ? "text-[#41B6E6]"
+                      ? "text-[var(--wpbl-accent)]"
                       : "text-neutral-500 hover:text-neutral-300"
                   }`}
                 >
                   {label}
                   {selected ? (
-                    <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[#41B6E6]" />
+                    <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[var(--wpbl-accent)]" />
                   ) : null}
                 </button>
               );
@@ -600,7 +591,7 @@ export function PlayerDetailClient({
             href={player.profileUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-[#41B6E6] hover:underline"
+            className="text-[var(--wpbl-accent)] hover:underline"
           >
             Official profile
           </a>

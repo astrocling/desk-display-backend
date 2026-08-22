@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import type { WpblScheduleGame, WpblStandingRow } from "@/lib/types/wpbl-display";
+import { WPBL_LINK, WPBL_LINK_SUBTLE, WPBL_PANEL, WPBL_PANEL_FOOTER } from "@/lib/wpbl-board";
 
 import { GameCardMatchup } from "./GameCardMatchup";
 
@@ -18,7 +19,6 @@ function recordFor(standings: WpblStandingRow[], abbr: string): string | null {
   return `${row.w}-${row.l}`;
 }
 
-/** Split "Wed 8/12 6:30 PM" into date + time for a two-line center stack. */
 function splitWhenEt(whenEt: string): { primary: string; secondary: string | null } {
   const match = whenEt.match(
     /^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M(?:\s*ET)?)$/i,
@@ -27,31 +27,27 @@ function splitWhenEt(whenEt: string): { primary: string; secondary: string | nul
   return { primary: whenEt, secondary: null };
 }
 
-/** Compact MLB-style card for today's scheduled or final games. */
 export function DayGameCard({ game, standings }: DayGameCardProps) {
   const isFinal = game.status === "final";
   const isScheduled = game.status === "scheduled" || game.status === "other";
   const awayRecord = recordFor(standings, game.awayAbbr);
   const homeRecord = recordFor(standings, game.homeAbbr);
-
   const whenParts =
     !isFinal && game.whenEt ? splitWhenEt(game.whenEt) : null;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
+    <article className={WPBL_PANEL}>
       <div className="px-4 py-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span
             className={`text-[10px] font-semibold uppercase tracking-wide ${
-              isFinal
-                ? "text-slate-500"
-                : "text-emerald-700 dark:text-emerald-400"
+              isFinal ? "wpbl-muted" : "text-[var(--wpbl-accent)]"
             }`}
           >
             {isFinal ? "Final" : "Scheduled"}
           </span>
           {game.venue ? (
-            <span className="truncate text-xs text-slate-500">{game.venue}</span>
+            <span className="truncate text-xs wpbl-muted">{game.venue}</span>
           ) : null}
         </div>
 
@@ -71,24 +67,22 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
           showScores={isFinal}
           center={
             isFinal ? (
-              <>
-                <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
-                  Final
-                </p>
-              </>
+              <p className="text-sm font-semibold uppercase tracking-tight text-[var(--wpbl-ink-secondary)]">
+                Final
+              </p>
             ) : (
               <>
                 <p
                   className={`text-sm font-semibold tracking-tight ${
                     isScheduled
-                      ? "text-slate-800 dark:text-slate-100"
-                      : "text-slate-600 dark:text-slate-300"
+                      ? "text-[var(--wpbl-ink)]"
+                      : "text-[var(--wpbl-ink-secondary)]"
                   }`}
                 >
                   {whenParts?.primary ?? "TBD"}
                 </p>
                 {whenParts?.secondary ? (
-                  <p className="text-xs tabular-nums text-slate-500">
+                  <p className="text-xs tabular-nums wpbl-muted">
                     {whenParts.secondary}
                   </p>
                 ) : null}
@@ -98,17 +92,16 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
         />
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-sm dark:border-slate-800">
-        <Link
-          href={`/wpbl/games/${game.id}`}
-          className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-        >
+      <div
+        className={`flex flex-wrap gap-x-4 gap-y-1 px-4 py-2.5 text-sm ${WPBL_PANEL_FOOTER}`}
+      >
+        <Link href={`/wpbl/games/${game.id}`} className={WPBL_LINK}>
           Gameday
         </Link>
         {isFinal ? (
           <Link
             href={`/wpbl/games/${game.id}?view=box`}
-            className="text-slate-600 hover:underline dark:text-slate-300"
+            className={WPBL_LINK_SUBTLE}
           >
             Box score
           </Link>

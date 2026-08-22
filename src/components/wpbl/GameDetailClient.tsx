@@ -10,6 +10,7 @@ import type {
   WpblGameStatus,
   WpblTrackingEvent,
 } from "@/lib/types/wpbl-display";
+import { WPBL_LINK } from "@/lib/wpbl-board";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay } from "@/lib/wpbl-plays";
 import { chipsForPlay } from "@/lib/wpbl-tracking";
@@ -25,6 +26,7 @@ import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
 import { TrackingPanel } from "./TrackingPanel";
 import { useWpblLiveGame } from "./useWpblLiveGame";
+import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
 
 type DetailView = "gameday" | "box" | "trackman";
 
@@ -41,7 +43,7 @@ function StatusBadge({ status }: { status: WpblGameStatus }) {
   const styles: Record<WpblGameStatus, string> = {
     live: "bg-red-600 text-white",
     final: "bg-slate-500 text-white dark:bg-slate-600",
-    scheduled: "bg-emerald-600 text-white",
+    scheduled: "bg-[var(--wpbl-bg-hover)] text-[var(--wpbl-ink-secondary)]",
     other: "bg-amber-500 text-white",
   };
   const labels: Record<WpblGameStatus, string> = {
@@ -71,8 +73,8 @@ function FeedBadge({
 
   if (connection === "live") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--wpbl-accent)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--wpbl-accent)]" />
         Live feed
       </span>
     );
@@ -111,15 +113,11 @@ function ViewTabs({
   trackingCount: number;
 }) {
   const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 font-medium transition-colors ${
-      active
-        ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-        : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-    }`;
+    active ? "wpbl-chip wpbl-chip--active" : "wpbl-chip";
 
   return (
     <div
-      className="inline-flex flex-wrap rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-700"
+      className="inline-flex flex-wrap gap-1 rounded-lg border border-[var(--wpbl-rule)] p-1 text-sm"
       role="tablist"
       aria-label="Game detail view"
     >
@@ -178,11 +176,11 @@ function LatestPlayBanner({
     <div
       className={`rounded-lg border px-3 py-2.5 ${
         play.isScoringPlay
-          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
-          : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
+          ? "border-[color-mix(in_srgb,var(--wpbl-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--wpbl-accent)_8%,var(--wpbl-bg-panel))]"
+          : "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-elevated)]"
       }`}
     >
-      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="wpbl-section-label mb-0.5">
         Latest play ·{" "}
         {play.half === "top"
           ? `Top ${play.inning}`
@@ -191,7 +189,7 @@ function LatestPlayBanner({
             : `Inn ${play.inning}`}
         {play.isScoringPlay ? " · Scoring" : ""}
       </p>
-      <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
+      <p className="text-sm leading-snug text-[var(--wpbl-ink-secondary)]">
         {linkifyPlayerNames(play.narrative, roster)}
       </p>
       {chips.length > 0 ? (
@@ -249,19 +247,16 @@ export function GameDetailClient({
   }, []);
 
   if (loading) {
-    return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
+    return <WpblBoardLoading />;
   }
 
   if (notFound) {
     return (
       <div className="mt-8 space-y-4">
-        <Link
-          href="/wpbl"
-          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-        >
+        <Link href="/wpbl" className={`text-sm ${WPBL_LINK}`}>
           ← Back to WPBL
         </Link>
-        <p className="text-sm text-slate-500">Game not found.</p>
+        <p className="text-sm wpbl-muted">Game not found.</p>
       </div>
     );
   }
@@ -269,15 +264,10 @@ export function GameDetailClient({
   if (error && !data) {
     return (
       <div className="mt-8 space-y-4">
-        <Link
-          href="/wpbl"
-          className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-        >
+        <Link href="/wpbl" className={`text-sm ${WPBL_LINK}`}>
           ← Back to WPBL
         </Link>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          {error}
-        </div>
+        <WpblBoardError message={error} />
       </div>
     );
   }
@@ -291,24 +281,21 @@ export function GameDetailClient({
 
   return (
     <div className="mt-8 space-y-6">
-      <Link
-        href="/wpbl"
-        className="inline-block text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-      >
+      <Link href="/wpbl" className={`inline-block text-sm ${WPBL_LINK}`}>
         ← Back to WPBL
       </Link>
 
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={game.status} />
         <FeedBadge connection={connection} isLive={Boolean(isLive)} />
-        <span className="text-xs text-slate-500">
+        <span className="text-xs wpbl-muted">
           {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
         </span>
         {game.venue ? (
-          <span className="text-xs text-slate-500">· {game.venue}</span>
+          <span className="text-xs wpbl-muted">· {game.venue}</span>
         ) : null}
         {game.whenEt && game.status !== "live" ? (
-          <span className="text-xs text-slate-500">· {game.whenEt}</span>
+          <span className="text-xs wpbl-muted">· {game.whenEt}</span>
         ) : null}
       </div>
 
