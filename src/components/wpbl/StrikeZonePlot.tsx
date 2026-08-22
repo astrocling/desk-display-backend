@@ -11,7 +11,8 @@ import {
 } from "@/lib/wpbl-tracking";
 
 export type StrikeZonePlotProps = {
-  tracking: WpblTrackingEvent[];
+  /** Full-game points when rendering the aggregate zone plot. */
+  tracking?: WpblTrackingEvent[];
   /** Max pitches to plot (newest first). Default 40. */
   limit?: number;
   /** Compact single-pitch glyph for a feed row. */
@@ -89,7 +90,7 @@ function ZoneFrame({
 
 /** Catcher's-view strike zone with TrackMan plate locations. */
 export function StrikeZonePlot({
-  tracking,
+  tracking = [],
   limit = 40,
   event = null,
   size = "md",
