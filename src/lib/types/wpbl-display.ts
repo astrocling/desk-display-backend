@@ -163,5 +163,9 @@ export interface WpblBoxPlayerLine {
   /** WPBL player id when present on the boxscore payload. */
   playerId: string | null;
   position: string | null;
+  /** Batting-order spot (1–9+) when present; null for pitchers-only / unknown. */
+  battingOrder: number | null;
+  /** Jersey number string when present. */
+  uniform: string | null;
   stats: Record<string, string | number | null>; // mapped display columns
 }

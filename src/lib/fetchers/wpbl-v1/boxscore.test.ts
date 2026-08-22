@@ -57,6 +57,8 @@ describe("mapWpblBoxscore", () => {
     expect(amiraBatting).toMatchObject({
       side: "away",
       position: "2B",
+      battingOrder: 7,
+      uniform: "7",
       stats: { ab: "4", h: "2", r: "1", rbi: "4" },
     });
     expect(amiraBatting?.playerId).toBeTruthy();
@@ -65,6 +67,7 @@ describe("mapWpblBoxscore", () => {
     expect(ayamiPitching).toMatchObject({
       side: "away",
       position: "P",
+      battingOrder: null,
       stats: { ip: "3.0", h: "10", r: "7", er: "4" },
     });
     expect(ayamiPitching?.playerId).toBeTruthy();
@@ -244,6 +247,8 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
           name: "Edith De Leija",
           playerId: "batter-id",
           position: "lf",
+          battingOrder: null,
+          uniform: null,
           stats: {
             ab: "0",
             h: "0",
@@ -258,6 +263,8 @@ describe("enrichLiveKeyPlayerSeasonRates", () => {
           name: "Niki Eckert",
           playerId: "pitcher-id",
           position: "p",
+          battingOrder: null,
+          uniform: null,
           stats: { ip: "2.1" } as Record<string, string | number | null>,
         },
       ],

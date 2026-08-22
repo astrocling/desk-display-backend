@@ -14,6 +14,14 @@ export function normalizeWpblGameDetail(
   blob: WpblGameDetailResponse,
 ): WpblGameDetailResponse {
   const situation = blob.game.situation;
+  const normalizeLine = <T extends { battingOrder?: number | null; uniform?: string | null }>(
+    line: T,
+  ) => ({
+    ...line,
+    battingOrder: line.battingOrder ?? null,
+    uniform: line.uniform ?? null,
+  });
+
   return {
     ...blob,
     game: {
@@ -30,6 +38,8 @@ export function normalizeWpblGameDetail(
     boxscore: {
       ...blob.boxscore,
       plays: Array.isArray(blob.boxscore.plays) ? blob.boxscore.plays : [],
+      batting: (blob.boxscore.batting ?? []).map(normalizeLine),
+      pitching: (blob.boxscore.pitching ?? []).map(normalizeLine),
     },
   };
 }

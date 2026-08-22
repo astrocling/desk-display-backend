@@ -6,13 +6,18 @@ import type { WpblPlay } from "@/lib/types/wpbl-display";
 import {
   filterWpblPlays,
   formatPlayInning,
+  pitchesFromPlay,
 } from "@/lib/wpbl-plays";
+
+import { PitchLog } from "./PitchLog";
 
 export type PlayByPlayPanelProps = {
   plays: WpblPlay[];
 };
 
 function PlayRow({ play }: { play: WpblPlay }) {
+  const pitches = pitchesFromPlay(play);
+
   return (
     <li
       className={`border-b border-slate-100 px-3 py-2.5 last:border-b-0 dark:border-slate-800 ${
@@ -31,15 +36,15 @@ function PlayRow({ play }: { play: WpblPlay }) {
               : "Scoring"}
           </span>
         ) : null}
-        {play.pitchSequence ? (
-          <span className="font-mono normal-case tracking-normal text-slate-400">
-            {play.pitchSequence}
-          </span>
-        ) : null}
       </div>
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
         {play.narrative}
       </p>
+      {pitches.length > 0 ? (
+        <div className="mt-1.5">
+          <PitchLog pitches={pitches} compact />
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -103,28 +108,6 @@ export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-export function LatestPlayBanner({ play }: { play: WpblPlay | null }) {
-  if (!play) return null;
-
-  return (
-    <div
-      className={`rounded-lg border px-3 py-2.5 ${
-        play.isScoringPlay
-          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
-          : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60"
-      }`}
-    >
-      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        Latest play · {formatPlayInning(play)}
-        {play.isScoringPlay ? " · Scoring" : ""}
-      </p>
-      <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {play.narrative}
-      </p>
     </div>
   );
 }
