@@ -67,7 +67,7 @@ function BasesDiamond({
       <PlayerNameLink
         playerId={resolvePlayerIdFromBox(batting, pitching, full)}
         name={short}
-        className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+        className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
       />
     );
   };
@@ -175,7 +175,7 @@ function PlayerLine({
           <PlayerNameLink
             playerId={playerId}
             name={name}
-            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
           />
         </p>
         {meta ? <p className="truncate text-xs text-slate-500">{meta}</p> : null}

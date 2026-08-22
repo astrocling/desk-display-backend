@@ -27,7 +27,7 @@ export function PlayerNameLink({
       href={`/wpbl/players/${encodeURIComponent(playerId)}`}
       className={
         className ??
-        "text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+        "text-inherit underline-offset-2 hover:text-[var(--wpbl-accent)] hover:underline"
       }
     >
       {content}

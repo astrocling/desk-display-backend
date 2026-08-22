@@ -8,11 +8,9 @@ import { TeamLogo } from "./TeamLogo";
 
 export type GameCardTeam = {
   abbr: string;
-  /** Full or short team name; brand nickname is preferred when available. */
   name: string;
   record?: string | null;
   runs?: number | null;
-  /** Visually emphasize the winner on final cards. */
   emphasize?: boolean;
 };
 
@@ -39,22 +37,20 @@ function TeamLine({
         <p
           className={`truncate text-sm tracking-tight ${
             team.emphasize
-              ? "font-bold text-slate-900 dark:text-slate-50"
-              : "font-semibold text-slate-800 dark:text-slate-100"
+              ? "font-bold text-[var(--wpbl-ink)]"
+              : "font-semibold text-[var(--wpbl-ink-secondary)]"
           }`}
         >
           {nickname}
         </p>
-        <p className="truncate text-[11px] leading-snug text-slate-500">
-          {meta}
-        </p>
+        <p className="truncate text-[11px] leading-snug wpbl-muted">{meta}</p>
       </div>
       {showScore ? (
         <p
           className={`w-9 shrink-0 text-right text-2xl tabular-nums tracking-tight ${
             team.emphasize
-              ? "font-bold text-slate-900 dark:text-slate-50"
-              : "font-semibold text-slate-600 dark:text-slate-300"
+              ? "font-bold text-[var(--wpbl-ink)]"
+              : "font-semibold text-[var(--wpbl-muted)]"
           }`}
         >
           {team.runs == null ? "—" : team.runs}
@@ -64,11 +60,6 @@ function TeamLine({
   );
 }
 
-/**
- * Shared matchup for today/live/final cards.
- * Stacks teams vertically (logo + nickname + score) with status on the right
- * so lettermark logos never collide with abbreviations on narrow viewports.
- */
 export function GameCardMatchup({
   away,
   home,

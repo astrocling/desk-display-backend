@@ -23,6 +23,7 @@ import { PitchLog } from "./PitchLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
 import { keyPlayersFromDetail } from "./liveGameCard";
+import { WPBL_LINK, WPBL_LINK_SUBTLE, WPBL_PANEL, WPBL_PANEL_FOOTER } from "@/lib/wpbl-board";
 
 export type LiveGameCardProps = {
   detail: WpblGameDetailResponse;
@@ -52,7 +53,7 @@ function BasesDiamond({
       <PlayerNameLink
         playerId={resolvePlayerIdFromBox(batting, pitching, full)}
         name={short}
-        className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+        className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
       />
     );
   };
@@ -177,7 +178,7 @@ function KeyPlayer({
           <PlayerNameLink
             playerId={playerId}
             name={name}
-            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
           />
         </p>
         {stats ? <p className="truncate text-xs text-slate-500">{stats}</p> : null}
@@ -206,27 +207,30 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
         : null;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
-      <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+    <article className={WPBL_PANEL}>
+      <div className={`px-4 py-3 ${WPBL_PANEL_FOOTER}`}>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+          <span className="wpbl-live-label">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
             </span>
             Live
             {connection === "live" ? (
-              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="font-medium text-[var(--wpbl-accent)]">
                 · feed
               </span>
             ) : connection === "reconnecting" || connection === "connecting" ? (
-              <span className="font-medium text-amber-700 dark:text-amber-400">
+              <span
+                className="font-medium"
+                style={{ color: "var(--wpbl-warning)" }}
+              >
                 · syncing
               </span>
             ) : null}
           </span>
           {game.venue ? (
-            <span className="truncate text-xs text-slate-500">{game.venue}</span>
+            <span className="truncate text-xs wpbl-muted">{game.venue}</span>
           ) : null}
         </div>
 
@@ -267,7 +271,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       </div>
 
       {boxscore.available && boxscore.lineScore ? (
-        <div className="border-b border-slate-100 px-2 py-2 dark:border-slate-800">
+        <div className={`px-2 py-2 ${WPBL_PANEL_FOOTER}`}>
           <LineScore
             lineScore={boxscore.lineScore}
             highlightInning={situation?.inningNumber}
@@ -277,7 +281,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       ) : null}
 
       {(keys.pitcherName || keys.batterName || followers.onDeck) && (
-        <div className="grid grid-cols-2 gap-4 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:grid-cols-3">
+        <div className={`grid grid-cols-2 gap-4 px-4 py-3 sm:grid-cols-3 ${WPBL_PANEL_FOOTER}`}>
           <KeyPlayer
             label="Pitching"
             teamAbbr={keys.pitcherTeamAbbr}
@@ -310,7 +314,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       )}
 
       {pitchLog.chips.length > 0 ? (
-        <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+        <div className={`px-4 py-2.5 ${WPBL_PANEL_FOOTER}`}>
           <PitchLog
             chips={pitchLog.chips}
             label={pitchLog.label}
@@ -320,7 +324,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       ) : null}
 
       {lastPlay ? (
-        <div className="border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+        <div className={`px-4 py-2.5 ${WPBL_PANEL_FOOTER}`}>
           <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             Latest play
             {lastPlay.isScoringPlay ? " · Scoring" : ""}
@@ -332,15 +336,12 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
       ) : null}
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
-        <Link
-          href={`/wpbl/games/${game.id}`}
-          className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-        >
+        <Link href={`/wpbl/games/${game.id}`} className={WPBL_LINK}>
           Gameday
         </Link>
         <Link
           href={`/wpbl/games/${game.id}?view=box`}
-          className="text-slate-600 hover:underline dark:text-slate-300"
+          className={WPBL_LINK_SUBTLE}
         >
           Box score
         </Link>

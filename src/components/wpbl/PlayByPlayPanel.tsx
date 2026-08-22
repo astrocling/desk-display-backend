@@ -68,7 +68,7 @@ function PlayRow({
                 play.batterName,
               )}
               name={play.batterName}
-              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+              className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
             />
           </span>
         ) : null}
@@ -82,7 +82,7 @@ function PlayRow({
                 play.pitcherName,
               )}
               name={play.pitcherName}
-              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+              className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
             />
           </span>
         ) : null}

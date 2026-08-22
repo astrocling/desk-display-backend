@@ -5,11 +5,7 @@ import Link from "next/link";
 import { formatWpblUpdatedAt } from "./useWpblBoardData";
 
 export function WpblSectionTitle({ children }: { children: string }) {
-  return (
-    <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-      {children}
-    </h2>
-  );
+  return <h2 className="wpbl-section-label mb-3">{children}</h2>;
 }
 
 export function WpblSectionHeader({
@@ -23,13 +19,8 @@ export function WpblSectionHeader({
 }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {title}
-      </h2>
-      <Link
-        href={href}
-        className="text-xs font-medium text-slate-600 underline-offset-2 hover:underline dark:text-slate-300"
-      >
+      <h2 className="wpbl-section-label">{title}</h2>
+      <Link href={href} className="wpbl-link text-xs">
         {linkLabel}
       </Link>
     </div>
@@ -45,17 +36,19 @@ export function WpblUpdatedLine({
 }) {
   if (!updatedAt && !hasLive) return null;
   return (
-    <div className="text-xs text-slate-500">
+    <div className="text-xs wpbl-muted">
       {updatedAt ? <>Updated {formatWpblUpdatedAt(updatedAt)}</> : null}
       {hasLive ? (
-        <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
+        <span className="ml-2" style={{ color: "var(--wpbl-live)" }}>
+          · Live
+        </span>
       ) : null}
     </div>
   );
 }
 
 export function WpblBoardLoading() {
-  return <p className="mt-8 text-sm text-slate-500">Loading…</p>;
+  return <p className="mt-8 text-sm wpbl-muted">Loading…</p>;
 }
 
 export function WpblBoardError({
@@ -66,9 +59,7 @@ export function WpblBoardError({
   className?: string;
 }) {
   return (
-    <div
-      className={`rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200 ${className}`}
-    >
+    <div className={`wpbl-alert ${className}`}>
       {message}
     </div>
   );

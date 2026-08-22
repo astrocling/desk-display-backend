@@ -33,5 +33,5 @@ export function applyDocumentColorScheme(scheme: WpblColorScheme): void {
   document.documentElement.style.colorScheme = scheme;
 }
 
-/** Inline script for root layout — avoids FOUC on WPBL routes. */
-export const WPBL_THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname;var wpbl=p==="/wpbl"||p.indexOf("/wpbl/")===0;var t=null;if(wpbl){try{t=sessionStorage.getItem(${JSON.stringify(WPBL_THEME_STORAGE_KEY)});}catch(e){}}var dark=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",dark);document.documentElement.style.colorScheme=dark?"dark":"light";}catch(e){}})();`;
+/** Inline script for root layout — WPBL routes always render dark. */
+export const WPBL_THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname;var wpbl=p==="/wpbl"||p.indexOf("/wpbl/")===0;if(wpbl){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`;

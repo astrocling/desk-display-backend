@@ -29,7 +29,7 @@ function LiveGameDetailCard({
   }
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-600">
+    <div className="rounded-xl border border-dashed border-[var(--wpbl-rule)] px-4 py-4 text-sm wpbl-muted">
       {loading
         ? `Loading ${game.awayAbbr} @ ${game.homeAbbr}…`
         : `${game.awayAbbr} @ ${game.homeAbbr}${
@@ -57,7 +57,7 @@ function FinalGameDetailCard({
   // Schedule row while the detail blob loads (or if fetch soft-fails).
   if (loading) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-600">
+      <div className="rounded-xl border border-dashed border-[var(--wpbl-rule)] px-4 py-4 text-sm wpbl-muted">
         Loading {game.awayAbbr} @ {game.homeAbbr}…
       </div>
     );
@@ -77,9 +77,7 @@ export function TodaysGamesSection({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {title}
-      </h2>
+      <h2 className="wpbl-section-label">{title}</h2>
       <div className="space-y-4">
         {games.map((game) => {
           if (game.status === "live") {

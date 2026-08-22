@@ -93,7 +93,7 @@ function TrackingRow({
                   event.batterName,
                 )}
                 name={batter}
-                className="font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]"
+                className="font-medium underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
               />
             ) : (
               <span className="text-slate-500">Unknown batter</span>
@@ -109,7 +109,7 @@ function TrackingRow({
                     event.pitcherName,
                   )}
                   name={pitcher}
-                  className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+                  className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
                 />
               </>
             ) : null}
