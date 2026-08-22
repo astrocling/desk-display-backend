@@ -1,28 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/** Serve app routes at the root of branded subdomains. */
+import { brandedSubdomainRewrite } from "@/lib/branded-subdomain";
+
+/** Serve app routes (and brand icons) at the root of branded subdomains. */
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
-  if (request.nextUrl.pathname !== "/") {
+  const rewriteTo = brandedSubdomainRewrite(host, request.nextUrl.pathname);
+  if (!rewriteTo) {
     return NextResponse.next();
   }
 
-  let pathname: string | null = null;
-  if (host.startsWith("radar.theclingans.com")) {
-    pathname = "/radar";
-  } else if (host.startsWith("wpbl.theclingans.com")) {
-    pathname = "/wpbl";
-  }
-
-  if (pathname) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname;
-    return NextResponse.rewrite(url);
-  }
-  return NextResponse.next();
+  const url = request.nextUrl.clone();
+  url.pathname = rewriteTo;
+  return NextResponse.rewrite(url);
 }
 
 export const config = {
-  matcher: "/",
+  matcher: [
+    "/",
+    "/favicon.ico",
+    "/icon",
+    "/apple-icon",
+    "/apple-icon.png",
+    "/apple-touch-icon",
+    "/apple-touch-icon.png",
+    "/apple-touch-icon-precomposed.png",
+  ],
 };

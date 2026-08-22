@@ -15,6 +15,36 @@
       "source": "/",
       "has": [{ "type": "host", "value": "wpbl.theclingans.com" }],
       "destination": "/wpbl"
+    },
+    {
+      "source": "/favicon.ico",
+      "has": [{ "type": "host", "value": "radar.theclingans.com" }],
+      "destination": "/radar/icon"
+    },
+    {
+      "source": "/favicon.ico",
+      "has": [{ "type": "host", "value": "wpbl.theclingans.com" }],
+      "destination": "/wpbl/icon"
+    },
+    {
+      "source": "/apple-touch-icon.png",
+      "has": [{ "type": "host", "value": "radar.theclingans.com" }],
+      "destination": "/radar/apple-icon"
+    },
+    {
+      "source": "/apple-touch-icon.png",
+      "has": [{ "type": "host", "value": "wpbl.theclingans.com" }],
+      "destination": "/wpbl/apple-icon"
+    },
+    {
+      "source": "/apple-touch-icon",
+      "has": [{ "type": "host", "value": "radar.theclingans.com" }],
+      "destination": "/radar/apple-icon"
+    },
+    {
+      "source": "/apple-touch-icon",
+      "has": [{ "type": "host", "value": "wpbl.theclingans.com" }],
+      "destination": "/wpbl/apple-icon"
     }
   ]
 }
