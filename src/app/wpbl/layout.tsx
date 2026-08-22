@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "WPBL — Desk Display",
+  title: "Women's Pro Baseball League — Desk Display",
   description: "WPBL standings, schedule, and stat leaders",
 };
 

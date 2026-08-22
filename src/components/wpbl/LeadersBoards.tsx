@@ -165,12 +165,6 @@ export function LeadersBoards({ leaders, teamFilter }: LeadersBoardsProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-neutral-800 bg-black text-white shadow-sm">
-      {leaders.partial ? (
-        <p className="border-b border-white/10 px-4 py-2 text-xs text-amber-300">
-          Leaders partially loaded — some player stats unavailable.
-        </p>
-      ) : null}
-
       <div className="flex gap-6 border-b border-white/10 px-4 pt-3">
         {(
           [
