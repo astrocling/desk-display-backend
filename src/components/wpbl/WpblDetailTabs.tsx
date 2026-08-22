@@ -13,7 +13,7 @@ export type WpblDetailTabsProps<T extends string> = {
   ariaLabel: string;
 };
 
-/** Game detail view switcher — matches Home nav chrome. */
+/** Game detail view switcher — underline tabs like box score / leaders. */
 export function WpblDetailTabs<T extends string>({
   tabs,
   active,
@@ -21,7 +21,11 @@ export function WpblDetailTabs<T extends string>({
   ariaLabel,
 }: WpblDetailTabsProps<T>) {
   return (
-    <nav className="wpbl-nav" aria-label={ariaLabel}>
+    <nav
+      className="flex gap-4 overflow-x-auto border-b border-[var(--wpbl-rule)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      aria-label={ariaLabel}
+      role="tablist"
+    >
       {tabs.map((tab) => {
         const selected = active === tab.id;
         return (
@@ -31,13 +35,13 @@ export function WpblDetailTabs<T extends string>({
             role="tab"
             aria-selected={selected}
             onClick={() => onChange(tab.id)}
-            className={
-              selected ? "wpbl-nav-link wpbl-nav-link--active" : "wpbl-nav-link"
-            }
+            className={`shrink-0 ${selected ? "wpbl-tab wpbl-tab--active" : "wpbl-tab"}`}
           >
             {tab.label}
             {tab.count != null && tab.count > 0 ? (
-              <span className="ml-1.5 text-xs wpbl-muted">{tab.count}</span>
+              <span className="ml-1 text-xs font-normal wpbl-muted">
+                {tab.count}
+              </span>
             ) : null}
           </button>
         );

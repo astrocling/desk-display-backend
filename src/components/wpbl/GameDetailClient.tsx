@@ -13,8 +13,6 @@ import type {
 import { WPBL_LINK } from "@/lib/wpbl-board";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay } from "@/lib/wpbl-plays";
-import { chipsForPlay } from "@/lib/wpbl-tracking";
-
 import { BoxTables } from "./BoxTables";
 import { GamedayScoreboard } from "./GamedayScoreboard";
 import { LineScore } from "./LineScore";
@@ -22,7 +20,6 @@ import {
   linkifyPlayerNames,
   rosterFromBoxLines,
 } from "./linkifyPlayerNames";
-import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
 import { TrackingPanel } from "./TrackingPanel";
 import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
@@ -104,43 +101,37 @@ function viewFromSearchParam(value: string | null): DetailView {
 
 function LatestPlayBanner({
   play,
-  tracking,
   batting,
   pitching,
 }: {
   play: NonNullable<ReturnType<typeof latestWpblPlay>>;
-  tracking: WpblTrackingEvent[];
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
 }) {
-  const chips = chipsForPlay(play, tracking);
   const roster = rosterFromBoxLines(batting, pitching);
 
   return (
     <div
-      className={`rounded-lg border px-3 py-2.5 ${
+      className={`border-l-2 px-3 py-2 ${
         play.isScoringPlay
-          ? "border-[color-mix(in_srgb,var(--wpbl-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--wpbl-accent)_8%,var(--wpbl-bg-panel))]"
-          : "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-elevated)]"
+          ? "border-[var(--wpbl-accent)]"
+          : "border-[var(--wpbl-rule)]"
       }`}
     >
-      <p className="wpbl-section-label mb-0.5">
-        Latest play ·{" "}
-        {play.half === "top"
-          ? `Top ${play.inning}`
-          : play.half === "bottom"
-            ? `Bot ${play.inning}`
-            : `Inn ${play.inning}`}
-        {play.isScoringPlay ? " · Scoring" : ""}
+      <p className="wpbl-feed-meta mb-1">
+        <span>Latest play</span>
+        <span>
+          {play.half === "top"
+            ? `Top ${play.inning}`
+            : play.half === "bottom"
+              ? `Bot ${play.inning}`
+              : `Inn ${play.inning}`}
+        </span>
+        {play.isScoringPlay ? <span>Scoring</span> : null}
       </p>
-      <p className="text-sm leading-snug text-[var(--wpbl-ink-secondary)]">
+      <p className="wpbl-feed-body">
         {linkifyPlayerNames(play.narrative, roster)}
       </p>
-      {chips.length > 0 ? (
-        <div className="mt-2">
-          <PitchLog chips={chips} compact />
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -248,7 +239,6 @@ export function GameDetailClient({
       {lastPlay ? (
         <LatestPlayBanner
           play={lastPlay}
-          tracking={boxscore.tracking ?? []}
           batting={boxscore.batting}
           pitching={boxscore.pitching}
         />
@@ -283,7 +273,6 @@ export function GameDetailClient({
         {view === "gameday" ? (
           <PlayByPlayPanel
             plays={boxscore.plays}
-            tracking={boxscore.tracking ?? []}
             batting={boxscore.batting}
             pitching={boxscore.pitching}
           />

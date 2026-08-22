@@ -20,6 +20,7 @@ import { WPBL_PANEL } from "@/lib/wpbl-board";
 
 import { PlayerNameLink } from "./PlayerNameLink";
 import { StrikeZonePlot } from "./StrikeZonePlot";
+import { WpblFeedFilter } from "./WpblFeedFilter";
 
 export type TrackingPanelProps = {
   tracking: WpblTrackingEvent[];
@@ -38,41 +39,6 @@ function resolveNameId(
   return resolvePlayerIdFromBox(batting, pitching, name);
 }
 
-function ModeFilter({
-  mode,
-  onChange,
-}: {
-  mode: TrackingFeedMode;
-  onChange: (mode: TrackingFeedMode) => void;
-}) {
-  return (
-    <div
-      className="flex flex-wrap gap-1.5"
-      role="group"
-      aria-label="TrackMan filter"
-    >
-      {(
-        [
-          ["all", "All"],
-          ["pitches", "Pitches"],
-          ["hits", "Contact"],
-        ] as const
-      ).map(([value, label]) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => onChange(value)}
-          className={
-            mode === value ? "wpbl-chip wpbl-chip--active" : "wpbl-chip"
-          }
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function TrackingRow({
   event,
   batting,
@@ -82,7 +48,7 @@ function TrackingRow({
   batting: WpblBoxPlayerLine[];
   pitching: WpblBoxPlayerLine[];
 }) {
-  const chips = trackingMetricChips(event);
+  const metrics = trackingMetricChips(event);
   const batter = displayTrackingName(event.batterName);
   const pitcher = displayTrackingName(event.pitcherName);
   const clock = formatTrackingClock(event.occurredAt);
@@ -90,9 +56,7 @@ function TrackingRow({
   const showZone = hasPlateLocation(event);
 
   return (
-    <li
-      className={`wpbl-feed-row ${isHit ? "wpbl-feed-row--highlight" : ""}`}
-    >
+    <li className={`wpbl-feed-row ${isHit ? "wpbl-feed-row--scoring" : ""}`}>
       <div className="flex gap-2.5">
         {showZone ? (
           <StrikeZonePlot event={event} size="sm" className="mt-0.5" />
@@ -100,13 +64,7 @@ function TrackingRow({
         <div className="min-w-0 flex-1">
           <div className="wpbl-feed-meta mb-1">
             <span>{formatTrackingInning(event)}</span>
-            <span
-              className={
-                isHit ? "wpbl-badge wpbl-badge--scoring" : "wpbl-badge wpbl-badge--neutral"
-              }
-            >
-              {isHit ? "Contact" : "Pitch"}
-            </span>
+            <span>{isHit ? "Contact" : "Pitch"}</span>
             {clock ? (
               <span className="normal-case tracking-normal">{clock}</span>
             ) : null}
@@ -143,25 +101,10 @@ function TrackingRow({
             ) : null}
           </p>
 
-          {chips.length > 0 ? (
-            <ul
-              className="mt-1.5 flex flex-wrap gap-1"
-              aria-label="TrackMan metrics"
-            >
-              {chips.map((chip) => (
-                <li key={chip.text}>
-                  <span
-                    className={
-                      chip.impact
-                        ? "wpbl-metric-chip wpbl-metric-chip--impact"
-                        : "wpbl-metric-chip"
-                    }
-                  >
-                    {chip.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {metrics.length > 0 ? (
+            <p className="mt-1 font-mono text-[11px] tabular-nums wpbl-muted">
+              {metrics.map((metric) => metric.text).join(" · ")}
+            </p>
           ) : null}
         </div>
       </div>
@@ -197,12 +140,21 @@ export function TrackingPanel({
         <StrikeZonePlot tracking={tracking} />
       </div>
 
-      <div className="wpbl-feed-toolbar">
-        <p className="text-xs wpbl-muted">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <WpblFeedFilter
+          ariaLabel="TrackMan filter"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "all", label: "All" },
+            { value: "pitches", label: "Pitches" },
+            { value: "hits", label: "Contact" },
+          ]}
+        />
+        <p className="shrink-0 pb-2 text-xs wpbl-muted">
           {visible.length} event{visible.length === 1 ? "" : "s"}
           {mode !== "all" ? ` · ${tracking.length} total` : ""}
         </p>
-        <ModeFilter mode={mode} onChange={setMode} />
       </div>
 
       {visible.length === 0 ? (
