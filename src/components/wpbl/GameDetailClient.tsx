@@ -2,18 +2,28 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import type {
+  WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblGameStatus,
   WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
+import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
 
 import { BoxTables } from "./BoxTables";
 import { LineScore } from "./LineScore";
 import { LatestPlayBanner, PlayByPlayPanel } from "./PlayByPlayPanel";
+import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
@@ -60,7 +70,15 @@ function scoreLine(game: WpblGameDetailResponse["game"]): string {
   return `${game.awayRuns}–${game.homeRuns}`;
 }
 
-function SituationBoard({ situation }: { situation: WpblLiveSituation }) {
+function SituationBoard({
+  situation,
+  batting,
+  pitching,
+}: {
+  situation: WpblLiveSituation;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
+}) {
   const baseClass = (on: boolean) =>
     `absolute h-4 w-4 rotate-45 border border-slate-400 ${
       on
@@ -68,10 +86,54 @@ function SituationBoard({ situation }: { situation: WpblLiveSituation }) {
         : "bg-transparent"
     }`;
 
+  const linkRunner = (fullName: string | null, short: string | null) => {
+    if (!short || !fullName) return null;
+    return (
+      <PlayerNameLink
+        playerId={resolvePlayerIdFromBox(batting, pitching, fullName)}
+        name={short}
+        className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+      />
+    );
+  };
+
   const first = shortRunnerLabel(situation.runnerFirst);
   const second = shortRunnerLabel(situation.runnerSecond);
   const third = shortRunnerLabel(situation.runnerThird);
   const outs = situation.outs == null ? 0 : Math.min(3, Math.max(0, situation.outs));
+
+  const runnerBits = [
+    third
+      ? {
+          key: "3b",
+          node: (
+            <>
+              3B {linkRunner(situation.runnerThird, third)}
+            </>
+          ),
+        }
+      : null,
+    second
+      ? {
+          key: "2b",
+          node: (
+            <>
+              2B {linkRunner(situation.runnerSecond, second)}
+            </>
+          ),
+        }
+      : null,
+    first
+      ? {
+          key: "1b",
+          node: (
+            <>
+              1B {linkRunner(situation.runnerFirst, first)}
+            </>
+          ),
+        }
+      : null,
+  ].filter(Boolean) as Array<{ key: string; node: ReactNode }>;
 
   return (
     <div className="flex flex-wrap items-center gap-6">
@@ -102,17 +164,16 @@ function SituationBoard({ situation }: { situation: WpblLiveSituation }) {
           <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
           <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
         </div>
-        {(first || second || third) && (
+        {runnerBits.length > 0 ? (
           <p className="max-w-[10rem] text-center text-[11px] leading-tight text-slate-500">
-            {[
-              third ? `3B ${third}` : null,
-              second ? `2B ${second}` : null,
-              first ? `1B ${first}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            {runnerBits.map((bit, i) => (
+              <span key={bit.key}>
+                {i > 0 ? " · " : null}
+                {bit.node}
+              </span>
+            ))}
           </p>
-        )}
+        ) : null}
       </div>
 
       <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
@@ -380,17 +441,31 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
         {situation && isLive ? (
           <div className="space-y-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-            <SituationBoard situation={situation} />
+            <SituationBoard
+              situation={situation}
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+            />
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
               {keys.pitcherName ? (
                 <span>
-                  P {keys.pitcherName}
+                  P{" "}
+                  <PlayerNameLink
+                    playerId={keys.pitcherId}
+                    name={keys.pitcherName}
+                    className="font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]"
+                  />
                   {keys.pitcherStats ? ` (${keys.pitcherStats})` : ""}
                 </span>
               ) : null}
               {keys.batterName ? (
                 <span>
-                  AB {keys.batterName}
+                  AB{" "}
+                  <PlayerNameLink
+                    playerId={keys.batterId}
+                    name={keys.batterName}
+                    className="font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]"
+                  />
                   {keys.batterStats ? ` (${keys.batterStats})` : ""}
                 </span>
               ) : null}
@@ -398,7 +473,13 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
           </div>
         ) : null}
 
-        {lastPlay ? <LatestPlayBanner play={lastPlay} /> : null}
+        {lastPlay ? (
+          <LatestPlayBanner
+            play={lastPlay}
+            batting={boxscore.batting}
+            pitching={boxscore.pitching}
+          />
+        ) : null}
       </header>
 
       {boxscore.available && boxscore.lineScore ? (
@@ -425,7 +506,11 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
               Play-by-play
             </h2>
-            <PlayByPlayPanel plays={boxscore.plays} />
+            <PlayByPlayPanel
+              plays={boxscore.plays}
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+            />
           </div>
         ) : boxscore.available ? (
           <div>

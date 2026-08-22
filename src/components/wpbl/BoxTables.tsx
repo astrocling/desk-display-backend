@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { WpblBoxPlayerLine } from "@/lib/types/wpbl-display";
 import { formatWpblPosition } from "@/lib/wpbl-position";
 import { wpblTeamAccent } from "@/lib/wpbl-team-brand";
 
+import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 
 const BATTING_COLUMNS = ["ab", "r", "h", "rbi", "bb", "so", "avg", "obp", "slg"] as const;
@@ -62,16 +62,11 @@ function PlayerStatsTable({
               {players.map((player) => (
                 <tr key={`${player.playerId ?? player.name}-${player.position ?? ""}`} className="whitespace-nowrap">
                   <td className="px-3 py-2">
-                    {player.playerId ? (
-                      <Link
-                        href={`/wpbl/players/${encodeURIComponent(player.playerId)}`}
-                        className="text-slate-900 hover:underline dark:text-slate-100"
-                      >
-                        {player.name}
-                      </Link>
-                    ) : (
-                      player.name
-                    )}
+                    <PlayerNameLink
+                      playerId={player.playerId}
+                      name={player.name}
+                      className="text-slate-900 underline-offset-2 hover:underline dark:text-slate-100"
+                    />
                   </td>
                   <td className="px-2 py-2 text-slate-500">
                     {formatWpblPosition(player.position) ?? "—"}

@@ -37,3 +37,22 @@ export function findPlayerLine(
     }) ?? null
   );
 }
+
+/** Resolve a display name to a stats player id via boxscore lines. */
+export function resolvePlayerId(
+  lines: WpblBoxPlayerLine[],
+  name: string | null | undefined,
+): string | null {
+  return findPlayerLine(lines, name)?.playerId ?? null;
+}
+
+/** Search batting then pitching (runners / two-way). */
+export function resolvePlayerIdFromBox(
+  batting: WpblBoxPlayerLine[],
+  pitching: WpblBoxPlayerLine[],
+  name: string | null | undefined,
+): string | null {
+  return (
+    resolvePlayerId(batting, name) ?? resolvePlayerId(pitching, name)
+  );
+}

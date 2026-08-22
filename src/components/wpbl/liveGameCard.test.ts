@@ -121,9 +121,11 @@ describe("keyPlayersFromDetail", () => {
 
     expect(keyPlayersFromDetail(detail)).toEqual({
       pitcherName: "Misiorowski",
+      pitcherId: "pitcher-1",
       pitcherTeamAbbr: "MIL",
       pitcherStats: "5.1 IP · 1.68 ERA",
       batterName: "Olson",
+      batterId: "batter-1",
       batterTeamAbbr: "ATL",
       batterStats: "0-2 · .250",
     });

@@ -2,17 +2,36 @@
 
 import { useMemo, useState } from "react";
 
-import type { WpblPlay } from "@/lib/types/wpbl-display";
+import type { WpblBoxPlayerLine, WpblPlay } from "@/lib/types/wpbl-display";
+import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import {
   filterWpblPlays,
   formatPlayInning,
 } from "@/lib/wpbl-plays";
 
+import {
+  linkifyPlayerNames,
+  rosterFromBoxLines,
+} from "./linkifyPlayerNames";
+import { PlayerNameLink } from "./PlayerNameLink";
+
 export type PlayByPlayPanelProps = {
   plays: WpblPlay[];
+  batting?: WpblBoxPlayerLine[];
+  pitching?: WpblBoxPlayerLine[];
 };
 
-function PlayRow({ play }: { play: WpblPlay }) {
+function PlayRow({
+  play,
+  batting,
+  pitching,
+  roster,
+}: {
+  play: WpblPlay;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
+  roster: ReturnType<typeof rosterFromBoxLines>;
+}) {
   return (
     <li
       className={`border-b border-slate-100 px-3 py-2.5 last:border-b-0 dark:border-slate-800 ${
@@ -31,6 +50,34 @@ function PlayRow({ play }: { play: WpblPlay }) {
               : "Scoring"}
           </span>
         ) : null}
+        {play.batterName ? (
+          <span className="normal-case tracking-normal">
+            AB{" "}
+            <PlayerNameLink
+              playerId={resolvePlayerIdFromBox(
+                batting,
+                pitching,
+                play.batterName,
+              )}
+              name={play.batterName}
+              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            />
+          </span>
+        ) : null}
+        {play.pitcherName ? (
+          <span className="normal-case tracking-normal">
+            P{" "}
+            <PlayerNameLink
+              playerId={resolvePlayerIdFromBox(
+                batting,
+                pitching,
+                play.pitcherName,
+              )}
+              name={play.pitcherName}
+              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            />
+          </span>
+        ) : null}
         {play.pitchSequence ? (
           <span className="font-mono normal-case tracking-normal text-slate-400">
             {play.pitchSequence}
@@ -38,15 +85,23 @@ function PlayRow({ play }: { play: WpblPlay }) {
         ) : null}
       </div>
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {play.narrative}
+        {linkifyPlayerNames(play.narrative, roster)}
       </p>
     </li>
   );
 }
 
-export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
+export function PlayByPlayPanel({
+  plays,
+  batting = [],
+  pitching = [],
+}: PlayByPlayPanelProps) {
   const [mode, setMode] = useState<"all" | "scoring">("all");
   const visible = useMemo(() => filterWpblPlays(plays, mode), [plays, mode]);
+  const roster = useMemo(
+    () => rosterFromBoxLines(batting, pitching),
+    [batting, pitching],
+  );
 
   if (!plays.length) {
     return (
@@ -99,7 +154,13 @@ export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
       ) : (
         <ul className="max-h-[min(28rem,60vh)] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
           {visible.map((play) => (
-            <PlayRow key={play.sequence} play={play} />
+            <PlayRow
+              key={play.sequence}
+              play={play}
+              batting={batting}
+              pitching={pitching}
+              roster={roster}
+            />
           ))}
         </ul>
       )}
@@ -107,7 +168,20 @@ export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
   );
 }
 
-export function LatestPlayBanner({ play }: { play: WpblPlay | null }) {
+export function LatestPlayBanner({
+  play,
+  batting = [],
+  pitching = [],
+}: {
+  play: WpblPlay | null;
+  batting?: WpblBoxPlayerLine[];
+  pitching?: WpblBoxPlayerLine[];
+}) {
+  const roster = useMemo(
+    () => rosterFromBoxLines(batting, pitching),
+    [batting, pitching],
+  );
+
   if (!play) return null;
 
   return (
@@ -123,7 +197,7 @@ export function LatestPlayBanner({ play }: { play: WpblPlay | null }) {
         {play.isScoringPlay ? " · Scoring" : ""}
       </p>
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {play.narrative}
+        {linkifyPlayerNames(play.narrative, roster)}
       </p>
     </div>
   );

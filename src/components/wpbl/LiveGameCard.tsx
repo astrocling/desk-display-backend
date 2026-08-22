@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import type {
+  WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
+import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
 
 import { LineScore } from "./LineScore";
+import {
+  linkifyPlayerNames,
+  rosterFromBoxLines,
+} from "./linkifyPlayerNames";
+import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
@@ -16,7 +24,15 @@ export type LiveGameCardProps = {
   detail: WpblGameDetailResponse;
 };
 
-function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
+function BasesDiamond({
+  situation,
+  batting,
+  pitching,
+}: {
+  situation: WpblLiveSituation;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
+}) {
   const baseClass = (on: boolean) =>
     `absolute h-3.5 w-3.5 rotate-45 border border-slate-400 ${
       on
@@ -24,9 +40,32 @@ function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
         : "bg-transparent"
     }`;
 
+  const linkShort = (full: string | null, short: string | null) => {
+    if (!full || !short) return null;
+    return (
+      <PlayerNameLink
+        playerId={resolvePlayerIdFromBox(batting, pitching, full)}
+        name={short}
+        className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+      />
+    );
+  };
+
   const first = shortRunnerLabel(situation.runnerFirst);
   const second = shortRunnerLabel(situation.runnerSecond);
   const third = shortRunnerLabel(situation.runnerThird);
+
+  const bits = [
+    third
+      ? { key: "3", node: <>3:{linkShort(situation.runnerThird, third)}</> }
+      : null,
+    second
+      ? { key: "2", node: <>2:{linkShort(situation.runnerSecond, second)}</> }
+      : null,
+    first
+      ? { key: "1", node: <>1:{linkShort(situation.runnerFirst, first)}</> }
+      : null,
+  ].filter(Boolean) as Array<{ key: string; node: ReactNode }>;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -56,17 +95,16 @@ function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
         <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
         <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
       </div>
-      {(first || second || third) && (
+      {bits.length > 0 ? (
         <p className="max-w-[7rem] truncate text-center text-[9px] leading-tight text-slate-500">
-          {[
-            third ? `3:${third}` : null,
-            second ? `2:${second}` : null,
-            first ? `1:${first}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+          {bits.map((bit, i) => (
+            <span key={bit.key}>
+              {i > 0 ? " · " : null}
+              {bit.node}
+            </span>
+          ))}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -116,11 +154,13 @@ function KeyPlayer({
   label,
   teamAbbr,
   name,
+  playerId,
   stats,
 }: {
   label: string;
   teamAbbr: string | null;
   name: string | null;
+  playerId: string | null;
   stats: string | null;
 }) {
   if (!name) {
@@ -141,7 +181,13 @@ function KeyPlayer({
         {label}
         {teamAbbr ? ` (${teamAbbr})` : ""}
       </p>
-      <p className="truncate text-sm font-semibold">{name}</p>
+      <p className="truncate text-sm font-semibold">
+        <PlayerNameLink
+          playerId={playerId}
+          name={name}
+          className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+        />
+      </p>
       {stats ? <p className="truncate text-xs text-slate-500">{stats}</p> : null}
     </div>
   );
@@ -152,6 +198,7 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
   const situation = game.situation;
   const keys = keyPlayersFromDetail(detail);
   const lastPlay = latestWpblPlay(boxscore.plays);
+  const roster = rosterFromBoxLines(boxscore.batting, boxscore.pitching);
 
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -176,7 +223,13 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
               {game.inning ?? "In progress"}
             </p>
-            {situation ? <BasesDiamond situation={situation} /> : null}
+            {situation ? (
+              <BasesDiamond
+                situation={situation}
+                batting={boxscore.batting}
+                pitching={boxscore.pitching}
+              />
+            ) : null}
             {situation &&
             (situation.balls != null || situation.strikes != null) ? (
               <p className="font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
@@ -206,12 +259,14 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
             label="Pitching"
             teamAbbr={keys.pitcherTeamAbbr}
             name={keys.pitcherName}
+            playerId={keys.pitcherId}
             stats={keys.pitcherStats}
           />
           <KeyPlayer
             label="At bat"
             teamAbbr={keys.batterTeamAbbr}
             name={keys.batterName}
+            playerId={keys.batterId}
             stats={keys.batterStats}
           />
         </div>
@@ -224,7 +279,7 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
             {lastPlay.isScoringPlay ? " · Scoring" : ""}
           </p>
           <p className="line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
-            {lastPlay.narrative}
+            {linkifyPlayerNames(lastPlay.narrative, roster)}
           </p>
         </div>
       ) : null}
