@@ -13,6 +13,7 @@ import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay, lineupFollowers, shortRunnerLabel } from "@/lib/wpbl-plays";
 import { buildPitchChips } from "@/lib/wpbl-tracking";
 
+import { GameCardMatchup } from "./GameCardMatchup";
 import { LineScore } from "./LineScore";
 import {
   linkifyPlayerNames,
@@ -21,7 +22,6 @@ import {
 import { PitchLog } from "./PitchLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
-import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
 export type LiveGameCardProps = {
@@ -133,29 +133,6 @@ function OutsDots({ outs }: { outs: number | null }) {
   );
 }
 
-function TeamSide({
-  abbr,
-  runs,
-  align,
-}: {
-  abbr: string;
-  runs: number | null;
-  align: "left" | "right";
-}) {
-  const score = runs == null ? "—" : String(runs);
-
-  return (
-    <div
-      className={`flex min-w-0 flex-1 items-center gap-2 ${
-        align === "right" ? "flex-row-reverse text-right" : ""
-      }`}
-    >
-      <TeamLogo abbr={abbr} size="lg" />
-      <span className="shrink-0 text-3xl font-bold tabular-nums tracking-tight">{score}</span>
-    </div>
-  );
-}
-
 function KeyPlayer({
   label,
   teamAbbr,
@@ -253,31 +230,40 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
-          <TeamSide abbr={game.awayAbbr} runs={game.awayRuns} align="left" />
-
-          <div className="flex w-[5.5rem] shrink-0 flex-col items-center gap-1 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
-              {game.inning ?? "In progress"}
-            </p>
-            {situation ? (
-              <BasesDiamond
-                situation={situation}
-                batting={boxscore.batting}
-                pitching={boxscore.pitching}
-              />
-            ) : null}
-            {situation &&
-            (situation.balls != null || situation.strikes != null) ? (
-              <p className="font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
-                {situation.balls ?? "—"} - {situation.strikes ?? "—"}
+        <GameCardMatchup
+          away={{
+            abbr: game.awayAbbr,
+            name: game.awayName,
+            runs: game.awayRuns,
+          }}
+          home={{
+            abbr: game.homeAbbr,
+            name: game.homeName,
+            runs: game.homeRuns,
+          }}
+          showScores
+          center={
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+                {game.inning ?? "In progress"}
               </p>
-            ) : null}
-            {situation ? <OutsDots outs={situation.outs} /> : null}
-          </div>
-
-          <TeamSide abbr={game.homeAbbr} runs={game.homeRuns} align="right" />
-        </div>
+              {situation ? (
+                <BasesDiamond
+                  situation={situation}
+                  batting={boxscore.batting}
+                  pitching={boxscore.pitching}
+                />
+              ) : null}
+              {situation &&
+              (situation.balls != null || situation.strikes != null) ? (
+                <p className="font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
+                  {situation.balls ?? "—"} - {situation.strikes ?? "—"}
+                </p>
+              ) : null}
+              {situation ? <OutsDots outs={situation.outs} /> : null}
+            </>
+          }
+        />
       </div>
 
       {boxscore.available && boxscore.lineScore ? (

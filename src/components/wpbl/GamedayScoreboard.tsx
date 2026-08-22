@@ -14,10 +14,10 @@ import {
 } from "@/lib/wpbl-plays";
 import { buildPitchChips } from "@/lib/wpbl-tracking";
 
+import { GameCardMatchup } from "./GameCardMatchup";
 import { PitchLog } from "./PitchLog";
 import { PlayerHeadshot } from "./PlayerHeadshot";
 import { PlayerNameLink } from "./PlayerNameLink";
-import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
 export type GamedayScoreboardProps = {
@@ -130,35 +130,6 @@ function BasesDiamond({
   );
 }
 
-function TeamColumn({
-  abbr,
-  name,
-  runs,
-  align,
-}: {
-  abbr: string;
-  name: string;
-  runs: number | null;
-  align: "left" | "right";
-}) {
-  return (
-    <div
-      className={`flex min-w-0 flex-1 items-center gap-2.5 ${
-        align === "right" ? "flex-row-reverse text-right" : ""
-      }`}
-    >
-      <TeamLogo abbr={abbr} size="lg" />
-      <div className="min-w-0">
-        <p className="text-lg font-semibold tracking-tight sm:text-xl">{abbr}</p>
-        <p className="truncate text-xs text-slate-500">{name}</p>
-      </div>
-      <p className="shrink-0 text-3xl font-bold tabular-nums tracking-tight sm:text-4xl">
-        {runs == null ? "—" : runs}
-      </p>
-    </div>
-  );
-}
-
 function PlayerLine({
   label,
   player,
@@ -227,50 +198,49 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
 
   return (
     <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 sm:mx-0 sm:p-4">
-      <div className="flex items-center gap-3">
-        <TeamColumn
-          abbr={game.awayAbbr}
-          name={game.awayName}
-          runs={game.awayRuns}
-          align="left"
-        />
-
-        <div className="flex w-[7.5rem] shrink-0 flex-col items-center gap-1.5 text-center sm:w-[8.5rem]">
-          <p
-            className={`text-xs font-semibold uppercase tracking-wide ${
-              isLive
-                ? "text-red-600 dark:text-red-400"
-                : "text-slate-600 dark:text-slate-300"
-            }`}
-          >
-            {game.inning ??
-              (game.status === "final"
-                ? "Final"
-                : (game.whenEt ?? "Pregame"))}
-          </p>
-          {situation ? (
-            <BasesDiamond
-              situation={situation}
-              batting={boxscore.batting}
-              pitching={boxscore.pitching}
-            />
-          ) : null}
-          {situation &&
-          (situation.balls != null || situation.strikes != null) ? (
-            <p className="font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
-              {situation.balls ?? "—"}–{situation.strikes ?? "—"}
+      <GameCardMatchup
+        away={{
+          abbr: game.awayAbbr,
+          name: game.awayName,
+          runs: game.awayRuns,
+        }}
+        home={{
+          abbr: game.homeAbbr,
+          name: game.homeName,
+          runs: game.homeRuns,
+        }}
+        showScores
+        center={
+          <>
+            <p
+              className={`text-xs font-semibold uppercase tracking-wide ${
+                isLive
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {game.inning ??
+                (game.status === "final"
+                  ? "Final"
+                  : (game.whenEt ?? "Pregame"))}
             </p>
-          ) : null}
-          {situation ? <OutsDots outs={situation.outs} /> : null}
-        </div>
-
-        <TeamColumn
-          abbr={game.homeAbbr}
-          name={game.homeName}
-          runs={game.homeRuns}
-          align="right"
-        />
-      </div>
+            {situation ? (
+              <BasesDiamond
+                situation={situation}
+                batting={boxscore.batting}
+                pitching={boxscore.pitching}
+              />
+            ) : null}
+            {situation &&
+            (situation.balls != null || situation.strikes != null) ? (
+              <p className="font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
+                {situation.balls ?? "—"}–{situation.strikes ?? "—"}
+              </p>
+            ) : null}
+            {situation ? <OutsDots outs={situation.outs} /> : null}
+          </>
+        }
+      />
 
       {(keys.pitcherName || keys.batterName || followers.onDeck) && (
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-4">

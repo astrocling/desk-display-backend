@@ -8,12 +8,12 @@ import type {
 } from "@/lib/types/wpbl-display";
 import { latestWpblPlay } from "@/lib/wpbl-plays";
 
+import { GameCardMatchup } from "./GameCardMatchup";
 import { LineScore } from "./LineScore";
 import {
   linkifyPlayerNames,
   rosterFromBoxLines,
 } from "./linkifyPlayerNames";
-import { TeamLogo } from "./TeamLogo";
 
 export type FinalGameCardProps = {
   detail: WpblGameDetailResponse;
@@ -25,52 +25,6 @@ function recordFor(standings: WpblStandingRow[], abbr: string): string | null {
   if (!row) return null;
   if (row.t > 0) return `${row.w}-${row.l}-${row.t}`;
   return `${row.w}-${row.l}`;
-}
-
-function TeamBlock({
-  abbr,
-  name,
-  record,
-  runs,
-  won,
-  align,
-}: {
-  abbr: string;
-  name: string;
-  record: string | null;
-  runs: number | null;
-  won: boolean;
-  align: "left" | "right";
-}) {
-  return (
-    <div
-      className={`flex min-w-0 flex-1 items-center gap-2 ${
-        align === "right" ? "flex-row-reverse text-right" : ""
-      }`}
-    >
-      <TeamLogo abbr={abbr} size="lg" />
-      <span className="min-w-0">
-        <span
-          className={`block text-lg tracking-tight ${
-            won ? "font-bold" : "font-semibold text-slate-600 dark:text-slate-300"
-          }`}
-        >
-          {abbr}
-        </span>
-        <span className="block truncate text-xs text-slate-500">
-          {name}
-          {record ? ` · ${record}` : ""}
-        </span>
-      </span>
-      <span
-        className={`shrink-0 text-3xl tabular-nums tracking-tight ${
-          won ? "font-bold" : "font-semibold text-slate-500"
-        }`}
-      >
-        {runs == null ? "—" : runs}
-      </span>
-    </div>
-  );
 }
 
 /** Today’s slate card for a completed game — line score + last play when cached. */
@@ -106,34 +60,30 @@ export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
-          <TeamBlock
-            abbr={game.awayAbbr}
-            name={game.awayName}
-            record={awayRecord}
-            runs={game.awayRuns}
-            won={awayWon}
-            align="left"
-          />
-
-          <div className="flex w-[6.5rem] shrink-0 flex-col items-center gap-0.5 text-center">
-            <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
-              Final
-            </p>
-            {game.whenEt ? (
-              <p className="text-[10px] text-slate-500">{game.whenEt}</p>
-            ) : null}
-          </div>
-
-          <TeamBlock
-            abbr={game.homeAbbr}
-            name={game.homeName}
-            record={homeRecord}
-            runs={game.homeRuns}
-            won={homeWon}
-            align="right"
-          />
-        </div>
+        <GameCardMatchup
+          away={{
+            abbr: game.awayAbbr,
+            name: game.awayName,
+            record: awayRecord,
+            runs: game.awayRuns,
+            emphasize: awayWon,
+          }}
+          home={{
+            abbr: game.homeAbbr,
+            name: game.homeName,
+            record: homeRecord,
+            runs: game.homeRuns,
+            emphasize: homeWon,
+          }}
+          showScores
+          center={
+            <>
+              <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
+                Final
+              </p>
+            </>
+          }
+        />
       </div>
 
       {boxscore.available && boxscore.lineScore ? (
