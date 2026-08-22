@@ -8,32 +8,26 @@ export type PitchLogProps = {
   compact?: boolean;
 };
 
-function chipClass(kind: PitchChip["kind"]): string {
+function pitchDotClass(kind: PitchChip["kind"]): string {
   switch (kind) {
     case "ball":
-      return "border-sky-500/40 bg-sky-500/15 text-sky-300";
+      return "wpbl-pitch-dot wpbl-pitch-dot--ball";
     case "strike":
-      return "border-red-500/40 bg-red-500/15 text-red-300";
+      return "wpbl-pitch-dot wpbl-pitch-dot--strike";
     case "foul":
-      return "border-amber-500/40 bg-amber-500/15 text-amber-200";
+      return "wpbl-pitch-dot wpbl-pitch-dot--foul";
     case "in_play":
-      return "border-[color-mix(in_srgb,var(--wpbl-accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--wpbl-accent)_12%,transparent)] text-[var(--wpbl-accent)]";
-    case "track":
-      return "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-elevated)] text-[var(--wpbl-ink-secondary)]";
+      return "wpbl-pitch-dot wpbl-pitch-dot--in-play";
     default:
-      return "border-[var(--wpbl-rule)] bg-[var(--wpbl-bg-hover)] text-[var(--wpbl-muted)]";
+      return "wpbl-pitch-dot wpbl-pitch-dot--other";
   }
 }
 
-function secondaryLine(chip: PitchChip): string | null {
-  if (chip.exitMph != null) return `${chip.exitMph}`;
-  if (chip.releaseMph != null) return `${chip.releaseMph}`;
-  if (chip.pitchTypeAbbr && chip.kind !== "track") return chip.pitchTypeAbbr;
-  return null;
-}
-
+/** MLB-style pitch sequence: dot trail + optional description line. */
 export function PitchLog({ chips, label, compact }: PitchLogProps) {
   if (!chips.length) return null;
+
+  const description = chips.map((chip) => chip.title).join(" · ");
 
   return (
     <div className={compact ? "space-y-1" : "space-y-1.5"}>
@@ -45,33 +39,21 @@ export function PitchLog({ chips, label, compact }: PitchLogProps) {
           </span>
         </p>
       ) : null}
-      <ol
-        className="flex flex-wrap gap-1"
+      <div
+        className="flex flex-wrap items-center gap-1"
         aria-label={label ?? "Pitch sequence"}
       >
-        {chips.map((chip) => {
-          const secondary = secondaryLine(chip);
-          return (
-            <li key={chip.key}>
-              <span
-                title={chip.title}
-                className={`inline-flex min-w-[1.6rem] flex-col items-center justify-center rounded border px-1 py-0.5 font-mono font-semibold tabular-nums ${chipClass(chip.kind)}`}
-              >
-                <span className="text-[10px] leading-none">{chip.label}</span>
-                {secondary && secondary !== chip.label ? (
-                  <span className="text-[8px] font-medium leading-tight opacity-90">
-                    {secondary}
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+        {chips.map((chip) => (
+          <span
+            key={chip.key}
+            title={chip.title}
+            className={pitchDotClass(chip.kind)}
+            aria-label={chip.title}
+          />
+        ))}
+      </div>
       {!compact ? (
-        <p className="text-[11px] leading-snug wpbl-muted">
-          {chips.map((c) => c.title).join(" · ")}
-        </p>
+        <p className="text-[11px] leading-snug wpbl-muted">{description}</p>
       ) : null}
     </div>
   );

@@ -357,8 +357,9 @@
   border-bottom: none;
 }
 
-.wpbl-feed-row--highlight {
-  background-color: color-mix(in srgb, var(--wpbl-accent) 8%, var(--wpbl-bg-panel));
+.wpbl-feed-row--scoring {
+  border-left: 2px solid var(--wpbl-accent);
+  padding-left: calc(0.75rem - 2px);
 }
 
 .wpbl-feed-meta {
@@ -379,43 +380,33 @@
   color: var(--wpbl-ink-secondary);
 }
 
-.wpbl-badge {
-  display: inline-flex;
-  border-radius: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.5625rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+/* Pitch sequence — MLB dot trail (live / current AB only) */
+.wpbl-pitch-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
 }
 
-.wpbl-badge--scoring {
-  border: 1px solid color-mix(in srgb, var(--wpbl-accent) 45%, transparent);
-  background-color: color-mix(in srgb, var(--wpbl-accent) 12%, transparent);
-  color: var(--wpbl-accent);
+.wpbl-pitch-dot--ball {
+  border: 1.5px solid var(--wpbl-muted);
+  background-color: transparent;
 }
 
-.wpbl-badge--neutral {
-  border: 1px solid var(--wpbl-rule);
+.wpbl-pitch-dot--strike {
+  background-color: var(--wpbl-live);
+}
+
+.wpbl-pitch-dot--foul {
+  background-color: var(--wpbl-warning);
+}
+
+.wpbl-pitch-dot--in-play {
+  background-color: var(--wpbl-ink);
+}
+
+.wpbl-pitch-dot--other {
+  border: 1.5px solid var(--wpbl-rule);
   background-color: var(--wpbl-bg-hover);
-  color: var(--wpbl-ink-secondary);
-}
-
-.wpbl-metric-chip {
-  display: inline-flex;
-  border-radius: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.625rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  border: 1px solid var(--wpbl-rule);
-  background-color: var(--wpbl-bg-elevated);
-  color: var(--wpbl-ink-secondary);
-}
-
-.wpbl-metric-chip--impact {
-  border-color: color-mix(in srgb, var(--wpbl-accent) 35%, transparent);
-  background-color: color-mix(in srgb, var(--wpbl-accent) 10%, var(--wpbl-bg-elevated));
-  color: var(--wpbl-ink);
 }
