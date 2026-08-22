@@ -8,7 +8,6 @@ import type {
   WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblGameStatus,
-  WpblTrackingEvent,
 } from "@/lib/types/wpbl-display";
 import { WPBL_LINK } from "@/lib/wpbl-board";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
