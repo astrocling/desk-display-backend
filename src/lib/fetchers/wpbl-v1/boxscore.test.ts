@@ -118,7 +118,7 @@ describe("mapWpblBoxscore", () => {
     });
     expect(box.plays[0]!.pitchEvents).toEqual([
       { sequence: 1, code: "F", type: "foul", description: "Foul" },
-      { sequence: 2, code: "P", type: "pitchout", description: "Pitchout" },
+      { sequence: 2, code: "P", type: "in_play", description: "In play" },
     ]);
     const scoring = box.plays.find((p) => p.isScoringPlay);
     expect(scoring).toMatchObject({

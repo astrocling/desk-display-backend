@@ -9,6 +9,7 @@ import { playerNamesMatch } from "@/lib/wpbl-player-match";
 import {
   atBatPitchLog,
   latestWpblPlay,
+  pitchEventLabel,
   pitchKind,
   pitchesFromPlay,
   type AtBatPitchLog,
@@ -178,7 +179,7 @@ export function zipPitchEventsWithTracking(
       pitchTypeAbbr: pitchTypeAbbr(track?.pitchType),
       releaseMph: roundSpeed(track?.releaseSpeed),
       exitMph: roundSpeed(track?.exitSpeed),
-      title: chipTitle(event.description || event.type, track),
+      title: chipTitle(pitchEventLabel(event), track),
     };
   });
 }

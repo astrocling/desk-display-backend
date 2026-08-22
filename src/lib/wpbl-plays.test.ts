@@ -13,6 +13,8 @@ import {
   latestWpblPlay,
   lineupFollowers,
   lineupForSide,
+  normalizePitchEvent,
+  pitchEventLabel,
   pitchKind,
   pitchesFromPlay,
   shortRunnerLabel,
@@ -153,6 +155,78 @@ describe("decodePitchSequence / pitchesFromPlay", () => {
         play({ sequence: 1, narrative: "x", pitchSequence: "FK" }),
       ).map((e) => e.code),
     ).toEqual(["F", "K"]);
+  });
+
+  it("normalizes mislabeled in-play pitches (P is not pitchout)", () => {
+    const events = pitchesFromPlay(
+      play({
+        sequence: 1,
+        narrative: "x",
+        pitchSequence: "FP",
+        pitchEvents: [
+          {
+            sequence: 1,
+            code: "F",
+            type: "foul",
+            description: "Foul",
+          },
+          {
+            sequence: 2,
+            code: "P",
+            type: "pitchout",
+            description: "Pitchout",
+          },
+        ],
+      }),
+    );
+    expect(events[1]).toMatchObject({
+      code: "P",
+      type: "in_play",
+      description: "In play",
+    });
+    expect(pitchKind(events[1]!)).toBe("in_play");
+    expect(pitchEventLabel(events[1]!)).toBe("In play");
+  });
+
+  it("labels unknown codes from structured pitch type", () => {
+    const event = normalizePitchEvent({
+      sequence: 1,
+      code: "Z",
+      type: "swinging_strike",
+      description: "Pitchout",
+    });
+    expect(event).toMatchObject({
+      code: "Z",
+      description: "Swinging strike",
+      type: "swinging_strike",
+    });
+    expect(pitchKind(event)).toBe("strike");
+  });
+
+  it("uses Pitch for unknown code and type", () => {
+    const event = normalizePitchEvent({
+      sequence: 1,
+      code: "Q",
+      type: "unknown",
+      description: "Pitchout",
+    });
+    expect(event.description).toBe("Pitch");
+    expect(pitchKind(event)).toBe("other");
+  });
+
+  it("keeps real pitchouts when type confirms", () => {
+    const event = normalizePitchEvent({
+      sequence: 1,
+      code: "O",
+      type: "pitchout",
+      description: "Pitchout",
+    });
+    expect(event).toMatchObject({
+      code: "O",
+      description: "Pitchout",
+      type: "pitchout",
+    });
+    expect(pitchKind(event)).toBe("other");
   });
 });
 
