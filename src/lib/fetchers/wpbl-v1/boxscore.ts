@@ -29,6 +29,8 @@ export interface WpblBoxscoreStatus {
   second_base?: string;
   third_base?: string;
   bases_occupied?: Array<number | string> | null;
+  away_runs?: number;
+  home_runs?: number;
 }
 
 interface WpblBoxscorePlayer {

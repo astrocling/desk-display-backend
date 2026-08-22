@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   WpblBoxPlayerLine,
-  WpblGameDetailResponse,
   WpblGameStatus,
 } from "@/lib/types/wpbl-display";
+import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay, pitchesFromPlay } from "@/lib/wpbl-plays";
 
 import { BoxTables } from "./BoxTables";
@@ -20,8 +20,7 @@ import {
 } from "./linkifyPlayerNames";
 import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
-
-const POLL_MS = 30_000;
+import { useWpblLiveGame } from "./useWpblLiveGame";
 
 type DetailView = "gameday" | "box";
 
@@ -53,6 +52,39 @@ function StatusBadge({ status }: { status: WpblGameStatus }) {
       className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[status]}`}
     >
       {labels[status]}
+    </span>
+  );
+}
+
+function FeedBadge({
+  connection,
+  isLive,
+}: {
+  connection: WpblLiveConnection;
+  isLive: boolean;
+}) {
+  if (!isLive) return null;
+
+  if (connection === "live") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        Live feed
+      </span>
+    );
+  }
+
+  if (connection === "connecting" || connection === "reconnecting") {
+    return (
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+        {connection === "connecting" ? "Connecting feed…" : "Reconnecting…"}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      Polling
     </span>
   );
 }
@@ -156,91 +188,13 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
     searchParams.get("view") === "box" ? "box" : "gameday";
 
   const [view, setView] = useState<DetailView>(initialView);
-  const [data, setData] = useState<WpblGameDetailResponse | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const hasDataRef = useRef(false);
+  const { data, loading, notFound, error, connection } = useWpblLiveGame(gameId);
 
   useEffect(() => {
     setView(searchParams.get("view") === "box" ? "box" : "gameday");
   }, [searchParams]);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/wpbl/games/${gameId}`);
-
-      if (res.status === 404) {
-        if (!hasDataRef.current) {
-          setNotFound(true);
-          setData(null);
-          setError(null);
-        }
-        return false;
-      }
-
-      if (!res.ok) {
-        if (!hasDataRef.current) {
-          let detail: string | null = null;
-          try {
-            const body = (await res.json()) as { error?: unknown };
-            detail =
-              typeof body.error === "string" && body.error.trim()
-                ? body.error.trim()
-                : null;
-          } catch {
-            detail = null;
-          }
-          setError(detail ?? `Game fetch failed (${res.status})`);
-          setData(null);
-        }
-        return false;
-      }
-
-      const json = (await res.json()) as WpblGameDetailResponse;
-      setData(json);
-      setNotFound(false);
-      setError(null);
-      hasDataRef.current = true;
-      return true;
-    } catch {
-      if (!hasDataRef.current) {
-        setError("Game fetch failed — network error.");
-        setData(null);
-      }
-      return false;
-    }
-  }, [gameId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    hasDataRef.current = false;
-    setData(null);
-    setNotFound(false);
-    setError(null);
-
-    void (async () => {
-      setLoading(true);
-      await load();
-      if (!cancelled) setLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
-
   const isLive = data?.game.status === "live";
-
-  useEffect(() => {
-    if (!isLive) return;
-
-    const id = window.setInterval(() => {
-      void load();
-    }, POLL_MS);
-
-    return () => window.clearInterval(id);
-  }, [isLive, load]);
 
   const lastPlay = useMemo(
     () => (data ? latestWpblPlay(data.boxscore.plays) : null),
@@ -310,11 +264,9 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={game.status} />
+        <FeedBadge connection={connection} isLive={Boolean(isLive)} />
         <span className="text-xs text-slate-500">
           {updatedAt ? <>Updated {formatUpdatedAt(updatedAt)}</> : null}
-          {isLive ? (
-            <span className="ml-2 text-red-600 dark:text-red-400">· Live</span>
-          ) : null}
         </span>
         {game.venue ? (
           <span className="text-xs text-slate-500">· {game.venue}</span>
