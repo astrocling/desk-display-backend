@@ -101,6 +101,8 @@ interface WpblRawTrackingActivity {
   distance?: number;
   distance_unit?: string;
   strike_zone_decision?: string;
+  plate_location_height?: number;
+  plate_location_side?: number;
 }
 
 interface WpblRawPlay {
@@ -364,6 +366,8 @@ export function mapWpblTrackingActivity(
       distance: parseOptionalNumber(item.distance),
       distanceUnit: item.distance_unit?.trim() || null,
       strikeZoneDecision: item.strike_zone_decision?.trim() || null,
+      plateLocationHeight: parseOptionalNumber(item.plate_location_height),
+      plateLocationSide: parseOptionalNumber(item.plate_location_side),
     });
   }
 

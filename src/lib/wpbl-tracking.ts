@@ -385,9 +385,96 @@ export function trackingMetricChips(
   }
 
   const zone = humanizeTrackingLabel(event.strikeZoneDecision);
-  if (zone) chips.push({ text: `Zone: ${zone}` });
+  if (zone) {
+    chips.push({ text: `Zone: ${zone}` });
+  } else {
+    const call = plateLocationCall(event);
+    if (call === "in") chips.push({ text: "In zone" });
+    else if (call === "out") chips.push({ text: "Out of zone" });
+  }
 
   return chips;
+}
+
+/**
+ * Typical rulebook plate half-width (~8.5") and a mid-height zone window in feet.
+ * Catcher's view: +side = catcher's right.
+ */
+export const STRIKE_ZONE = {
+  sideMin: -0.83,
+  sideMax: 0.83,
+  heightMin: 1.5,
+  heightMax: 3.5,
+} as const;
+
+/** Plot window (feet) for the SVG zone chart. */
+export const STRIKE_ZONE_VIEW = {
+  sideMin: -2.2,
+  sideMax: 2.2,
+  heightMin: 0.2,
+  heightMax: 4.8,
+} as const;
+
+export type PlateLocationCall = "in" | "out" | null;
+
+export function hasPlateLocation(event: WpblTrackingEvent): boolean {
+  return (
+    event.plateLocationHeight != null &&
+    Number.isFinite(event.plateLocationHeight) &&
+    event.plateLocationSide != null &&
+    Number.isFinite(event.plateLocationSide)
+  );
+}
+
+/** Geometric in/out vs a fixed rulebook-ish zone (not umpire call). */
+export function plateLocationCall(
+  event: WpblTrackingEvent,
+): PlateLocationCall {
+  if (!hasPlateLocation(event)) return null;
+  const side = event.plateLocationSide!;
+  const height = event.plateLocationHeight!;
+  const inSide = side >= STRIKE_ZONE.sideMin && side <= STRIKE_ZONE.sideMax;
+  const inHeight =
+    height >= STRIKE_ZONE.heightMin && height <= STRIKE_ZONE.heightMax;
+  return inSide && inHeight ? "in" : "out";
+}
+
+export type StrikeZonePoint = {
+  key: string;
+  side: number;
+  height: number;
+  inZone: boolean;
+  label: string;
+  /** 0 = oldest among plotted, 1 = newest */
+  recency: number;
+};
+
+/** Newest-first pitches with plate location for the zone chart. */
+export function strikeZonePoints(
+  tracking: WpblTrackingEvent[],
+  limit = 40,
+): StrikeZonePoint[] {
+  const withLoc = sortTrackingNewestFirst(tracking).filter(
+    (e) => e.kind === "pitch" && hasPlateLocation(e),
+  );
+  const sliced = withLoc.slice(0, Math.max(0, limit));
+  const n = sliced.length;
+  return sliced.map((event, i) => {
+    const abbr = pitchTypeAbbr(event.pitchType) ?? "P";
+    const mph = roundSpeed(event.releaseSpeed);
+    const call = plateLocationCall(event);
+    return {
+      key: event.activityId,
+      side: event.plateLocationSide!,
+      height: event.plateLocationHeight!,
+      inZone: call === "in",
+      label:
+        mph != null
+          ? `${abbr} ${mph} · ${call === "in" ? "in" : "out"}`
+          : `${abbr} · ${call === "in" ? "in" : "out"}`,
+      recency: n <= 1 ? 1 : 1 - i / (n - 1),
+    };
+  });
 }
 
 export function formatTrackingClock(

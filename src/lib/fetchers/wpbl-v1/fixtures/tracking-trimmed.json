@@ -17,7 +17,9 @@
       "release_speed": 70.7023,
       "speed_unit": "mph",
       "spin_rate_rpm": 1936.7773,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 1.19814,
+      "plate_location_side": 0.17601
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:f40b9724-87f8-4dd1-b98c-b397dca9a78e",
@@ -36,7 +38,9 @@
       "release_speed": 62.96842,
       "speed_unit": "mph",
       "spin_rate_rpm": 1947.1812,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 0.95403,
+      "plate_location_side": -0.10736
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:cce30128-9ae7-41d0-9725-e94a54eb93c2",
@@ -55,7 +59,9 @@
       "release_speed": 71.301,
       "speed_unit": "mph",
       "spin_rate_rpm": 1700.3783,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 2.64306,
+      "plate_location_side": 1.19648
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:7dc6f107-db69-46ad-bf1f-413aef563266",
@@ -74,7 +80,9 @@
       "release_speed": 72.09708,
       "speed_unit": "mph",
       "spin_rate_rpm": 1787.2169,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 2.29996,
+      "plate_location_side": 0.94144
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:36cde919-0376-42e6-9869-ff72d9c71010",
@@ -93,7 +101,9 @@
       "release_speed": 71.68268,
       "speed_unit": "mph",
       "spin_rate_rpm": 1738.1631,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 3.4706,
+      "plate_location_side": 1.86293
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:ab37ad10-ccf6-4806-bfb3-fa5fd56c812a",
@@ -112,7 +122,9 @@
       "release_speed": 71.94722,
       "speed_unit": "mph",
       "spin_rate_rpm": 1700.7817,
-      "distance_unit": "feet"
+      "distance_unit": "feet",
+      "plate_location_height": 2.18131,
+      "plate_location_side": 0.88145
     },
     {
       "activity_id": "74aea5da-540e-4bf8-9d77-7a75846afa21:de6342a9-8d6f-4ebf-abd9-feca94e44567",
@@ -135,7 +147,9 @@
       "spin_rate_rpm": 1763.6501,
       "distance": 2.77307,
       "distance_unit": "feet",
-      "launch_angle_deg": -69.12793
+      "launch_angle_deg": -69.12793,
+      "plate_location_height": 2.14242,
+      "plate_location_side": 1.54244
     }
   ]
 }

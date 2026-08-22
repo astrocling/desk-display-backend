@@ -125,6 +125,10 @@ export interface WpblTrackingEvent {
   distance: number | null;
   distanceUnit: string | null;
   strikeZoneDecision: string | null;
+  /** Feet above ground at the front of the plate (TrackMan plate_z). */
+  plateLocationHeight: number | null;
+  /** Feet from plate center; catcher's view (positive = catcher's right). */
+  plateLocationSide: number | null;
 }
 
 /**

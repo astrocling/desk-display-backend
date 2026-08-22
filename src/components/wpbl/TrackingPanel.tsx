@@ -12,16 +12,20 @@ import {
   filterTrackingFeed,
   formatTrackingClock,
   formatTrackingInning,
+  hasPlateLocation,
   trackingMetricChips,
   type TrackingFeedMode,
 } from "@/lib/wpbl-tracking";
 
 import { PlayerNameLink } from "./PlayerNameLink";
+import { StrikeZonePlot } from "./StrikeZonePlot";
 
 export type TrackingPanelProps = {
   tracking: WpblTrackingEvent[];
   batting?: WpblBoxPlayerLine[];
   pitching?: WpblBoxPlayerLine[];
+  /** When true, game is still live — empty copy says tracking may connect. */
+  isLive?: boolean;
 };
 
 function resolveNameId(
@@ -48,6 +52,7 @@ function TrackingRow({
   const pitcher = displayTrackingName(event.pitcherName);
   const clock = formatTrackingClock(event.occurredAt);
   const isHit = event.kind === "hit";
+  const showZone = hasPlateLocation(event);
 
   return (
     <li
@@ -55,73 +60,83 @@ function TrackingRow({
         isHit ? "bg-emerald-50/70 dark:bg-emerald-950/30" : ""
       }`}
     >
-      <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-        <span>{formatTrackingInning(event)}</span>
-        {isHit ? (
-          <span className="rounded bg-emerald-600 px-1 py-px text-[9px] font-semibold text-white">
-            Contact
-          </span>
-        ) : (
-          <span className="rounded bg-slate-600 px-1 py-px text-[9px] font-semibold text-white">
-            Pitch
-          </span>
-        )}
-        {clock ? (
-          <span className="normal-case tracking-normal text-slate-400">
-            {clock}
-          </span>
+      <div className="flex gap-2.5">
+        {showZone ? (
+          <StrikeZonePlot event={event} size="sm" className="mt-0.5" />
         ) : null}
-      </div>
-
-      <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {batter ? (
-          <PlayerNameLink
-            playerId={resolveNameId(
-              batting,
-              pitching,
-              event.batterId,
-              event.batterName,
-            )}
-            name={batter}
-            className="font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]"
-          />
-        ) : (
-          <span className="text-slate-500">Unknown batter</span>
-        )}
-        {pitcher ? (
-          <>
-            <span className="text-slate-400"> vs </span>
-            <PlayerNameLink
-              playerId={resolveNameId(
-                batting,
-                pitching,
-                event.pitcherId,
-                event.pitcherName,
-              )}
-              name={pitcher}
-              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
-            />
-          </>
-        ) : null}
-      </p>
-
-      {chips.length > 0 ? (
-        <ul className="mt-1.5 flex flex-wrap gap-1" aria-label="TrackMan metrics">
-          {chips.map((chip) => (
-            <li key={chip.text}>
-              <span
-                className={`inline-flex rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${
-                  chip.impact
-                    ? "bg-emerald-600 text-white"
-                    : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
-                }`}
-              >
-                {chip.text}
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+            <span>{formatTrackingInning(event)}</span>
+            {isHit ? (
+              <span className="rounded bg-emerald-600 px-1 py-px text-[9px] font-semibold text-white">
+                Contact
               </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+            ) : (
+              <span className="rounded bg-slate-600 px-1 py-px text-[9px] font-semibold text-white">
+                Pitch
+              </span>
+            )}
+            {clock ? (
+              <span className="normal-case tracking-normal text-slate-400">
+                {clock}
+              </span>
+            ) : null}
+          </div>
+
+          <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
+            {batter ? (
+              <PlayerNameLink
+                playerId={resolveNameId(
+                  batting,
+                  pitching,
+                  event.batterId,
+                  event.batterName,
+                )}
+                name={batter}
+                className="font-medium underline-offset-2 hover:underline hover:text-[#41B6E6]"
+              />
+            ) : (
+              <span className="text-slate-500">Unknown batter</span>
+            )}
+            {pitcher ? (
+              <>
+                <span className="text-slate-400"> vs </span>
+                <PlayerNameLink
+                  playerId={resolveNameId(
+                    batting,
+                    pitching,
+                    event.pitcherId,
+                    event.pitcherName,
+                  )}
+                  name={pitcher}
+                  className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+                />
+              </>
+            ) : null}
+          </p>
+
+          {chips.length > 0 ? (
+            <ul
+              className="mt-1.5 flex flex-wrap gap-1"
+              aria-label="TrackMan metrics"
+            >
+              {chips.map((chip) => (
+                <li key={chip.text}>
+                  <span
+                    className={`inline-flex rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${
+                      chip.impact
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                    }`}
+                  >
+                    {chip.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </div>
     </li>
   );
 }
@@ -130,6 +145,7 @@ export function TrackingPanel({
   tracking,
   batting = [],
   pitching = [],
+  isLive = false,
 }: TrackingPanelProps) {
   const [mode, setMode] = useState<TrackingFeedMode>("all");
   const visible = useMemo(
@@ -140,13 +156,17 @@ export function TrackingPanel({
   if (!tracking.length) {
     return (
       <p className="text-sm text-slate-500">
-        TrackMan measurements will appear when live tracking is connected.
+        {isLive
+          ? "Waiting for live TrackMan — this venue may not publish tracking for every game."
+          : "No TrackMan data for this game."}
       </p>
     );
   }
 
   return (
     <div className="space-y-3">
+      <StrikeZonePlot tracking={tracking} />
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
           {visible.length} event{visible.length === 1 ? "" : "s"}

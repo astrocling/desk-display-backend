@@ -17,7 +17,9 @@ import {
   chipsForPlay,
   displayTrackingName,
   filterTrackingFeed,
+  plateLocationCall,
   pitchTypeAbbr,
+  strikeZonePoints,
   trackingForPlateAppearance,
   trackingMetricChips,
 } from "@/lib/wpbl-tracking";
@@ -238,6 +240,21 @@ describe("TrackMan feed helpers", () => {
       label: "X",
       pitchTypeAbbr: "FB",
       exitMph: 30.6,
+    });
+  });
+
+  it("maps plate location and classifies in/out of zone", () => {
+    const tracking = rows();
+    expect(tracking[0]!.plateLocationHeight).toBeCloseTo(1.19814);
+    expect(tracking[0]!.plateLocationSide).toBeCloseTo(0.17601);
+    // height ~1.2 is below the 1.5–3.5 window → out
+    expect(plateLocationCall(tracking[0]!)).toBe("out");
+    const points = strikeZonePoints(tracking);
+    expect(points.length).toBeGreaterThan(0);
+    expect(points[0]).toMatchObject({
+      key: expect.any(String),
+      side: expect.any(Number),
+      height: expect.any(Number),
     });
   });
 });

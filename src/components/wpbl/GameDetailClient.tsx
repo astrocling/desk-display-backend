@@ -364,6 +364,7 @@ export function GameDetailClient({
               tracking={boxscore.tracking ?? []}
               batting={boxscore.batting}
               pitching={boxscore.pitching}
+              isLive={Boolean(isLive)}
             />
           </div>
         ) : boxscore.available ? (
