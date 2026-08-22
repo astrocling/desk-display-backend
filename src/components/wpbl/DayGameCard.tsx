@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import type { WpblScheduleGame, WpblStandingRow } from "@/lib/types/wpbl-display";
 
-import { TeamLogo } from "./TeamLogo";
+import { GameCardMatchup } from "./GameCardMatchup";
 
 export type DayGameCardProps = {
   game: WpblScheduleGame;
@@ -18,42 +18,13 @@ function recordFor(standings: WpblStandingRow[], abbr: string): string | null {
   return `${row.w}-${row.l}`;
 }
 
-function TeamBlock({
-  abbr,
-  name,
-  record,
-  runs,
-  showScore,
-  align,
-}: {
-  abbr: string;
-  name: string;
-  record: string | null;
-  runs: number | null;
-  showScore: boolean;
-  align: "left" | "right";
-}) {
-  return (
-    <div
-      className={`flex min-w-0 flex-1 items-center gap-2 ${
-        align === "right" ? "flex-row-reverse text-right" : ""
-      }`}
-    >
-      <TeamLogo abbr={abbr} size="lg" />
-      <span className="min-w-0">
-        <span className="block text-lg font-semibold tracking-tight">{abbr}</span>
-        <span className="block truncate text-xs text-slate-500">
-          {name}
-          {record ? ` · ${record}` : ""}
-        </span>
-      </span>
-      {showScore ? (
-        <span className="shrink-0 text-3xl font-bold tabular-nums tracking-tight">
-          {runs == null ? "—" : runs}
-        </span>
-      ) : null}
-    </div>
+/** Split "Wed 8/12 6:30 PM" into date + time for a two-line center stack. */
+function splitWhenEt(whenEt: string): { primary: string; secondary: string | null } {
+  const match = whenEt.match(
+    /^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M(?:\s*ET)?)$/i,
   );
+  if (match) return { primary: match[1], secondary: match[2] };
+  return { primary: whenEt, secondary: null };
 }
 
 /** Compact MLB-style card for today's scheduled or final games. */
@@ -63,9 +34,8 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
   const awayRecord = recordFor(standings, game.awayAbbr);
   const homeRecord = recordFor(standings, game.homeAbbr);
 
-  const centerLabel = isFinal
-    ? "Final"
-    : (game.whenEt ?? "TBD");
+  const whenParts =
+    !isFinal && game.whenEt ? splitWhenEt(game.whenEt) : null;
 
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
@@ -85,40 +55,50 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
-          <TeamBlock
-            abbr={game.awayAbbr}
-            name={game.awayName}
-            record={awayRecord}
-            runs={game.awayRuns}
-            showScore={isFinal}
-            align="left"
-          />
-
-          <div className="flex w-[6.5rem] shrink-0 flex-col items-center gap-0.5 text-center">
-            <p
-              className={`text-sm font-semibold tracking-tight ${
-                isScheduled
-                  ? "text-slate-800 dark:text-slate-100"
-                  : "uppercase text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              {centerLabel}
-            </p>
-            {isFinal && game.whenEt ? (
-              <p className="text-[10px] text-slate-500">{game.whenEt}</p>
-            ) : null}
-          </div>
-
-          <TeamBlock
-            abbr={game.homeAbbr}
-            name={game.homeName}
-            record={homeRecord}
-            runs={game.homeRuns}
-            showScore={isFinal}
-            align="right"
-          />
-        </div>
+        <GameCardMatchup
+          away={{
+            abbr: game.awayAbbr,
+            name: game.awayName,
+            record: awayRecord,
+            runs: game.awayRuns,
+          }}
+          home={{
+            abbr: game.homeAbbr,
+            name: game.homeName,
+            record: homeRecord,
+            runs: game.homeRuns,
+          }}
+          showScores={isFinal}
+          center={
+            isFinal ? (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-tight text-slate-600 dark:text-slate-300">
+                  Final
+                </p>
+                {game.whenEt ? (
+                  <p className="text-[10px] text-slate-500">{game.whenEt}</p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p
+                  className={`text-sm font-semibold tracking-tight ${
+                    isScheduled
+                      ? "text-slate-800 dark:text-slate-100"
+                      : "text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  {whenParts?.primary ?? "TBD"}
+                </p>
+                {whenParts?.secondary ? (
+                  <p className="text-xs tabular-nums text-slate-500">
+                    {whenParts.secondary}
+                  </p>
+                ) : null}
+              </>
+            )
+          }
+        />
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-sm dark:border-slate-800">
