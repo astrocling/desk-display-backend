@@ -5,10 +5,11 @@ import type {
   WpblLiveSituation,
   WpblScheduleGame,
 } from "@/lib/types/wpbl-display";
+import { findPlayerLine } from "@/lib/wpbl-player-match";
 import { fetchWpblJson } from "./client";
 import { mapWpblGames, type WpblGamesPayload } from "./games";
 import { mapWpblStatus } from "./status";
-import { teamFromId } from "./teams";
+import { FALLBACK_SEASON_ID, teamFromId } from "./teams";
 
 const BATTING_STAT_KEYS = ["ab", "r", "h", "rbi", "bb", "so", "avg", "obp", "slg"] as const;
 const PITCHING_STAT_KEYS = ["ip", "h", "r", "er", "bb", "so", "era"] as const;
@@ -28,10 +29,22 @@ export interface WpblBoxscoreStatus {
 }
 
 interface WpblBoxscorePlayer {
+  id?: string;
   name: string;
   position?: string;
   hitting?: Record<string, string>;
   pitching?: Record<string, string>;
+}
+
+interface WpblPlayerSeasonStats {
+  player_id: string;
+  batting?: {
+    at_bats?: number;
+    hits?: number;
+  };
+  pitching?: {
+    era?: number;
+  };
 }
 
 interface WpblBoxscoreTeam {
@@ -85,6 +98,7 @@ function mapPlayerLines(
       lines.push({
         side,
         name: player.name,
+        playerId: player.id?.trim() ? player.id.trim() : null,
         position: player.position?.trim() ? player.position : null,
         stats: mapStatGroup(rawStats, statKeys),
       });
@@ -205,6 +219,68 @@ export function mapWpblBoxscore(
   };
 }
 
+/** Format season AVG the same way leaders boards do (trim leading zero). */
+export function formatSeasonAvg(hits: number, atBats: number): string | null {
+  if (!(atBats > 0) || !Number.isFinite(hits) || !Number.isFinite(atBats)) {
+    return null;
+  }
+  return (hits / atBats).toFixed(3).replace(/^0/, "");
+}
+
+export function formatSeasonEra(era: number): string | null {
+  if (!Number.isFinite(era)) return null;
+  return era.toFixed(2);
+}
+
+/**
+ * WPBL boxscore hitting rates (obp/slg/ops) are game-level, not season AVG.
+ * Patch the live batter/pitcher lines with season AVG / ERA from player stats.
+ */
+export async function enrichLiveKeyPlayerSeasonRates(
+  boxscore: WpblGameDetailResponse["boxscore"],
+  situation: WpblLiveSituation | null,
+  seasonId: string,
+): Promise<void> {
+  if (!situation) return;
+
+  const batterLine = findPlayerLine(boxscore.batting, situation.batterName);
+  const pitcherLine = findPlayerLine(boxscore.pitching, situation.pitcherName);
+
+  const jobs: Array<{
+    line: WpblBoxPlayerLine;
+    role: "batter" | "pitcher";
+  }> = [];
+  if (batterLine?.playerId) {
+    jobs.push({ line: batterLine, role: "batter" });
+  }
+  if (pitcherLine?.playerId) {
+    jobs.push({ line: pitcherLine, role: "pitcher" });
+  }
+  if (jobs.length === 0) return;
+
+  await Promise.all(
+    jobs.map(async ({ line, role }) => {
+      try {
+        const stats = await fetchWpblJson<WpblPlayerSeasonStats>(
+          `/v1/players/${encodeURIComponent(line.playerId!)}/stats?season_id=${encodeURIComponent(seasonId)}`,
+        );
+        if (role === "batter") {
+          const avg = formatSeasonAvg(
+            stats.batting?.hits ?? 0,
+            stats.batting?.at_bats ?? 0,
+          );
+          if (avg) line.stats.avg = avg;
+        } else {
+          const era = formatSeasonEra(stats.pitching?.era ?? Number.NaN);
+          if (era) line.stats.era = era;
+        }
+      } catch {
+        // Leave game line without season rate if the stats call fails.
+      }
+    }),
+  );
+}
+
 export async function fetchWpblGameDetail(
   id: string,
 ): Promise<WpblGameDetailResponse> {
@@ -249,6 +325,12 @@ export async function fetchWpblGameDetail(
 
   const status = mapWpblStatus(boxRaw?.boxscore?.game_status ?? gameRaw.status);
   const boxStatus = boxRaw?.boxscore?.status;
+  const situation = mapWpblLiveSituation(status, boxStatus);
+  const seasonId = gameRaw.season_id?.trim() || FALLBACK_SEASON_ID;
+
+  if (situation && boxscore.available) {
+    await enrichLiveKeyPlayerSeasonRates(boxscore, situation, seasonId);
+  }
 
   return {
     updatedAt: new Date().toISOString(),
@@ -256,7 +338,7 @@ export async function fetchWpblGameDetail(
       ...gameMeta,
       status,
       inning: formatInningLabel(status, boxStatus),
-      situation: mapWpblLiveSituation(status, boxStatus),
+      situation,
     },
     boxscore,
   };

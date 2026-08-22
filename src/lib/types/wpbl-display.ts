@@ -119,6 +119,8 @@ export interface WpblGameDetailResponse {
 export interface WpblBoxPlayerLine {
   side: "away" | "home";
   name: string;
+  /** WPBL player id when present on the boxscore payload. */
+  playerId: string | null;
   position: string | null;
   stats: Record<string, string | number | null>; // mapped display columns
 }
