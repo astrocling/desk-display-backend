@@ -65,14 +65,15 @@ function ZoneFrame({
         y={0}
         width={width}
         height={height}
-        className="fill-slate-100 dark:fill-slate-900"
+        fill="var(--wpbl-bg-elevated)"
       />
       <rect
         x={Math.min(zoneTL.x, zoneBR.x)}
         y={Math.min(zoneTL.y, zoneBR.y)}
         width={Math.abs(zoneBR.x - zoneTL.x)}
         height={Math.abs(zoneBR.y - zoneTL.y)}
-        className="fill-white stroke-slate-400 dark:fill-slate-800 dark:stroke-slate-500"
+        fill="var(--wpbl-bg-panel)"
+        stroke="var(--wpbl-muted)"
         strokeWidth={1.25}
       />
       {/* Home plate silhouette under the zone */}
@@ -82,7 +83,7 @@ function ZoneFrame({
             L ${plateTop.x + plateHalf * 0.55} ${plateTop.y + 8}
             L ${plateTop.x} ${plateTop.y + 14}
             L ${plateTop.x - plateHalf * 0.55} ${plateTop.y + 8} Z`}
-        className="fill-slate-300 dark:fill-slate-600"
+        fill="var(--wpbl-rule)"
       />
     </>
   );
@@ -143,13 +144,13 @@ export function StrikeZonePlot({
   return (
     <div className={`space-y-1.5 ${className}`}>
       <div className="flex items-end justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="wpbl-section-label">
           Strike zone
-          <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">
+          <span className="ml-1 font-normal normal-case tracking-normal wpbl-muted">
             · catcher’s view · last {points.length}
           </span>
         </p>
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[10px] wpbl-muted">
           <span className="mr-2 inline-flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
             in
@@ -164,7 +165,7 @@ export function StrikeZonePlot({
         width={width}
         height={height}
         viewBox={`0 0 ${width} ${height}`}
-        className="mx-auto block rounded border border-slate-200 dark:border-slate-700"
+        className="mx-auto block rounded border border-[var(--wpbl-rule)]"
         role="img"
         aria-label={`Strike zone plot of ${points.length} recent pitches`}
       >

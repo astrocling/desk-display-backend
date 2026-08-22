@@ -13,6 +13,7 @@ import {
   shortRunnerLabel,
 } from "@/lib/wpbl-plays";
 import { buildPitchChips } from "@/lib/wpbl-tracking";
+import { WPBL_PANEL, WPBL_PANEL_FOOTER } from "@/lib/wpbl-board";
 
 import { GameCardMatchup } from "./GameCardMatchup";
 import { PitchLog } from "./PitchLog";
@@ -28,16 +29,14 @@ function OutsDots({ outs }: { outs: number | null }) {
   const n = outs == null ? 0 : Math.min(3, Math.max(0, outs));
   return (
     <div className="flex items-center gap-1.5" aria-label={`${n} out`}>
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        Outs
-      </span>
+      <span className="wpbl-section-label text-[10px]">Outs</span>
       {[0, 1, 2].map((i) => (
         <span
           key={i}
           className={`h-2.5 w-2.5 rounded-full ${
             i < n
-              ? "bg-red-600 dark:bg-red-500"
-              : "border border-slate-400 bg-transparent"
+              ? "bg-[var(--wpbl-live)]"
+              : "border border-[var(--wpbl-rule)] bg-transparent"
           }`}
         />
       ))}
@@ -57,8 +56,8 @@ function BasesDiamond({
   const baseClass = (on: boolean) =>
     `absolute h-5 w-5 rotate-45 border ${
       on
-        ? "border-amber-500 bg-amber-400 dark:border-amber-200 dark:bg-amber-300"
-        : "border-slate-400 bg-transparent"
+        ? "border-amber-500 bg-amber-400/80"
+        : "border-[var(--wpbl-rule)] bg-transparent"
     }`;
 
   const linkShort = (full: string | null, short: string | null) => {
@@ -117,7 +116,7 @@ function BasesDiamond({
         <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
       </div>
       {bits.length > 0 ? (
-        <p className="max-w-[11rem] text-center text-[11px] leading-tight text-slate-500">
+        <p className="max-w-[11rem] text-center text-[11px] leading-tight wpbl-muted">
           {bits.map((bit, i) => (
             <span key={bit.key}>
               {i > 0 ? " · " : null}
@@ -168,17 +167,15 @@ function PlayerLine({
         size={36}
       />
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          {label}
-        </p>
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <p className="wpbl-section-label">{label}</p>
+        <p className="truncate text-sm font-semibold text-[var(--wpbl-ink)]">
           <PlayerNameLink
             playerId={playerId}
             name={name}
             className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
           />
         </p>
-        {meta ? <p className="truncate text-xs text-slate-500">{meta}</p> : null}
+        {meta ? <p className="truncate text-xs wpbl-muted">{meta}</p> : null}
       </div>
     </div>
   );
@@ -197,7 +194,7 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
   const isLive = game.status === "live";
 
   return (
-    <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 sm:mx-0 sm:p-4">
+    <div className={`${WPBL_PANEL} sticky top-0 z-20 space-y-3 p-3 sm:p-4`}>
       <GameCardMatchup
         away={{
           abbr: game.awayAbbr,
@@ -214,9 +211,7 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
           <>
             <p
               className={`text-xs font-semibold uppercase tracking-wide ${
-                isLive
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-slate-600 dark:text-slate-300"
+                isLive ? "wpbl-live-label" : "text-[var(--wpbl-ink-secondary)]"
               }`}
             >
               {game.inning ??
@@ -233,7 +228,7 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
             ) : null}
             {situation &&
             (situation.balls != null || situation.strikes != null) ? (
-              <p className="font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
+              <p className="font-mono text-sm tabular-nums text-[var(--wpbl-ink-secondary)]">
                 {situation.balls ?? "—"}–{situation.strikes ?? "—"}
               </p>
             ) : null}
@@ -243,7 +238,7 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
       />
 
       {(keys.pitcherName || keys.batterName || followers.onDeck) && (
-        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-4">
+        <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${WPBL_PANEL_FOOTER} pt-3`}>
           <PlayerLine
             label="Pitching"
             player={
@@ -291,7 +286,7 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
       )}
 
       {pitchLog.chips.length > 0 ? (
-        <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className={`${WPBL_PANEL_FOOTER} pt-3`}>
           <PitchLog
             chips={pitchLog.chips}
             label={pitchLog.label}
