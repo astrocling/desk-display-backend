@@ -259,3 +259,74 @@ export async function refreshWpblPlayer(
     throw error;
   }
 }
+
+/** Unique player ids from the top of each leaders board (for cron warm). */
+export function leaderPlayerIdsToWarm(
+  leaders: WpblLeadersResponse,
+  perBoard = 10,
+): string[] {
+  const boards = [
+    leaders.batting.avg,
+    leaders.batting.hr,
+    leaders.batting.rbi,
+    leaders.batting.h,
+    leaders.pitching.era,
+    leaders.pitching.so,
+    leaders.pitching.w,
+    leaders.pitching.sv,
+  ];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const board of boards) {
+    for (const entry of board.slice(0, perBoard)) {
+      if (!entry.playerId || seen.has(entry.playerId)) continue;
+      seen.add(entry.playerId);
+      ids.push(entry.playerId);
+    }
+  }
+  return ids;
+}
+
+async function mapPool<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const limit = Math.max(1, concurrency);
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < items.length) {
+      const current = index;
+      index += 1;
+      await fn(items[current]!);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+}
+
+/**
+ * Prefetch player detail blobs so leader clicks are Redis-hot.
+ * Soft-fails per player; never throws for individual upstream errors.
+ */
+export async function warmWpblPlayers(
+  ids: string[],
+  seasonId: string = FALLBACK_SEASON_ID,
+  concurrency = 4,
+): Promise<{ warmed: number; failed: number }> {
+  let warmed = 0;
+  let failed = 0;
+  await mapPool(ids, concurrency, async (id) => {
+    try {
+      await refreshWpblPlayer(id, seasonId);
+      warmed += 1;
+    } catch {
+      failed += 1;
+    }
+  });
+  return { warmed, failed };
+}

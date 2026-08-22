@@ -7,11 +7,13 @@ import {
 import { fetchWpblPlayerDetail } from "@/lib/fetchers/wpbl-v1/player";
 import { FALLBACK_SEASON_ID } from "@/lib/fetchers/wpbl-v1/teams";
 import { getRedis } from "@/lib/redis";
+import { scheduleBackground } from "@/lib/schedule-background";
 import type {
   WpblLeagueResponse,
   WpblPlayerDetailResponse,
 } from "@/lib/types/wpbl-display";
 import { wpblApiErrorResponse } from "@/lib/wpbl-api-error";
+import { jsonWithCache, WPBL_API_CACHE_CONTROL } from "@/lib/wpbl-cache-headers";
 
 function playerFetchErrorResponse(error: unknown): Response {
   if (error instanceof WpblHttpError) {
@@ -72,7 +74,16 @@ export async function GET(
     }
 
     const now = new Date();
-    if (!blob || shouldRefreshWpblPlayer(blob, now)) {
+    const stale = Boolean(blob && shouldRefreshWpblPlayer(blob, now));
+
+    // Stale-while-revalidate: serve last-good immediately, refresh after response.
+    if (blob && stale && redisOk) {
+      const seasonId = blob.seasonId || (await resolveSeasonId());
+      scheduleBackground(() => refreshWpblPlayer(id, seasonId).then(() => undefined));
+      return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
+    }
+
+    if (!blob || stale) {
       try {
         const seasonId = blob?.seasonId ?? (await resolveSeasonId());
         blob = redisOk
@@ -80,13 +91,13 @@ export async function GET(
           : await fetchWpblPlayerDetail(id, seasonId);
       } catch (error) {
         if (blob) {
-          return Response.json(blob);
+          return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
         }
         return playerFetchErrorResponse(error);
       }
     }
 
-    return Response.json(blob);
+    return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
   } catch (error) {
     return wpblApiErrorResponse(error);
   }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   WpblBoxPlayerLine,
+  WpblGameDetailResponse,
   WpblGameStatus,
 } from "@/lib/types/wpbl-display";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
@@ -180,17 +181,27 @@ function LatestPlayBanner({
 
 export type GameDetailClientProps = {
   gameId: string;
+  /** Redis-hot blob from the server so the page paints without a client round-trip. */
+  initialData?: WpblGameDetailResponse | null;
 };
 
-export function GameDetailClient({ gameId }: GameDetailClientProps) {
+export function GameDetailClient({
+  gameId,
+  initialData = null,
+}: GameDetailClientProps) {
   const searchParams = useSearchParams();
   const initialView: DetailView =
     searchParams.get("view") === "box" ? "box" : "gameday";
 
   const [view, setView] = useState<DetailView>(initialView);
-  const { data, loading, notFound, error, connection } = useWpblLiveGame(gameId);
+  const { data, loading, notFound, error, connection } = useWpblLiveGame(
+    gameId,
+    { initialData },
+  );
 
   useEffect(() => {
+    // replaceState does not update useSearchParams; keep tab in sync with the URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- URL ↔ tab sync
     setView(searchParams.get("view") === "box" ? "box" : "gameday");
   }, [searchParams]);
 

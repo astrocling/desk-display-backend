@@ -20,6 +20,8 @@ const POLL_CONNECTED_MS = 45_000;
 export type UseWpblLiveGameOptions = {
   /** When false, only the initial HTTP fetch runs (no WS / live poll). */
   enabled?: boolean;
+  /** Redis-hot blob from the server so the UI can paint before the first fetch. */
+  initialData?: WpblGameDetailResponse | null;
 };
 
 export type UseWpblLiveGameResult = {
@@ -36,14 +38,15 @@ export function useWpblLiveGame(
   options: UseWpblLiveGameOptions = {},
 ): UseWpblLiveGameResult {
   const enabled = options.enabled ?? true;
-  const [data, setData] = useState<WpblGameDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialData = options.initialData ?? null;
+  const [data, setData] = useState<WpblGameDetailResponse | null>(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<WpblLiveConnection>("idle");
 
-  const hasDataRef = useRef(false);
-  const dataRef = useRef<WpblGameDetailResponse | null>(null);
+  const hasDataRef = useRef(Boolean(initialData));
+  const dataRef = useRef<WpblGameDetailResponse | null>(initialData);
   const connectionRef = useRef<WpblLiveConnection>("idle");
 
   useEffect(() => {
@@ -56,7 +59,9 @@ export function useWpblLiveGame(
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/wpbl/games/${gameId}`);
+      const res = await fetch(`/api/wpbl/games/${gameId}`, {
+        cache: "no-store",
+      });
 
       if (res.status === 404) {
         if (!hasDataRef.current) {
@@ -100,17 +105,23 @@ export function useWpblLiveGame(
     }
   }, [gameId]);
 
-  // Initial HTTP load (and whenever the game id changes).
+  // Initial HTTP load (and whenever the game id / SSR seed changes).
   useEffect(() => {
     let cancelled = false;
-    hasDataRef.current = false;
-    setData(null);
-    setNotFound(false);
-    setError(null);
-    setConnection("idle");
+    const seeded = Boolean(initialData);
+    hasDataRef.current = seeded;
+    dataRef.current = initialData;
+
+    if (!seeded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on game id change
+      setData(null);
+      setNotFound(false);
+      setError(null);
+      setConnection("idle");
+    }
 
     void (async () => {
-      setLoading(true);
+      if (!seeded) setLoading(true);
       await load();
       if (!cancelled) setLoading(false);
     })();
@@ -118,7 +129,7 @@ export function useWpblLiveGame(
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [initialData, load]);
 
   const isLive = data?.game.status === "live";
   const liveActive = enabled && Boolean(isLive);

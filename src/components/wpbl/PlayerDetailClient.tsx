@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   WpblPlayerBattingSeason,
@@ -313,39 +313,60 @@ function pitchingChips(p: WpblPlayerPitchingSeason) {
 
 export type PlayerDetailClientProps = {
   playerId: string;
+  /** Redis-hot blob from the server so the page paints without a client round-trip. */
+  initialData?: WpblPlayerDetailResponse | null;
 };
 
-export function PlayerDetailClient({ playerId }: PlayerDetailClientProps) {
-  const [data, setData] = useState<WpblPlayerDetailResponse | null>(null);
+function preferredTab(data: WpblPlayerDetailResponse): SeasonTab {
+  if (data.season.batting) return "hitting";
+  if (data.season.pitching) return "pitching";
+  if (data.season.fielding) return "fielding";
+  return "hitting";
+}
+
+export function PlayerDetailClient({
+  playerId,
+  initialData = null,
+}: PlayerDetailClientProps) {
+  const [data, setData] = useState<WpblPlayerDetailResponse | null>(initialData);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<SeasonTab>("hitting");
+  const [loading, setLoading] = useState(!initialData);
+  const [tab, setTab] = useState<SeasonTab>(
+    initialData ? preferredTab(initialData) : "hitting",
+  );
+  const hasDataRef = useRef(Boolean(initialData));
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/wpbl/players/${encodeURIComponent(playerId)}`);
+      const res = await fetch(`/api/wpbl/players/${encodeURIComponent(playerId)}`, {
+        cache: "no-store",
+      });
 
       if (res.status === 404) {
-        setNotFound(true);
-        setData(null);
-        setError(null);
+        if (!hasDataRef.current) {
+          setNotFound(true);
+          setData(null);
+          setError(null);
+        }
         return;
       }
 
       if (!res.ok) {
-        let detail: string | null = null;
-        try {
-          const body = (await res.json()) as { error?: unknown };
-          detail =
-            typeof body.error === "string" && body.error.trim()
-              ? body.error.trim()
-              : null;
-        } catch {
-          detail = null;
+        if (!hasDataRef.current) {
+          let detail: string | null = null;
+          try {
+            const body = (await res.json()) as { error?: unknown };
+            detail =
+              typeof body.error === "string" && body.error.trim()
+                ? body.error.trim()
+                : null;
+          } catch {
+            detail = null;
+          }
+          setError(detail ?? `Player fetch failed (${res.status})`);
+          setData(null);
         }
-        setError(detail ?? `Player fetch failed (${res.status})`);
-        setData(null);
         return;
       }
 
@@ -353,31 +374,24 @@ export function PlayerDetailClient({ playerId }: PlayerDetailClientProps) {
       setData(json);
       setNotFound(false);
       setError(null);
-
-      const prefer: SeasonTab =
-        json.season.batting
-          ? "hitting"
-          : json.season.pitching
-            ? "pitching"
-            : json.season.fielding
-              ? "fielding"
-              : "hitting";
-      setTab(prefer);
+      setTab(preferredTab(json));
+      hasDataRef.current = true;
     } catch {
-      setError("Player fetch failed");
-      setData(null);
+      if (!hasDataRef.current) {
+        setError("Player fetch failed");
+        setData(null);
+      }
     }
   }, [playerId]);
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount for player id route
-    setData(null);
-    setNotFound(false);
-    setError(null);
 
     void (async () => {
-      setLoading(true);
+      // When we already painted from Redis, revalidate quietly in the background.
+      if (!initialData) {
+        setLoading(true);
+      }
       await load();
       if (!cancelled) setLoading(false);
     })();
@@ -385,7 +399,7 @@ export function PlayerDetailClient({ playerId }: PlayerDetailClientProps) {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [initialData, load]);
 
   if (loading) {
     return <p className="mt-8 text-sm text-slate-500">Loading…</p>;

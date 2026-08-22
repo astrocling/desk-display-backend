@@ -8,6 +8,7 @@ import { FALLBACK_SEASON_ID } from "@/lib/fetchers/wpbl-v1/teams";
 import { getRedis } from "@/lib/redis";
 import type { WpblLeadersResponse } from "@/lib/types/wpbl-display";
 import { wpblApiErrorResponse } from "@/lib/wpbl-api-error";
+import { jsonWithCache, WPBL_API_CACHE_CONTROL } from "@/lib/wpbl-cache-headers";
 
 async function resolveSeasonId(): Promise<string> {
   try {
@@ -32,7 +33,7 @@ export async function GET() {
         REDIS_KEYS.wpblLeaders,
       );
       if (cached) {
-        return Response.json(cached);
+        return jsonWithCache(cached, WPBL_API_CACHE_CONTROL);
       }
     } catch {
       // Fall through to live build when Redis is unset/unreachable.
@@ -42,7 +43,7 @@ export async function GET() {
     const blob = await refreshWpblLeaders(seasonId).catch(() =>
       buildWpblLeadersBlob(seasonId),
     );
-    return Response.json(blob);
+    return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
   } catch (error) {
     return wpblApiErrorResponse(error);
   }
