@@ -6,6 +6,7 @@ import type {
 } from "@/lib/types/wpbl-display";
 
 import { DayGameCard } from "./DayGameCard";
+import { FinalGameCard } from "./FinalGameCard";
 import { LiveGameCard } from "./LiveGameCard";
 import { useWpblLiveGame } from "./useWpblLiveGame";
 
@@ -40,6 +41,31 @@ function LiveGameDetailCard({
   );
 }
 
+function FinalGameDetailCard({
+  game,
+  standings,
+}: {
+  game: WpblScheduleGame;
+  standings: WpblStandingRow[];
+}) {
+  const { data, loading } = useWpblLiveGame(game.id);
+
+  if (data) {
+    return <FinalGameCard detail={data} standings={standings} />;
+  }
+
+  // Schedule row while the detail blob loads (or if fetch soft-fails).
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500 dark:border-slate-600">
+        Loading {game.awayAbbr} @ {game.homeAbbr}…
+      </div>
+    );
+  }
+
+  return <DayGameCard game={game} standings={standings} />;
+}
+
 export function TodaysGamesSection({
   games,
   standings,
@@ -58,6 +84,16 @@ export function TodaysGamesSection({
         {games.map((game) => {
           if (game.status === "live") {
             return <LiveGameDetailCard key={game.id} game={game} />;
+          }
+
+          if (game.status === "final") {
+            return (
+              <FinalGameDetailCard
+                key={game.id}
+                game={game}
+                standings={standings}
+              />
+            );
           }
 
           return (
