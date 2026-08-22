@@ -9,6 +9,7 @@ import type {
   WpblTrackingEvent,
 } from "@/lib/types/wpbl-display";
 import { findPlayerLine } from "@/lib/wpbl-player-match";
+import { normalizePitchEvent } from "@/lib/wpbl-plays";
 import { formatWpblPosition } from "@/lib/wpbl-position";
 import { fetchWpblJson } from "./client";
 import { mapWpblGames, type WpblGamesPayload } from "./games";
@@ -310,14 +311,16 @@ function mapPitchEvents(
       typeof event.sequence === "number" && Number.isFinite(event.sequence)
         ? event.sequence
         : null;
-    const description = event.description?.trim() || event.type?.trim() || "";
-    if (sequence == null || !description) continue;
-    events.push({
-      sequence,
-      code: event.code?.trim() || "",
-      type: event.type?.trim() || "",
-      description,
-    });
+    if (sequence == null) continue;
+    events.push(
+      normalizePitchEvent({
+        sequence,
+        code: event.code?.trim() || "",
+        type: event.type?.trim() || "",
+        description:
+          event.description?.trim() || event.type?.trim() || "",
+      }),
+    );
   }
   return events.sort((a, b) => a.sequence - b.sequence);
 }
