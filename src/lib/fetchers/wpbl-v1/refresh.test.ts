@@ -100,7 +100,7 @@ function emptyLeaders(): WpblLeadersResponse {
     updatedAt: "2026-08-21T12:00:00.000Z",
     seasonId: "c9sgab9f9yx00z75",
     partial: true,
-    qualifiers: { battingMinAb: 10 },
+    qualifiers: { battingMinAb: 10, pitchingMinOuts: 9 },
     batting: { avg: [], hr: [], rbi: [], h: [] },
     pitching: { era: [], so: [], w: [], sv: [] },
   };

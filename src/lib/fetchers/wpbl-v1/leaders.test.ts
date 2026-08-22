@@ -7,6 +7,7 @@ import {
   buildWpblLeaders,
   LEADERS_BOARD_STORE_LIMIT,
   mapPlayerStatsToInput,
+  PITCHING_MIN_OUTS,
   rosterPlayerName,
 } from "./leaders";
 
@@ -33,6 +34,13 @@ const players = [
     teamId: "fttth861nft1j2s7",
     batting: { at_bats: 0, hits: 0, home_runs: 0, rbi: 0 },
     pitching: { outs_pitched: 30, era: 1.8, strikeouts: 10, wins: 2, saves: 0 },
+  },
+  {
+    playerId: "p4",
+    name: "Reliever",
+    teamId: "vhubhz8li07tmgq8",
+    batting: { at_bats: 0, hits: 0, home_runs: 0, rbi: 0 },
+    pitching: { outs_pitched: 2, era: 0, strikeouts: 1, wins: 0, saves: 0 },
   },
 ];
 
@@ -61,7 +69,15 @@ describe("buildWpblLeaders", () => {
       teamAbbr: "NY",
     });
     expect(leaders.qualifiers.battingMinAb).toBe(10);
+    expect(leaders.qualifiers.pitchingMinOuts).toBe(9);
     expect(leaders.partial).toBe(false);
+  });
+
+  it("excludes sub-qualifier ERA but still ranks SO", () => {
+    const leaders = buildWpblLeaders(players);
+    expect(PITCHING_MIN_OUTS).toBe(9);
+    expect(leaders.pitching.era.map((e) => e.playerId)).toEqual(["p3"]);
+    expect(leaders.pitching.so.map((e) => e.playerId)).toContain("p4");
   });
 
   it("stores up to 50 entries per board", () => {

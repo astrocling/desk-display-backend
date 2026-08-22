@@ -8,6 +8,8 @@ import {
 import { FALLBACK_SEASON_ID, teamFromId, WPBL_TEAMS } from "./teams";
 
 export const BATTING_MIN_AB = 10;
+/** Minimum outs pitched for ERA board (~3 IP). */
+export const PITCHING_MIN_OUTS = 9;
 /** Stored per board in Redis; UI shows fewer after team filter. */
 export const LEADERS_BOARD_STORE_LIMIT = 50;
 
@@ -113,7 +115,10 @@ function buildBoard(
 export function buildWpblLeaders(players: WpblPlayerSeasonInput[]): WpblLeadersBuild {
   return {
     partial: false,
-    qualifiers: { battingMinAb: BATTING_MIN_AB },
+    qualifiers: {
+      battingMinAb: BATTING_MIN_AB,
+      pitchingMinOuts: PITCHING_MIN_OUTS,
+    },
     batting: {
       avg: buildBoard(players, (player) => {
         if (player.batting.at_bats < BATTING_MIN_AB) return null;
@@ -140,7 +145,7 @@ export function buildWpblLeaders(players: WpblPlayerSeasonInput[]): WpblLeadersB
       era: buildBoard(
         players,
         (player) => {
-          if (player.pitching.outs_pitched <= 0) return null;
+          if (player.pitching.outs_pitched < PITCHING_MIN_OUTS) return null;
           return {
             value: formatEra(player.pitching.era),
             sortValue: player.pitching.era,

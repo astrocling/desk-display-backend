@@ -24,7 +24,7 @@ type CategoryDef = {
   id: string;
   label: string;
   group: StatGroup;
-  showQualifier?: boolean;
+  qualifierNote?: (qualifiers: WpblLeadersResponse["qualifiers"]) => string;
   getEntries: (leaders: WpblLeadersResponse) => WpblLeaderEntry[];
 };
 
@@ -33,7 +33,7 @@ const CATEGORIES: CategoryDef[] = [
     id: "avg",
     label: "AVG",
     group: "hitting",
-    showQualifier: true,
+    qualifierNote: (q) => `min ${q.battingMinAb} AB for AVG`,
     getEntries: (l) => l.batting.avg,
   },
   {
@@ -58,6 +58,8 @@ const CATEGORIES: CategoryDef[] = [
     id: "era",
     label: "ERA",
     group: "pitching",
+    qualifierNote: (q) =>
+      `min ${(q.pitchingMinOuts / 3).toFixed(1).replace(/\.0$/, "")} IP for ERA`,
     getEntries: (l) => l.pitching.era,
   },
   {
@@ -135,7 +137,7 @@ export function LeadersBoards({
   const active =
     groupCategories.find((c) => c.id === categoryId) ?? groupCategories[0];
   const entries = filterEntries(active.getEntries(leaders), teamFilter, limit);
-  const minAb = leaders.qualifiers.battingMinAb;
+  const qualifierNote = active.qualifierNote?.(leaders.qualifiers);
 
   return (
     <div className="wpbl-panel">
@@ -164,10 +166,8 @@ export function LeadersBoards({
         })}
       </div>
 
-      {active.showQualifier ? (
-        <p className="px-4 pt-2 text-[11px] wpbl-muted">
-          min {minAb} AB for AVG
-        </p>
+      {qualifierNote ? (
+        <p className="px-4 pt-2 text-[11px] wpbl-muted">{qualifierNote}</p>
       ) : null}
 
       {entries.length === 0 ? (

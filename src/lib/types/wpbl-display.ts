@@ -46,6 +46,8 @@ export interface WpblLeadersResponse {
   qualifiers: {
     /** Floor for AVG (and any other rate batting boards). Default **10 AB**. */
     battingMinAb: number;
+    /** Floor for ERA board in outs pitched. Default **9 outs (~3 IP)**. */
+    pitchingMinOuts: number;
   };
   batting: {
     avg: WpblLeaderEntry[];
