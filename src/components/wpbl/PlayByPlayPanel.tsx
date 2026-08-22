@@ -2,20 +2,38 @@
 
 import { useMemo, useState } from "react";
 
-import type { WpblPlay } from "@/lib/types/wpbl-display";
+import type { WpblBoxPlayerLine, WpblPlay } from "@/lib/types/wpbl-display";
+import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import {
   filterWpblPlays,
   formatPlayInning,
   pitchesFromPlay,
 } from "@/lib/wpbl-plays";
 
+import {
+  linkifyPlayerNames,
+  rosterFromBoxLines,
+} from "./linkifyPlayerNames";
 import { PitchLog } from "./PitchLog";
+import { PlayerNameLink } from "./PlayerNameLink";
 
 export type PlayByPlayPanelProps = {
   plays: WpblPlay[];
+  batting?: WpblBoxPlayerLine[];
+  pitching?: WpblBoxPlayerLine[];
 };
 
-function PlayRow({ play }: { play: WpblPlay }) {
+function PlayRow({
+  play,
+  batting,
+  pitching,
+  roster,
+}: {
+  play: WpblPlay;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
+  roster: ReturnType<typeof rosterFromBoxLines>;
+}) {
   const pitches = pitchesFromPlay(play);
 
   return (
@@ -36,9 +54,37 @@ function PlayRow({ play }: { play: WpblPlay }) {
               : "Scoring"}
           </span>
         ) : null}
+        {play.batterName ? (
+          <span className="normal-case tracking-normal">
+            AB{" "}
+            <PlayerNameLink
+              playerId={resolvePlayerIdFromBox(
+                batting,
+                pitching,
+                play.batterName,
+              )}
+              name={play.batterName}
+              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            />
+          </span>
+        ) : null}
+        {play.pitcherName ? (
+          <span className="normal-case tracking-normal">
+            P{" "}
+            <PlayerNameLink
+              playerId={resolvePlayerIdFromBox(
+                batting,
+                pitching,
+                play.pitcherName,
+              )}
+              name={play.pitcherName}
+              className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+            />
+          </span>
+        ) : null}
       </div>
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {play.narrative}
+        {linkifyPlayerNames(play.narrative, roster)}
       </p>
       {pitches.length > 0 ? (
         <div className="mt-1.5">
@@ -49,9 +95,17 @@ function PlayRow({ play }: { play: WpblPlay }) {
   );
 }
 
-export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
+export function PlayByPlayPanel({
+  plays,
+  batting = [],
+  pitching = [],
+}: PlayByPlayPanelProps) {
   const [mode, setMode] = useState<"all" | "scoring">("all");
   const visible = useMemo(() => filterWpblPlays(plays, mode), [plays, mode]);
+  const roster = useMemo(
+    () => rosterFromBoxLines(batting, pitching),
+    [batting, pitching],
+  );
 
   if (!plays.length) {
     return (
@@ -104,7 +158,13 @@ export function PlayByPlayPanel({ plays }: PlayByPlayPanelProps) {
       ) : (
         <ul className="max-h-[min(28rem,60vh)] overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
           {visible.map((play) => (
-            <PlayRow key={play.sequence} play={play} />
+            <PlayRow
+              key={play.sequence}
+              play={play}
+              batting={batting}
+              pitching={pitching}
+              roster={roster}
+            />
           ))}
         </ul>
       )}

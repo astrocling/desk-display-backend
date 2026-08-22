@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
+  WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblGameStatus,
 } from "@/lib/types/wpbl-display";
@@ -13,6 +14,10 @@ import { latestWpblPlay, pitchesFromPlay } from "@/lib/wpbl-plays";
 import { BoxTables } from "./BoxTables";
 import { GamedayScoreboard } from "./GamedayScoreboard";
 import { LineScore } from "./LineScore";
+import {
+  linkifyPlayerNames,
+  rosterFromBoxLines,
+} from "./linkifyPlayerNames";
 import { PitchLog } from "./PitchLog";
 import { PlayByPlayPanel } from "./PlayByPlayPanel";
 
@@ -102,10 +107,15 @@ function ViewTabs({
 
 function LatestPlayBanner({
   play,
+  batting,
+  pitching,
 }: {
   play: NonNullable<ReturnType<typeof latestWpblPlay>>;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
 }) {
   const pitches = pitchesFromPlay(play);
+  const roster = rosterFromBoxLines(batting, pitching);
 
   return (
     <div
@@ -125,7 +135,7 @@ function LatestPlayBanner({
         {play.isScoringPlay ? " · Scoring" : ""}
       </p>
       <p className="text-sm leading-snug text-slate-800 dark:text-slate-100">
-        {play.narrative}
+        {linkifyPlayerNames(play.narrative, roster)}
       </p>
       {pitches.length > 0 ? (
         <div className="mt-2">
@@ -316,7 +326,13 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
 
       <GamedayScoreboard detail={data} />
 
-      {lastPlay ? <LatestPlayBanner play={lastPlay} /> : null}
+      {lastPlay ? (
+        <LatestPlayBanner
+          play={lastPlay}
+          batting={boxscore.batting}
+          pitching={boxscore.pitching}
+        />
+      ) : null}
 
       {boxscore.available && boxscore.lineScore ? (
         <section>
@@ -342,7 +358,11 @@ export function GameDetailClient({ gameId }: GameDetailClientProps) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
               Play-by-play
             </h2>
-            <PlayByPlayPanel plays={boxscore.plays} />
+            <PlayByPlayPanel
+              plays={boxscore.plays}
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+            />
           </div>
         ) : boxscore.available ? (
           <div>

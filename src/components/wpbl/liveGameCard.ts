@@ -43,9 +43,11 @@ export function joinStatParts(parts: Array<string | null>): string | null {
 
 export type LiveKeyPlayers = {
   pitcherName: string | null;
+  pitcherId: string | null;
   pitcherTeamAbbr: string | null;
   pitcherStats: string | null;
   batterName: string | null;
+  batterId: string | null;
   batterTeamAbbr: string | null;
   batterStats: string | null;
 };
@@ -68,6 +70,7 @@ export function keyPlayersFromDetail(
 
   return {
     pitcherName: sit?.pitcherName ?? null,
+    pitcherId: pitcherLine?.playerId ?? null,
     pitcherTeamAbbr:
       pitchingSide === "away"
         ? detail.game.awayAbbr
@@ -83,6 +86,7 @@ export function keyPlayersFromDetail(
       pitcherEraLine(pitcherLine),
     ]),
     batterName: sit?.batterName ?? null,
+    batterId: batterLine?.playerId ?? null,
     batterTeamAbbr:
       battingSide === "away"
         ? detail.game.awayAbbr

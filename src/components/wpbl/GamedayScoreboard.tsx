@@ -1,10 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import type {
   WpblBoxPlayerLine,
   WpblGameDetailResponse,
   WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
+import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
 import {
   atBatPitchLog,
   lineupFollowers,
@@ -12,6 +15,7 @@ import {
 } from "@/lib/wpbl-plays";
 
 import { PitchLog } from "./PitchLog";
+import { PlayerNameLink } from "./PlayerNameLink";
 import { TeamLogo } from "./TeamLogo";
 import { keyPlayersFromDetail } from "./liveGameCard";
 
@@ -40,7 +44,15 @@ function OutsDots({ outs }: { outs: number | null }) {
   );
 }
 
-function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
+function BasesDiamond({
+  situation,
+  batting,
+  pitching,
+}: {
+  situation: WpblLiveSituation;
+  batting: WpblBoxPlayerLine[];
+  pitching: WpblBoxPlayerLine[];
+}) {
   const baseClass = (on: boolean) =>
     `absolute h-5 w-5 rotate-45 border ${
       on
@@ -48,9 +60,32 @@ function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
         : "border-slate-400 bg-transparent"
     }`;
 
+  const linkShort = (full: string | null, short: string | null) => {
+    if (!full || !short) return null;
+    return (
+      <PlayerNameLink
+        playerId={resolvePlayerIdFromBox(batting, pitching, full)}
+        name={short}
+        className="underline-offset-2 hover:underline hover:text-[#41B6E6]"
+      />
+    );
+  };
+
   const first = shortRunnerLabel(situation.runnerFirst);
   const second = shortRunnerLabel(situation.runnerSecond);
   const third = shortRunnerLabel(situation.runnerThird);
+
+  const bits = [
+    third
+      ? { key: "3b", node: <>3B {linkShort(situation.runnerThird, third)}</> }
+      : null,
+    second
+      ? { key: "2b", node: <>2B {linkShort(situation.runnerSecond, second)}</> }
+      : null,
+    first
+      ? { key: "1b", node: <>1B {linkShort(situation.runnerFirst, first)}</> }
+      : null,
+  ].filter(Boolean) as Array<{ key: string; node: ReactNode }>;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -80,17 +115,16 @@ function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
         <span className={`${baseClass(situation.onThird)} left-0 top-1/2 -translate-y-1/2`} />
         <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
       </div>
-      {(first || second || third) && (
+      {bits.length > 0 ? (
         <p className="max-w-[11rem] text-center text-[11px] leading-tight text-slate-500">
-          {[
-            third ? `3B ${third}` : null,
-            second ? `2B ${second}` : null,
-            first ? `1B ${first}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+          {bits.map((bit, i) => (
+            <span key={bit.key}>
+              {i > 0 ? " · " : null}
+              {bit.node}
+            </span>
+          ))}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -128,11 +162,13 @@ function PlayerLine({
   label,
   player,
   fallbackName,
+  fallbackPlayerId,
   stats,
 }: {
   label: string;
   player: WpblBoxPlayerLine | null;
   fallbackName?: string | null;
+  fallbackPlayerId?: string | null;
   stats?: string | null;
 }) {
   const name = player?.name ?? fallbackName;
@@ -151,7 +187,11 @@ function PlayerLine({
         {label}
       </p>
       <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-        {name}
+        <PlayerNameLink
+          playerId={player?.playerId ?? fallbackPlayerId}
+          name={name}
+          className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[#41B6E6]"
+        />
       </p>
       {meta ? <p className="truncate text-xs text-slate-500">{meta}</p> : null}
     </div>
@@ -189,7 +229,13 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
                 ? "Final"
                 : (game.whenEt ?? "Pregame"))}
           </p>
-          {situation ? <BasesDiamond situation={situation} /> : null}
+          {situation ? (
+            <BasesDiamond
+              situation={situation}
+              batting={boxscore.batting}
+              pitching={boxscore.pitching}
+            />
+          ) : null}
           {situation &&
           (situation.balls != null || situation.strikes != null) ? (
             <p className="font-mono text-sm tabular-nums text-slate-700 dark:text-slate-200">
@@ -213,12 +259,14 @@ export function GamedayScoreboard({ detail }: GamedayScoreboardProps) {
             label="Pitching"
             player={null}
             fallbackName={keys.pitcherName}
+            fallbackPlayerId={keys.pitcherId}
             stats={keys.pitcherStats}
           />
           <PlayerLine
             label="At bat"
             player={followers.batter}
             fallbackName={keys.batterName}
+            fallbackPlayerId={keys.batterId}
             stats={keys.batterStats}
           />
           <PlayerLine label="On deck" player={followers.onDeck} />
