@@ -6,6 +6,7 @@ import type {
   WpblGameDetailResponse,
   WpblLiveSituation,
 } from "@/lib/types/wpbl-display";
+import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
 import { latestWpblPlay, shortRunnerLabel } from "@/lib/wpbl-plays";
 
 import { LineScore } from "./LineScore";
@@ -14,6 +15,8 @@ import { keyPlayersFromDetail } from "./liveGameCard";
 
 export type LiveGameCardProps = {
   detail: WpblGameDetailResponse;
+  /** Live websocket status when the card is driven by the official feed. */
+  connection?: WpblLiveConnection;
 };
 
 function BasesDiamond({ situation }: { situation: WpblLiveSituation }) {
@@ -147,7 +150,7 @@ function KeyPlayer({
   );
 }
 
-export function LiveGameCard({ detail }: LiveGameCardProps) {
+export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
   const { game, boxscore } = detail;
   const situation = game.situation;
   const keys = keyPlayersFromDetail(detail);
@@ -163,6 +166,15 @@ export function LiveGameCard({ detail }: LiveGameCardProps) {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
             </span>
             Live
+            {connection === "live" ? (
+              <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                · feed
+              </span>
+            ) : connection === "reconnecting" || connection === "connecting" ? (
+              <span className="font-medium text-amber-700 dark:text-amber-400">
+                · syncing
+              </span>
+            ) : null}
           </span>
           {game.venue ? (
             <span className="truncate text-xs text-slate-500">{game.venue}</span>
