@@ -85,7 +85,7 @@ export function FinalGameCard({ detail, standings }: FinalGameCardProps) {
       </div>
 
       {boxscore.available && boxscore.lineScore ? (
-        <div className={`px-2 py-2 ${WPBL_PANEL_FOOTER}`}>
+        <div className={WPBL_PANEL_FOOTER}>
           <LineScore lineScore={boxscore.lineScore} compact />
         </div>
       ) : null}

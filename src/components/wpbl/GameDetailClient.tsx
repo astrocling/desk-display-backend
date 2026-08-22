@@ -312,9 +312,7 @@ export function GameDetailClient({
 
       {boxscore.available && boxscore.lineScore ? (
         <section>
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Line score
-          </h2>
+          <h2 className="wpbl-section-label mb-3">Line score</h2>
           <LineScore
             lineScore={boxscore.lineScore}
             highlightInning={situation?.inningNumber}
