@@ -17,20 +17,17 @@ const SIZE_CLASS = {
   lg: "h-14 w-14",
 } as const;
 
-/**
- * Marks already fill most of the PNG canvas; a light scale + tight inset
- * makes them dominate the chip (~live-card proportions) while overflow-hidden
- * keeps anything from spilling past the circle.
- */
-const MARK_CLASS = "h-full w-full scale-[1.12] object-contain";
-
 export type TeamLogoProps = {
   abbr: string;
   size?: keyof typeof SIZES;
   className?: string;
 };
 
-/** Team mark on a team-color chip — fills the circle, never overflows it. */
+/**
+ * Team mark on a team-color chip.
+ * ~7% inset keeps a hair of plate visible (no edge clipping) while the mark
+ * still dominates the circle.
+ */
 export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
   const brand = getWpblTeamBrand(abbr);
@@ -41,7 +38,7 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full p-[3%] ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full p-[7%] ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
       style={{ backgroundColor: wpblTeamBadgeBg(abbr) }}
       title={brand?.fullName}
     >
@@ -52,7 +49,7 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
         width={px}
         height={px}
         decoding="async"
-        className={MARK_CLASS}
+        className="h-full w-full object-contain"
         onError={() => setFailedSrc(src)}
       />
     </span>
