@@ -7,6 +7,8 @@ import {
   buildPlayTimeline,
   formatBasesState,
   isAdministrativePlay,
+  narrativeLeadName,
+  playFocusName,
   playTypeLabel,
 } from "./wpbl-play-display";
 
@@ -147,6 +149,7 @@ describe("buildPlayTimeline", () => {
     expect(items.map((item) => item.kind)).toEqual([
       "play",
       "bases",
+      "at_bat",
       "play",
       "bases",
     ]);
@@ -156,13 +159,113 @@ describe("buildPlayTimeline", () => {
       play: { sequence: 12 },
       key: "||",
     });
-    expect(items[2]).toMatchObject({ kind: "play", play: { sequence: 11 } });
-    expect(items[3]).toMatchObject({
+    expect(items[2]).toMatchObject({
+      kind: "at_bat",
+      batterName: "Next Batter",
+      play: { sequence: 12 },
+    });
+    expect(items[3]).toMatchObject({ kind: "play", play: { sequence: 11 } });
+    expect(items[4]).toMatchObject({
       kind: "bases",
       play: { sequence: 11 },
       key: "|Runner Two|Runner Three",
     });
     expect(formatBasesState(hr)).toBe("Two on 2nd, Three on 3rd");
+  });
+
+  it("inserts an at-bat marker so pickoff/steal sit after the next batter starts", () => {
+    // Live shape: Benites singles, then pickoff + steal while O'Sullivan is up.
+    const steal = play({
+      sequence: 72,
+      narrative: "Denae Benites stole second.",
+      eventType: "stolen_base",
+      batterName: "Claire O'Sullivan",
+      runnerFirst: null,
+      runnerSecond: "Denae Benites",
+      runnerThird: null,
+    });
+    const pickoff = play({
+      sequence: 71,
+      narrative: "Denae Benites Failed pickoff attempt.",
+      eventType: "pickoff",
+      batterName: "Claire O'Sullivan",
+      runnerFirst: "Denae Benites",
+      runnerSecond: null,
+      runnerThird: null,
+    });
+    const single = play({
+      sequence: 70,
+      narrative: "Denae Benites singled to center field (0-0).",
+      eventType: "single",
+      batterName: "Denae Benites",
+      runnerFirst: null,
+      runnerSecond: null,
+      runnerThird: null,
+    });
+
+    const items = buildPlayTimeline([steal, pickoff, single]);
+    const kinds = items.map((item) => item.kind);
+
+    // Chronological (reverse): single → at_bat O'Sullivan → pickoff → steal
+    expect(kinds).toEqual([
+      "play", // steal
+      "bases",
+      "play", // pickoff
+      "bases",
+      "at_bat",
+      "play", // single
+      "bases",
+    ]);
+    expect(items.find((item) => item.kind === "at_bat")).toMatchObject({
+      kind: "at_bat",
+      batterName: "Claire O'Sullivan",
+      play: { sequence: 71 },
+    });
+
+    const atBatIndex = kinds.indexOf("at_bat");
+    const singleIndex = items.findIndex(
+      (item) => item.kind === "play" && item.play.sequence === 70,
+    );
+    const pickoffIndex = items.findIndex(
+      (item) => item.kind === "play" && item.play.sequence === 71,
+    );
+    expect(atBatIndex).toBeGreaterThan(pickoffIndex);
+    expect(atBatIndex).toBeLessThan(singleIndex);
+  });
+});
+
+describe("playFocusName", () => {
+  it("features the runner on steal/pickoff when batterName is the batter at the plate", () => {
+    const pickoff = play({
+      sequence: 71,
+      narrative: "Denae Benites Failed pickoff attempt.",
+      eventType: "pickoff",
+      batterName: "Claire O'Sullivan",
+      runnerFirst: "Denae Benites",
+    });
+    expect(playFocusName(pickoff)).toBe("Denae Benites");
+    expect(narrativeLeadName(pickoff.narrative)).toBe("Denae Benites");
+
+    const steal = play({
+      sequence: 72,
+      narrative: "Denae Benites stole second.",
+      eventType: "stolen_base",
+      batterName: "Claire O'Sullivan",
+    });
+    expect(playFocusName(steal)).toBe("Denae Benites");
+  });
+
+  it("keeps the batter for ordinary plate results", () => {
+    expect(
+      playFocusName(
+        play({
+          sequence: 70,
+          narrative: "Denae Benites singled to center field (0-0).",
+          eventType: "single",
+          batterName: "Denae Benites",
+        }),
+      ),
+    ).toBe("Denae Benites");
   });
 });
 

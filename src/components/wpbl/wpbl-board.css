@@ -420,7 +420,8 @@
 }
 
 .wpbl-timeline-group:last-child .wpbl-timeline-item:last-child::before,
-.wpbl-timeline-item--bases:last-child::before {
+.wpbl-timeline-item--bases:last-child::before,
+.wpbl-timeline-item--at-bat:last-child::before {
   display: none;
 }
 
@@ -445,6 +446,11 @@
 .wpbl-timeline-dot--neutral {
   background-color: var(--wpbl-rule);
   border: 1px solid var(--wpbl-muted);
+}
+
+.wpbl-timeline-dot--at-bat {
+  background-color: color-mix(in srgb, #93c5fd 55%, var(--wpbl-bg-panel));
+  border: 1px solid color-mix(in srgb, #60a5fa 50%, transparent);
 }
 
 .wpbl-timeline-content {
@@ -472,10 +478,16 @@
 }
 
 .wpbl-timeline-bases,
-.wpbl-timeline-pitch {
+.wpbl-timeline-pitch,
+.wpbl-timeline-at-bat {
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--wpbl-muted);
+}
+
+.wpbl-timeline-at-bat {
+  font-weight: 500;
+  color: var(--wpbl-ink-secondary);
 }
 
 .wpbl-pitch-list {

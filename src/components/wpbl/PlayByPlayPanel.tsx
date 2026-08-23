@@ -9,8 +9,10 @@ import {
   buildPlayTimeline,
   formatBasesState,
   isAdministrativePlay,
+  playFocusName,
   playTypeLabel,
 } from "@/lib/wpbl-play-display";
+import { findPlayerLine } from "@/lib/wpbl-player-match";
 import {
   filterWpblPlays,
   formatPlayInning,
@@ -34,17 +36,16 @@ export type PlayByPlayPanelProps = {
   homeAbbr?: string;
 };
 
-function batterHeadshot(
+function headshotForName(
+  name: string | null | undefined,
   play: WpblPlay,
   batting: WpblBoxPlayerLine[],
   awayAbbr: string,
   homeAbbr: string,
 ): { headshotUrl: string | null; teamAbbr: string | null } {
-  const name = play.batterName?.trim();
-  if (!name) return { headshotUrl: null, teamAbbr: null };
-  const line = batting.find(
-    (p) => p.name.trim().toLowerCase() === name.toLowerCase(),
-  );
+  const trimmed = name?.trim();
+  if (!trimmed) return { headshotUrl: null, teamAbbr: null };
+  const line = findPlayerLine(batting, trimmed);
   const teamAbbr =
     line?.side === "away"
       ? awayAbbr
@@ -90,8 +91,9 @@ function PlayTimelineItem({
 }) {
   const admin = isAdministrativePlay(play);
   const label = admin ? null : playTypeLabel(play);
-  const playerName = play.batterName?.trim() || null;
-  const { headshotUrl, teamAbbr } = batterHeadshot(
+  const focusName = playFocusName(play);
+  const { headshotUrl, teamAbbr } = headshotForName(
+    focusName,
     play,
     batting,
     awayAbbr,
@@ -106,9 +108,9 @@ function PlayTimelineItem({
     <li className="wpbl-timeline-group">
       <div className="wpbl-timeline-item">
         <TimelineNode>
-          {playerName ? (
+          {focusName ? (
             <PlayerHeadshot
-              name={playerName}
+              name={focusName}
               headshotUrl={headshotUrl}
               teamAbbr={teamAbbr}
               size={44}
@@ -155,6 +157,25 @@ function BasesTimelineItem({ play }: { play: WpblPlay }) {
         <BasesStateIcon bases={bases} size={22} />
       </TimelineNode>
       <p className="wpbl-timeline-bases pb-4">{formatBasesState(play)}</p>
+    </li>
+  );
+}
+
+function AtBatTimelineItem({
+  batterName,
+  roster,
+}: {
+  batterName: string;
+  roster: ReturnType<typeof rosterFromBoxLines>;
+}) {
+  return (
+    <li className="wpbl-timeline-item wpbl-timeline-item--at-bat">
+      <TimelineNode>
+        <span className="wpbl-timeline-dot wpbl-timeline-dot--at-bat" />
+      </TimelineNode>
+      <p className="wpbl-timeline-at-bat pb-4">
+        Now batting · {linkifyPlayerNames(batterName, roster)}
+      </p>
     </li>
   );
 }
@@ -209,23 +230,35 @@ export function PlayByPlayPanel({
       ) : (
         <div className="wpbl-timeline">
           <ul className="wpbl-timeline-list">
-            {timelineItems.map((item) =>
-              item.kind === "play" ? (
-                <PlayTimelineItem
-                  key={`play-${item.play.sequence}`}
-                  play={item.play}
-                  batting={batting}
-                  roster={roster}
-                  awayAbbr={awayAbbr}
-                  homeAbbr={homeAbbr}
-                />
-              ) : (
+            {timelineItems.map((item) => {
+              if (item.kind === "play") {
+                return (
+                  <PlayTimelineItem
+                    key={`play-${item.play.sequence}`}
+                    play={item.play}
+                    batting={batting}
+                    roster={roster}
+                    awayAbbr={awayAbbr}
+                    homeAbbr={homeAbbr}
+                  />
+                );
+              }
+              if (item.kind === "at_bat") {
+                return (
+                  <AtBatTimelineItem
+                    key={`at-bat-${item.play.sequence}-${item.batterName}`}
+                    batterName={item.batterName}
+                    roster={roster}
+                  />
+                );
+              }
+              return (
                 <BasesTimelineItem
                   key={`bases-${item.key}-${item.play.sequence}`}
                   play={item.play}
                 />
-              ),
-            )}
+              );
+            })}
           </ul>
         </div>
       )}
