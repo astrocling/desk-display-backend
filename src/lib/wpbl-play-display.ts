@@ -138,3 +138,29 @@ export function battingTeamAbbr(
   if (play.half === "bottom") return homeAbbr;
   return null;
 }
+
+export type PlayTimelineItem =
+  | { kind: "play"; play: WpblPlay }
+  | { kind: "bases"; play: WpblPlay; key: string };
+
+/**
+ * Newest-first timeline. WPBL play base fields are the situation *before*
+ * the play, so we attach each play's own runners under that play — not the
+ * next row's (which was shifting base state one at-bat later).
+ */
+export function buildPlayTimeline(playsNewestFirst: WpblPlay[]): PlayTimelineItem[] {
+  const items: PlayTimelineItem[] = [];
+  let lastBasesKey: string | null = null;
+
+  for (const play of playsNewestFirst) {
+    items.push({ kind: "play", play });
+
+    const key = basesStateKey(play);
+    if (key !== lastBasesKey) {
+      items.push({ kind: "bases", play, key });
+      lastBasesKey = key;
+    }
+  }
+
+  return items;
+}
