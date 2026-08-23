@@ -9,9 +9,9 @@ import type {
   WpblPlayerGameLogEntry,
   WpblPlayerPitchingSeason,
 } from "@/lib/types/wpbl-display";
-import { wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
 import { WPBL_LINK, WPBL_PANEL } from "@/lib/wpbl-board";
 
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { teamAccentStyle } from "./teamAccent";
 import { TeamLogo } from "./TeamLogo";
 import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
@@ -37,17 +37,6 @@ function formatGameDate(iso: string | null): string {
   });
 }
 
-function initials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-[4.5rem]">
@@ -58,55 +47,6 @@ function StatChip({ label, value }: { label: string; value: string }) {
         {value}
       </div>
     </div>
-  );
-}
-
-function PlayerHeadshot({
-  name,
-  url,
-  teamAbbr,
-}: {
-  name: string;
-  url: string | null;
-  teamAbbr: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  const logoSrc = wpblTeamLogoSrc(teamAbbr);
-  const showPhoto = Boolean(url) && !failed;
-
-  return (
-    <span className="relative inline-flex h-24 w-24 shrink-0 sm:h-28 sm:w-28">
-      {showPhoto ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote WPBL CDN URLs
-        <img
-          src={url!}
-          alt=""
-          width={112}
-          height={112}
-          decoding="async"
-          className="h-full w-full rounded-full object-cover object-top bg-neutral-700"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span
-          className="flex h-full w-full items-center justify-center rounded-full bg-neutral-700 text-2xl font-semibold text-neutral-200"
-          aria-hidden
-        >
-          {initials(name)}
-        </span>
-      )}
-      {logoSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element -- local team marks
-        <img
-          src={logoSrc}
-          alt=""
-          width={28}
-          height={28}
-          decoding="async"
-          className="absolute -bottom-0.5 -right-0.5 h-7 w-7 rounded-full bg-white object-contain p-0.5 shadow-sm"
-        />
-      ) : null}
-    </span>
   );
 }
 
@@ -469,8 +409,9 @@ export function PlayerDetailClient({
         <div className="flex flex-col gap-5 px-4 py-5 sm:flex-row sm:items-center sm:px-6">
           <PlayerHeadshot
             name={player.name}
-            url={player.headshotUrl}
+            headshotUrl={player.headshotUrl}
             teamAbbr={player.teamAbbr}
+            size={112}
           />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">

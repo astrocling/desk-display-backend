@@ -95,7 +95,7 @@ function filterEntries(
 function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
   return (
     <li
-      className="wpbl-team-accent flex items-center gap-3 border-b border-[var(--wpbl-rule)] py-3 pl-3 pr-4 last:border-b-0"
+      className="wpbl-team-accent flex items-center gap-3.5 border-b border-[var(--wpbl-rule)] py-3.5 pl-3 pr-4 last:border-b-0"
       style={teamAccentStyle(entry.teamAbbr)}
     >
       <span className="w-5 shrink-0 text-right text-sm tabular-nums wpbl-muted">
@@ -105,7 +105,7 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
         name={entry.name}
         headshotUrl={entry.headshotUrl}
         teamAbbr={entry.teamAbbr}
-        size={44}
+        size={52}
       />
       <span className="min-w-0 flex-1">
         <PlayerNameLink
