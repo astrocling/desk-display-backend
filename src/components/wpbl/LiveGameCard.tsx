@@ -162,12 +162,12 @@ function KeyPlayer({
   }
 
   return (
-    <div className="flex min-w-0 items-start gap-2">
+    <div className="flex min-w-0 items-start gap-3">
       <PlayerHeadshot
         name={name}
         headshotUrl={headshotUrl}
         teamAbbr={teamAbbr}
-        size={32}
+        size={44}
       />
       <div className="min-w-0">
         <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">

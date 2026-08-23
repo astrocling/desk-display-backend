@@ -44,7 +44,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Hunters",
     fullName: "Boston Hunters",
     primary: "#0B6B3A",
-    primaryDark: "#0B6B3A",
+    primaryDark: "#1FA05A",
     logoSrc: "/wpbl/bos.png",
   },
 };
@@ -60,6 +60,26 @@ export function getWpblTeamBrand(abbr: string): WpblTeamBrand | null {
 
 export function wpblTeamPrimary(abbr: string): string {
   return getWpblTeamBrand(abbr)?.primary ?? FALLBACK_PRIMARY;
+}
+
+/**
+ * Badge / chip fill for dark board surfaces.
+ * Uses primaryDark when primary is too dark to read against the board.
+ */
+export function wpblTeamBadgeBg(abbr: string): string {
+  const brand = getWpblTeamBrand(abbr);
+  if (!brand) return FALLBACK_PRIMARY;
+  return luminance(brand.primary) < 90 ? brand.primaryDark : brand.primary;
+}
+
+function luminance(hex: string): number {
+  const raw = hex.replace("#", "");
+  if (raw.length !== 6) return 0;
+  const r = Number.parseInt(raw.slice(0, 2), 16);
+  const g = Number.parseInt(raw.slice(2, 4), 16);
+  const b = Number.parseInt(raw.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return 0;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 export function wpblTeamLogoSrc(abbr: string): string | null {

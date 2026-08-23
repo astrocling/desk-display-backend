@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+
 import {
   getWpblTeamBrand,
   wpblTeamAccent,
+  wpblTeamBadgeBg,
   wpblTeamLogoSrc,
   wpblTeamPrimary,
 } from "./wpbl-team-brand";
@@ -34,6 +36,22 @@ describe("wpblTeamPrimary", () => {
 
   it("returns slate fallback for unknown", () => {
     expect(wpblTeamPrimary("??")).toBe("#64748b");
+  });
+});
+
+describe("wpblTeamBadgeBg", () => {
+  it("uses primaryDark for dark team primaries", () => {
+    expect(wpblTeamBadgeBg("NY")).toBe("#3C6FA8");
+    expect(wpblTeamBadgeBg("SF")).toBe("#8B5FC4");
+    expect(wpblTeamBadgeBg("BOS")).toBe("#1FA05A");
+  });
+
+  it("keeps mid/light primaries as-is", () => {
+    expect(wpblTeamBadgeBg("LA")).toBe("#AF9067");
+  });
+
+  it("falls back for unknown abbr", () => {
+    expect(wpblTeamBadgeBg("??")).toBe("#64748b");
   });
 });
 

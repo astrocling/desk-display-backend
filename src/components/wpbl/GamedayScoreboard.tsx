@@ -159,12 +159,12 @@ function PlayerLine({
   const headshotUrl = player?.headshotUrl ?? fallbackHeadshotUrl ?? null;
 
   return (
-    <div className="flex min-w-0 items-start gap-2">
+    <div className="flex min-w-0 items-start gap-3">
       <PlayerHeadshot
         name={name}
         headshotUrl={headshotUrl}
         teamAbbr={teamAbbr}
-        size={36}
+        size={48}
       />
       <div className="min-w-0">
         <p className="wpbl-section-label">{label}</p>

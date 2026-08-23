@@ -107,7 +107,7 @@ function PlayTimelineItem({
               name={play.batterName}
               headshotUrl={headshotUrl}
               teamAbbr={teamAbbr}
-              size={32}
+              size={40}
             />
           ) : (
             <span className="wpbl-timeline-dot wpbl-timeline-dot--neutral" />

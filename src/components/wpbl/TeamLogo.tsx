@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 
-import { getWpblTeamBrand, wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
+import {
+  getWpblTeamBrand,
+  wpblTeamBadgeBg,
+  wpblTeamLogoSrc,
+} from "@/lib/wpbl-team-brand";
 
 /** Display sizes — source marks are 128×128; keep at or below that for sharpness. */
-const SIZES = { sm: 32, md: 44, lg: 56 } as const;
+const SIZES = { sm: 36, md: 48, lg: 64 } as const;
 
-/** Explicit CSS boxes so every mark occupies the same square (Tailwind preflight sets img height:auto). */
 const SIZE_CLASS = {
-  sm: "h-8 w-8",
-  md: "h-11 w-11",
-  lg: "h-14 w-14",
+  sm: "h-9 w-9",
+  md: "h-12 w-12",
+  lg: "h-16 w-16",
 } as const;
 
 export type TeamLogoProps = {
@@ -20,6 +23,7 @@ export type TeamLogoProps = {
   className?: string;
 };
 
+/** Team mark on a team-color chip — readable on the dark board. */
 export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
   const brand = getWpblTeamBrand(abbr);
@@ -30,7 +34,8 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden dark:rounded-sm dark:bg-white ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full p-[12%] ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
+      style={{ backgroundColor: wpblTeamBadgeBg(abbr) }}
       title={brand?.fullName}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fixed local marks; next/image adds no benefit */}
