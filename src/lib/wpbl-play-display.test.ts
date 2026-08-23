@@ -77,6 +77,44 @@ describe("isAdministrativePlay", () => {
         play({ sequence: 1, narrative: "Maggie Fox to p.", batterName: "Maggie Fox" }),
       ),
     ).toBe(true);
+    expect(
+      isAdministrativePlay(
+        play({
+          sequence: 2,
+          narrative: "Pinch hit for Jamie Mackay.",
+          batterName: "Mo'ne Davis",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat outs to a fielder as substitutions", () => {
+    expect(
+      isAdministrativePlay(
+        play({
+          sequence: 1,
+          narrative: "London Studer lined out to 3b (0-1 K).",
+          batterName: "London Studer",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isAdministrativePlay(
+        play({
+          sequence: 2,
+          narrative: "Claire O'Sullivan flied out to cf (1-0 B).",
+          batterName: "Claire O'Sullivan",
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      playTypeLabel(
+        play({
+          sequence: 3,
+          narrative: "London Studer lined out to 3b (0-1 K).",
+        }),
+      ),
+    ).toBe("Lineout");
   });
 });
 
