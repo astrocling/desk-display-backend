@@ -23,7 +23,9 @@ export function WpblSectionHeader({
 }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
-      <h2 className="wpbl-section-label">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--wpbl-ink-secondary)]">
+        {title}
+      </h2>
       <Link href={href} className="wpbl-link text-xs">
         {linkLabel}
       </Link>

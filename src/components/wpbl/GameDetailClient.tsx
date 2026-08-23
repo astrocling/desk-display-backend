@@ -39,10 +39,10 @@ function formatUpdatedAt(iso: string): string {
 
 function StatusBadge({ status }: { status: WpblGameStatus }) {
   const styles: Record<WpblGameStatus, string> = {
-    live: "bg-red-600 text-white",
-    final: "bg-slate-500 text-white dark:bg-slate-600",
+    live: "bg-[var(--wpbl-live)] text-[var(--wpbl-bg)]",
+    final: "bg-[var(--wpbl-bg-hover)] text-[var(--wpbl-ink-secondary)]",
     scheduled: "bg-[var(--wpbl-bg-hover)] text-[var(--wpbl-ink-secondary)]",
-    other: "bg-amber-500 text-white",
+    other: "bg-[var(--wpbl-warning)] text-[var(--wpbl-bg)]",
   };
   const labels: Record<WpblGameStatus, string> = {
     live: "Live",
@@ -80,14 +80,17 @@ function FeedBadge({
 
   if (connection === "connecting" || connection === "reconnecting") {
     return (
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+      <span
+        className="text-[10px] font-semibold uppercase tracking-wide"
+        style={{ color: "var(--wpbl-warning)" }}
+      >
         {connection === "connecting" ? "Connecting feed…" : "Reconnecting…"}
       </span>
     );
   }
 
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+    <span className="text-[10px] font-semibold uppercase tracking-wide wpbl-muted">
       Polling
     </span>
   );

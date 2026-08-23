@@ -42,7 +42,7 @@ export function PlayerHeadshot({
       style={{ width: size, height: size }}
     >
       <span
-        className="block overflow-hidden rounded-full bg-neutral-700"
+        className="block overflow-hidden rounded-full bg-[var(--wpbl-bg-hover)]"
         style={{
           width: size,
           height: size,
@@ -62,7 +62,7 @@ export function PlayerHeadshot({
           />
         ) : (
           <span
-            className="flex h-full w-full items-center justify-center font-semibold text-neutral-200"
+            className="flex h-full w-full items-center justify-center font-semibold text-[var(--wpbl-ink-secondary)]"
             style={{ fontSize: Math.max(11, size * 0.32) }}
             aria-hidden
           >
