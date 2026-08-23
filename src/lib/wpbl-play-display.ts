@@ -37,8 +37,11 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   pickoff: "Pickoff",
 };
 
+/** True subs only — must not match "lined out to 3b" / "flied out to cf". */
+const SUBSTITUTION_NARRATIVE =
+  /^(?:[\w'.-]+(?:\s+[\w'.-]+){0,5})\s+to\s+(?:p|c|lf|cf|rf|ss|1b|2b|3b|dh)\.?$/i;
 const ADMIN_NARRATIVE =
-  /\bto (p|c|lf|cf|rf|ss|1b|2b|3b|dh)\b|defensive (switch|substitution)|pinch (hit|run) for/i;
+  /defensive (?:switch|substitution)|pinch (?:hit|run) for/i;
 
 /** Short display label for the play outcome pill (MLB-style). */
 export function playTypeLabel(play: WpblPlay): string | null {
@@ -73,10 +76,21 @@ function inferPlayTypeFromNarrative(narrative: string): string | null {
   return null;
 }
 
-/** Substitution / defensive moves — no outcome pill. */
+/** Substitution / defensive moves — hide outcome pill (headshot still shown when named). */
 export function isAdministrativePlay(play: WpblPlay): boolean {
-  if (!play.batterName?.trim()) return true;
-  return ADMIN_NARRATIVE.test(play.narrative);
+  const narrative = play.narrative.trim();
+  if (!narrative) return true;
+  if (SUBSTITUTION_NARRATIVE.test(narrative)) return true;
+  if (ADMIN_NARRATIVE.test(narrative)) return true;
+  // Missing batter is only admin when the narrative isn't a normal plate result.
+  if (!play.batterName?.trim()) {
+    return (
+      SUBSTITUTION_NARRATIVE.test(narrative) ||
+      ADMIN_NARRATIVE.test(narrative) ||
+      !inferPlayTypeFromNarrative(narrative)
+    );
+  }
+  return false;
 }
 
 export type BasesOccupancy = {

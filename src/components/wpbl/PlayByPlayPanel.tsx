@@ -90,6 +90,7 @@ function PlayTimelineItem({
 }) {
   const admin = isAdministrativePlay(play);
   const label = admin ? null : playTypeLabel(play);
+  const playerName = play.batterName?.trim() || null;
   const { headshotUrl, teamAbbr } = batterHeadshot(
     play,
     batting,
@@ -97,17 +98,20 @@ function PlayTimelineItem({
     homeAbbr,
   );
   const pitches = pitchesFromPlay(play);
+  // Keep pitch detail inside the play card — numbered rail nodes made
+  // non-photo rows feel like a different, denser treatment.
+  const showPitchList = !admin && pitches.length > 1;
 
   return (
     <li className="wpbl-timeline-group">
       <div className="wpbl-timeline-item">
         <TimelineNode>
-          {!admin && play.batterName ? (
+          {playerName ? (
             <PlayerHeadshot
-              name={play.batterName}
+              name={playerName}
               headshotUrl={headshotUrl}
               teamAbbr={teamAbbr}
-              size={40}
+              size={44}
             />
           ) : (
             <span className="wpbl-timeline-dot wpbl-timeline-dot--neutral" />
@@ -127,29 +131,18 @@ function PlayTimelineItem({
           <p className="wpbl-feed-body">
             {linkifyPlayerNames(play.narrative, roster)}
           </p>
+          {showPitchList ? (
+            <ol className="wpbl-pitch-list">
+              {pitches.map((pitch, index) => (
+                <li key={`${play.sequence}-pitch-${pitch.sequence}`}>
+                  <span className="wpbl-pitch-list__n">{index + 1}</span>
+                  {pitchEventLabel(pitch)}
+                </li>
+              ))}
+            </ol>
+          ) : null}
         </div>
       </div>
-
-      {pitches.length > 1
-        ? pitches
-            .slice()
-            .reverse()
-            .map((pitch, index) => (
-              <div
-                key={`${play.sequence}-pitch-${pitch.sequence}`}
-                className="wpbl-timeline-item wpbl-timeline-item--pitch"
-              >
-                <TimelineNode>
-                  <span className="wpbl-pitch-index">
-                    {pitches.length - index}
-                  </span>
-                </TimelineNode>
-                <p className="wpbl-timeline-pitch pb-3">
-                  {pitchEventLabel(pitch)}
-                </p>
-              </div>
-            ))
-        : null}
     </li>
   );
 }
