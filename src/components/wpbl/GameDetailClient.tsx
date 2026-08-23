@@ -275,6 +275,8 @@ export function GameDetailClient({
             plays={boxscore.plays}
             batting={boxscore.batting}
             pitching={boxscore.pitching}
+            awayAbbr={game.awayAbbr}
+            homeAbbr={game.homeAbbr}
           />
         ) : view === "trackman" ? (
           <TrackingPanel

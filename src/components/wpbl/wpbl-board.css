@@ -380,6 +380,122 @@
   color: var(--wpbl-ink-secondary);
 }
 
+/* Play-by-play — MLB-style vertical timeline */
+.wpbl-timeline {
+  max-height: min(28rem, 60vh);
+  overflow-y: auto;
+  border: 1px solid var(--wpbl-rule);
+  border-radius: 0.5rem;
+  background-color: var(--wpbl-bg-panel);
+  padding: 0.75rem 0.75rem 0;
+}
+
+.wpbl-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wpbl-timeline-group {
+  list-style: none;
+}
+
+.wpbl-timeline-item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  position: relative;
+}
+
+.wpbl-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 0.9375rem;
+  top: 2rem;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--wpbl-rule);
+}
+
+.wpbl-timeline-group:last-child .wpbl-timeline-item:last-child::before,
+.wpbl-timeline-item--bases:last-child::before {
+  display: none;
+}
+
+.wpbl-timeline-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.125rem;
+}
+
+.wpbl-timeline-dot {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.75rem;
+  border-radius: 9999px;
+  background-color: var(--wpbl-muted);
+}
+
+.wpbl-timeline-dot--neutral {
+  background-color: var(--wpbl-rule);
+  border: 1px solid var(--wpbl-muted);
+}
+
+.wpbl-timeline-content {
+  min-width: 0;
+}
+
+.wpbl-timeline-meta {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-play-pill {
+  display: inline-flex;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #bfdbfe;
+  background-color: color-mix(in srgb, #3b82f6 22%, var(--wpbl-bg-panel));
+  border: 1px solid color-mix(in srgb, #3b82f6 35%, transparent);
+}
+
+.wpbl-timeline-bases,
+.wpbl-timeline-pitch {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-timeline-item--pitch .wpbl-timeline-pitch {
+  padding-top: 0.125rem;
+}
+
+.wpbl-pitch-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--wpbl-rule);
+  background-color: var(--wpbl-bg-elevated);
+  font-size: 0.625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--wpbl-ink-secondary);
+}
+
 /* Pitch sequence — MLB dot trail (live / current AB only) */
 .wpbl-pitch-dot {
   display: inline-block;
