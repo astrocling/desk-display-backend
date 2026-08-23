@@ -70,7 +70,7 @@ export function PlayerHeadshot({
       </span>
       {logoSrc ? (
         <span
-          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full p-[3%] shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full p-[7%] shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
           style={{
             width: badge,
             height: badge,
@@ -85,7 +85,7 @@ export function PlayerHeadshot({
             width={badge}
             height={badge}
             decoding="async"
-            className="h-full w-full scale-[1.12] object-contain"
+            className="h-full w-full object-contain"
           />
         </span>
       ) : null}
