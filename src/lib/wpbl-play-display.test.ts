@@ -4,6 +4,7 @@ import type { WpblPlay } from "@/lib/types/wpbl-display";
 
 import {
   basesStateKey,
+  buildPlayTimeline,
   formatBasesState,
   isAdministrativePlay,
   playTypeLabel,
@@ -115,6 +116,53 @@ describe("isAdministrativePlay", () => {
         }),
       ),
     ).toBe("Lineout");
+  });
+});
+
+describe("buildPlayTimeline", () => {
+  it("attaches each play's before-state bases under that play (not the next at-bat)", () => {
+    // Newest-first: post-HR AB, then Lansdell HR with runners on 2nd/3rd.
+    const afterHr = play({
+      sequence: 12,
+      narrative: "Next batter grounds out.",
+      batterName: "Next Batter",
+      runnerFirst: null,
+      runnerSecond: null,
+      runnerThird: null,
+    });
+    const hr = play({
+      sequence: 11,
+      narrative: "Ashton Lansdell homers to left; runners score.",
+      batterName: "Ashton Lansdell",
+      eventType: "home_run",
+      isScoringPlay: true,
+      runsScored: 3,
+      runnerFirst: null,
+      runnerSecond: "Runner Two",
+      runnerThird: "Runner Three",
+    });
+
+    const items = buildPlayTimeline([afterHr, hr]);
+
+    expect(items.map((item) => item.kind)).toEqual([
+      "play",
+      "bases",
+      "play",
+      "bases",
+    ]);
+    expect(items[0]).toMatchObject({ kind: "play", play: { sequence: 12 } });
+    expect(items[1]).toMatchObject({
+      kind: "bases",
+      play: { sequence: 12 },
+      key: "||",
+    });
+    expect(items[2]).toMatchObject({ kind: "play", play: { sequence: 11 } });
+    expect(items[3]).toMatchObject({
+      kind: "bases",
+      play: { sequence: 11 },
+      key: "|Runner Two|Runner Three",
+    });
+    expect(formatBasesState(hr)).toBe("Two on 2nd, Three on 3rd");
   });
 });
 

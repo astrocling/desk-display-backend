@@ -5,8 +5,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { WpblBoxPlayerLine, WpblPlay } from "@/lib/types/wpbl-display";
 import {
   basesFromPlay,
-  basesStateKey,
   battingTeamAbbr,
+  buildPlayTimeline,
   formatBasesState,
   isAdministrativePlay,
   playTypeLabel,
@@ -173,30 +173,10 @@ export function PlayByPlayPanel({
     [batting, pitching],
   );
 
-  const timelineItems = useMemo(() => {
-    const items: Array<
-      | { kind: "play"; play: WpblPlay }
-      | { kind: "bases"; play: WpblPlay; key: string }
-    > = [];
-
-    let lastBasesKey: string | null = null;
-
-    for (let i = 0; i < visible.length; i += 1) {
-      const play = visible[i]!;
-      items.push({ kind: "play", play });
-
-      const nextPlay = visible[i + 1];
-      if (nextPlay) {
-        const key = basesStateKey(nextPlay);
-        if (key !== lastBasesKey) {
-          items.push({ kind: "bases", play: nextPlay, key });
-          lastBasesKey = key;
-        }
-      }
-    }
-
-    return items;
-  }, [visible]);
+  const timelineItems = useMemo(
+    () => buildPlayTimeline(visible),
+    [visible],
+  );
 
   if (!plays.length) {
     return (
