@@ -62,18 +62,27 @@ export function wpblTeamPrimary(abbr: string): string {
   return getWpblTeamBrand(abbr)?.primary ?? FALLBACK_PRIMARY;
 }
 
+/** Dark plate under full-color marks so NY/SF/BOS don’t drown in their own fill. */
+const BADGE_PLATE_DARK = "#12171E";
+
 /**
- * Badge / chip fill for dark board surfaces.
- * - Dark primaries → primaryDark so the chip reads on the board
- * - Light/gold primaries (LA) → dark plate so the mark isn't gold-on-gold
+ * Badge / chip fill behind team marks.
+ * - LA’s mark is dark charcoal → gold primary plate so it reads
+ * - Other marks are already team-colored → dark neutral plate (never primaryDark)
  */
 export function wpblTeamBadgeBg(abbr: string): string {
   const brand = getWpblTeamBrand(abbr);
   if (!brand) return FALLBACK_PRIMARY;
-  const L = luminance(brand.primary);
-  if (L < 90) return brand.primaryDark;
-  if (L > 120) return "#1C1814";
-  return brand.primary;
+  if (luminance(brand.primary) > 120) return brand.primary;
+  return BADGE_PLATE_DARK;
+}
+
+/** Readable team-color ring around a dark badge plate (null when the plate is already brand-colored). */
+export function wpblTeamBadgeRing(abbr: string): string | null {
+  const brand = getWpblTeamBrand(abbr);
+  if (!brand) return null;
+  if (luminance(brand.primary) > 120) return null;
+  return brand.primaryDark;
 }
 
 function luminance(hex: string): number {

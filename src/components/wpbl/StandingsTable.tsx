@@ -43,7 +43,7 @@ export function StandingsTable({
               <tr key={row.teamId}>
                 <td className="tabular-nums wpbl-muted">{row.rank}</td>
                 <td>
-                  <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
+                  <TeamLogo key={row.abbr} abbr={row.abbr} size="lg" />
                 </td>
                 <td className="font-medium">{row.abbr}</td>
                 <td className="tabular-nums">
@@ -67,7 +67,7 @@ export function StandingsTable({
           <tr>
             <th className={`${stickyHead} left-0 w-9 min-w-9`}>#</th>
             <th
-              className={`${stickyHead} ${stickyEdge} left-9 min-w-[10rem]`}
+              className={`${stickyHead} ${stickyEdge} left-9 min-w-[12rem]`}
             >
               Team
             </th>
@@ -95,10 +95,10 @@ export function StandingsTable({
                   {row.rank}
                 </td>
                 <td
-                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[10rem]`}
+                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[12rem]`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
+                  <span className="flex items-center gap-3 py-1">
+                    <TeamLogo key={row.abbr} abbr={row.abbr} size="lg" />
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold leading-tight">
                         {nickname}

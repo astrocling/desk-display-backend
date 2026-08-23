@@ -4,6 +4,7 @@ import {
   getWpblTeamBrand,
   wpblTeamAccent,
   wpblTeamBadgeBg,
+  wpblTeamBadgeRing,
   wpblTeamLogoSrc,
   wpblTeamPrimary,
 } from "./wpbl-team-brand";
@@ -40,18 +41,34 @@ describe("wpblTeamPrimary", () => {
 });
 
 describe("wpblTeamBadgeBg", () => {
-  it("uses primaryDark for dark team primaries", () => {
-    expect(wpblTeamBadgeBg("NY")).toBe("#3C6FA8");
-    expect(wpblTeamBadgeBg("SF")).toBe("#8B5FC4");
-    expect(wpblTeamBadgeBg("BOS")).toBe("#1FA05A");
+  it("uses a dark neutral plate for colored marks so they are not drowned", () => {
+    expect(wpblTeamBadgeBg("NY")).toBe("#12171E");
+    expect(wpblTeamBadgeBg("SF")).toBe("#12171E");
+    expect(wpblTeamBadgeBg("BOS")).toBe("#12171E");
   });
 
-  it("uses a dark plate for light/gold primaries so marks read", () => {
-    expect(wpblTeamBadgeBg("LA")).toBe("#1C1814");
+  it("uses the gold primary plate for LA so the dark charcoal mark reads", () => {
+    expect(wpblTeamBadgeBg("LA")).toBe("#AF9067");
   });
 
   it("falls back for unknown abbr", () => {
     expect(wpblTeamBadgeBg("??")).toBe("#64748b");
+  });
+});
+
+describe("wpblTeamBadgeRing", () => {
+  it("rings dark plates with the readable team color", () => {
+    expect(wpblTeamBadgeRing("NY")).toBe("#3C6FA8");
+    expect(wpblTeamBadgeRing("SF")).toBe("#8B5FC4");
+    expect(wpblTeamBadgeRing("BOS")).toBe("#1FA05A");
+  });
+
+  it("skips a ring when the plate is already brand-colored", () => {
+    expect(wpblTeamBadgeRing("LA")).toBeNull();
+  });
+
+  it("returns null for unknown abbr", () => {
+    expect(wpblTeamBadgeRing("??")).toBeNull();
   });
 });
 
