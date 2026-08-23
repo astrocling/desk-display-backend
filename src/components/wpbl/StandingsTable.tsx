@@ -43,7 +43,7 @@ export function StandingsTable({
               <tr key={row.teamId}>
                 <td className="tabular-nums wpbl-muted">{row.rank}</td>
                 <td>
-                  <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
+                  <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
                 </td>
                 <td className="font-medium">{row.abbr}</td>
                 <td className="tabular-nums">
@@ -61,13 +61,13 @@ export function StandingsTable({
   }
 
   return (
-    <div className="wpbl-table-wrap overflow-x-auto">
+    <div className="wpbl-table-wrap">
       <table className="w-max min-w-full border-separate border-spacing-0">
         <thead>
           <tr>
             <th className={`${stickyHead} left-0 w-9 min-w-9`}>#</th>
             <th
-              className={`${stickyHead} ${stickyEdge} left-9 min-w-[8.5rem]`}
+              className={`${stickyHead} ${stickyEdge} left-9 min-w-[10rem]`}
             >
               Team
             </th>
@@ -95,10 +95,10 @@ export function StandingsTable({
                   {row.rank}
                 </td>
                 <td
-                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[8.5rem]`}
+                  className={`${stickyBody} ${stickyEdge} ${rowBorder} left-9 min-w-[10rem]`}
                 >
                   <span className="flex items-center gap-2.5">
-                    <TeamLogo key={row.abbr} abbr={row.abbr} size="sm" />
+                    <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold leading-tight">
                         {nickname}

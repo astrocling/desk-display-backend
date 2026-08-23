@@ -64,12 +64,16 @@ export function wpblTeamPrimary(abbr: string): string {
 
 /**
  * Badge / chip fill for dark board surfaces.
- * Uses primaryDark when primary is too dark to read against the board.
+ * - Dark primaries → primaryDark so the chip reads on the board
+ * - Light/gold primaries (LA) → dark plate so the mark isn't gold-on-gold
  */
 export function wpblTeamBadgeBg(abbr: string): string {
   const brand = getWpblTeamBrand(abbr);
   if (!brand) return FALLBACK_PRIMARY;
-  return luminance(brand.primary) < 90 ? brand.primaryDark : brand.primary;
+  const L = luminance(brand.primary);
+  if (L < 90) return brand.primaryDark;
+  if (L > 120) return "#1C1814";
+  return brand.primary;
 }
 
 function luminance(hex: string): number {

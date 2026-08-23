@@ -41,10 +41,10 @@ function BasesDiamond({
   pitching: WpblBoxPlayerLine[];
 }) {
   const baseClass = (on: boolean) =>
-    `absolute h-3.5 w-3.5 rotate-45 border border-slate-400 ${
+    `absolute h-3.5 w-3.5 rotate-45 border ${
       on
-        ? "bg-amber-400 border-amber-500 dark:bg-amber-300 dark:border-amber-200"
-        : "bg-transparent"
+        ? "border-amber-500 bg-amber-400/80"
+        : "border-[var(--wpbl-rule)] bg-transparent"
     }`;
 
   const linkShort = (full: string | null, short: string | null) => {
@@ -103,7 +103,7 @@ function BasesDiamond({
         <span className={`${baseClass(situation.onFirst)} right-0 top-1/2 -translate-y-1/2`} />
       </div>
       {bits.length > 0 ? (
-        <p className="max-w-[7rem] truncate text-center text-[9px] leading-tight text-slate-500">
+        <p className="max-w-[7rem] truncate text-center text-[9px] leading-tight wpbl-muted">
           {bits.map((bit, i) => (
             <span key={bit.key}>
               {i > 0 ? " · " : null}
@@ -125,8 +125,8 @@ function OutsDots({ outs }: { outs: number | null }) {
           key={i}
           className={`h-2 w-2 rounded-full ${
             i < n
-              ? "bg-red-600 dark:bg-red-500"
-              : "border border-slate-400 bg-transparent"
+              ? "bg-[var(--wpbl-live)]"
+              : "border border-[var(--wpbl-rule)] bg-transparent"
           }`}
         />
       ))}
@@ -152,11 +152,11 @@ function KeyPlayer({
   if (!name) {
     return (
       <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+        <p className="wpbl-section-label text-[10px]">
           {label}
           {teamAbbr ? ` (${teamAbbr})` : ""}
         </p>
-        <p className="text-sm text-slate-400">—</p>
+        <p className="text-sm wpbl-muted">—</p>
       </div>
     );
   }
@@ -170,18 +170,18 @@ function KeyPlayer({
         size={44}
       />
       <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+        <p className="wpbl-section-label text-[10px]">
           {label}
           {teamAbbr ? ` (${teamAbbr})` : ""}
         </p>
-        <p className="truncate text-sm font-semibold">
+        <p className="truncate text-sm font-semibold text-[var(--wpbl-ink)]">
           <PlayerNameLink
             playerId={playerId}
             name={name}
             className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
           />
         </p>
-        {stats ? <p className="truncate text-xs text-slate-500">{stats}</p> : null}
+        {stats ? <p className="truncate text-xs wpbl-muted">{stats}</p> : null}
       </div>
     </div>
   );
@@ -248,7 +248,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
           showScores
           center={
             <>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--wpbl-ink-secondary)]">
                 {game.inning ?? "In progress"}
               </p>
               {situation ? (
@@ -260,7 +260,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
               ) : null}
               {situation &&
               (situation.balls != null || situation.strikes != null) ? (
-                <p className="font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">
+                <p className="font-mono text-xs tabular-nums text-[var(--wpbl-ink-secondary)]">
                   {situation.balls ?? "—"} - {situation.strikes ?? "—"}
                 </p>
               ) : null}
@@ -325,11 +325,11 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
 
       {lastPlay ? (
         <div className={`px-4 py-2.5 ${WPBL_PANEL_FOOTER}`}>
-          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <p className="wpbl-section-label mb-0.5">
             Latest play
             {lastPlay.isScoringPlay ? " · Scoring" : ""}
           </p>
-          <p className="line-clamp-2 text-sm leading-snug text-slate-700 dark:text-slate-200">
+          <p className="line-clamp-2 text-sm leading-snug text-[var(--wpbl-ink-secondary)]">
             {linkifyPlayerNames(lastPlay.narrative, roster)}
           </p>
         </div>

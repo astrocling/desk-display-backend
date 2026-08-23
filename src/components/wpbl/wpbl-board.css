@@ -66,9 +66,11 @@
 }
 
 .wpbl-table-wrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid var(--wpbl-rule);
   border-radius: 0.5rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wpbl-table-wrap table {

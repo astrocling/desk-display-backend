@@ -128,11 +128,7 @@ export function StrikeZonePlot({
           cx={pt.x}
           cy={pt.y}
           r={size === "sm" ? 4 : 5}
-          className={
-            inZone
-              ? "fill-red-500 dark:fill-red-400"
-              : "fill-sky-500 dark:fill-sky-400"
-          }
+          className={inZone ? "fill-red-400" : "fill-sky-400"}
         />
       </svg>
     );
@@ -152,11 +148,11 @@ export function StrikeZonePlot({
         </p>
         <p className="text-[10px] wpbl-muted">
           <span className="mr-2 inline-flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-400" />
             in
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
             out
           </span>
         </p>
@@ -189,11 +185,7 @@ export function StrikeZonePlot({
                 cy={y}
                 r={r}
                 opacity={0.35 + p.recency * 0.65}
-                className={
-                  p.inZone
-                    ? "fill-red-500 dark:fill-red-400"
-                    : "fill-sky-500 dark:fill-sky-400"
-                }
+                className={p.inZone ? "fill-red-400" : "fill-sky-400"}
               >
                 <title>{p.label}</title>
               </circle>

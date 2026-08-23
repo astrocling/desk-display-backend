@@ -9,6 +9,7 @@ import { DayGameCard } from "./DayGameCard";
 import { FinalGameCard } from "./FinalGameCard";
 import { LiveGameCard } from "./LiveGameCard";
 import { useWpblLiveGame } from "./useWpblLiveGame";
+import { WpblSectionTitle } from "./WpblBoardShell";
 
 export type TodaysGamesSectionProps = {
   games: WpblScheduleGame[];
@@ -77,7 +78,7 @@ export function TodaysGamesSection({
 
   return (
     <section className="space-y-3">
-      <h2 className="wpbl-section-label">{title}</h2>
+      <WpblSectionTitle>{title}</WpblSectionTitle>
       <div className="space-y-4">
         {games.map((game) => {
           if (game.status === "live") {
