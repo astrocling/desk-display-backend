@@ -88,7 +88,7 @@ function TeamLine({
   const nickname = getWpblTeamBrand(abbr)?.name ?? name;
 
   return (
-    <div className="grid grid-cols-[3.75rem_minmax(0,1fr)_auto] items-center gap-x-2">
+    <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-2">
       <TeamLogo abbr={abbr} size="md" />
       <div className="min-w-0 overflow-hidden">
         <p
