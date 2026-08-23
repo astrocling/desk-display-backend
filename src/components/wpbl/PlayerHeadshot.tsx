@@ -23,7 +23,8 @@ export function PlayerHeadshot({
   const showPhoto = Boolean(headshotUrl) && !failed;
   const logoSrc = teamAbbr ? wpblTeamLogoSrc(teamAbbr) : null;
   const accent = teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null;
-  const badge = Math.max(18, Math.round(size * 0.4));
+  /** Badge large enough that the mark can dominate the chip. */
+  const badge = Math.max(22, Math.round(size * 0.44));
   const ring = Math.max(2, Math.round(size * 0.05));
   const initials =
     name
@@ -69,7 +70,7 @@ export function PlayerHeadshot({
       </span>
       {logoSrc ? (
         <span
-          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full p-[10%] shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full p-[3%] shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
           style={{
             width: badge,
             height: badge,
@@ -84,7 +85,7 @@ export function PlayerHeadshot({
             width={badge}
             height={badge}
             decoding="async"
-            className="h-full w-full object-contain"
+            className="h-full w-full scale-[1.12] object-contain"
           />
         </span>
       ) : null}
