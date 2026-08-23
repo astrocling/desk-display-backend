@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import {
+  getWpblTeamBrand,
   wpblTeamBadgeBg,
+  wpblTeamBadgeRing,
   wpblTeamLogoSrc,
 } from "@/lib/wpbl-team-brand";
 
@@ -25,8 +27,13 @@ export function PlayerHeadshot({
   const [failed, setFailed] = useState(false);
   const showPhoto = Boolean(headshotUrl) && !failed;
   const logoSrc = teamAbbr ? wpblTeamLogoSrc(teamAbbr) : null;
-  const accent = teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null;
-  const badge = Math.max(16, Math.round(size * 0.42));
+  const brand = teamAbbr ? getWpblTeamBrand(teamAbbr) : null;
+  /** Photo ring stays team-colored; logo chip uses the contrasting badge plate. */
+  const photoRing =
+    brand?.primaryDark ?? (teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null);
+  const badgePlate = teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null;
+  const badgeRing = teamAbbr ? wpblTeamBadgeRing(teamAbbr) : null;
+  const badge = Math.max(22, Math.round(size * 0.48));
   const ring = Math.max(2, Math.round(size * 0.05));
   const initials =
     name
@@ -46,7 +53,7 @@ export function PlayerHeadshot({
         style={{
           width: size,
           height: size,
-          boxShadow: accent ? `0 0 0 ${ring}px ${accent}` : undefined,
+          boxShadow: photoRing ? `0 0 0 ${ring}px ${photoRing}` : undefined,
         }}
       >
         {showPhoto ? (
@@ -72,11 +79,12 @@ export function PlayerHeadshot({
       </span>
       {logoSrc ? (
         <span
-          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
           style={{
             width: badge,
             height: badge,
-            backgroundColor: accent ?? "#fff",
+            backgroundColor: badgePlate ?? "#fff",
+            boxShadow: badgeRing ? `0 0 0 1.5px ${badgeRing}` : undefined,
           }}
           title={teamAbbr ?? undefined}
         >
@@ -87,8 +95,7 @@ export function PlayerHeadshot({
             width={badge}
             height={badge}
             decoding="async"
-            className="rounded-full object-contain p-[15%]"
-            style={{ width: badge, height: badge }}
+            className="h-full w-full scale-[1.28] object-contain"
           />
         </span>
       ) : null}
