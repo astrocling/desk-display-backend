@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   getWpblTeamBrand,
+  WPBL_LOGO_CHIP_INSET,
   wpblTeamBadgeBg,
   wpblTeamLogoSrc,
 } from "@/lib/wpbl-team-brand";
@@ -24,9 +25,8 @@ export type TeamLogoProps = {
 };
 
 /**
- * Team mark on a team-color chip.
- * ~7% inset keeps a hair of plate visible (no edge clipping) while the mark
- * still dominates the circle.
+ * Team mark on a team-color chip — matched to WPBL standings
+ * (dark plate + ~8.7% inset so the mark sits inside a clear safe zone).
  */
 export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
@@ -38,8 +38,11 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full p-[7%] ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
-      style={{ backgroundColor: wpblTeamBadgeBg(abbr) }}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
+      style={{
+        backgroundColor: wpblTeamBadgeBg(abbr),
+        padding: WPBL_LOGO_CHIP_INSET,
+      }}
       title={brand?.fullName}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fixed local marks; next/image adds no benefit */}

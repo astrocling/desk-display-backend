@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 
-import { wpblTeamBadgeBg, wpblTeamLogoSrc } from "@/lib/wpbl-team-brand";
+import {
+  WPBL_LOGO_CHIP_INSET,
+  wpblTeamBadgeBg,
+  wpblTeamLogoSrc,
+} from "@/lib/wpbl-team-brand";
 
 export type PlayerHeadshotProps = {
   name: string;
@@ -70,10 +74,11 @@ export function PlayerHeadshot({
       </span>
       {logoSrc ? (
         <span
-          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full p-[7%] shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
+          className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center overflow-hidden rounded-full shadow-md ring-2 ring-[var(--wpbl-bg-panel)]"
           style={{
             width: badge,
             height: badge,
+            padding: WPBL_LOGO_CHIP_INSET,
             backgroundColor: accent ?? "#fff",
           }}
           title={teamAbbr ?? undefined}

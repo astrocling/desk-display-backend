@@ -40,14 +40,11 @@ describe("wpblTeamPrimary", () => {
 });
 
 describe("wpblTeamBadgeBg", () => {
-  it("uses primaryDark mid-tone chips for dark team primaries", () => {
-    expect(wpblTeamBadgeBg("NY")).toBe("#3C6FA8");
-    expect(wpblTeamBadgeBg("SF")).toBe("#8B5FC4");
-    expect(wpblTeamBadgeBg("BOS")).toBe("#1FA05A");
-  });
-
-  it("uses the gold primary plate for LA so the dark charcoal mark reads", () => {
-    expect(wpblTeamBadgeBg("LA")).toBe("#AF9067");
+  it("uses official standings plate colors for each team", () => {
+    expect(wpblTeamBadgeBg("LA")).toBe("#000000");
+    expect(wpblTeamBadgeBg("SF")).toBe("#2c1747");
+    expect(wpblTeamBadgeBg("NY")).toBe("#091c47");
+    expect(wpblTeamBadgeBg("BOS")).toBe("#00281e");
   });
 
   it("falls back for unknown abbr", () => {

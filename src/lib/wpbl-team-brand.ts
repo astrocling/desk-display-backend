@@ -9,10 +9,21 @@ export type WpblTeamBrand = {
   primary: string;
   /** Lightened variant for ≥3:1 non-text contrast on dark backgrounds */
   primaryDark: string;
+  /**
+   * Circle plate behind the mark — matches WPBL standings
+   * (`--wpbl-standings-team-color` on womensprobaseballleague.com/standings).
+   */
+  badgeBg: string;
   logoSrc: string;
 };
 
 const FALLBACK_PRIMARY = "#64748b";
+
+/**
+ * Official standings inset: 38px mark inside a 46px circle → ~8.7% padding.
+ * Keep in sync with TeamLogo / PlayerHeadshot chip padding.
+ */
+export const WPBL_LOGO_CHIP_INSET = "8.7%";
 
 const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
   LA: {
@@ -21,6 +32,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     fullName: "Los Angeles Queens",
     primary: "#AF9067",
     primaryDark: "#AF9067",
+    badgeBg: "#000000",
     logoSrc: "/wpbl/la.png",
   },
   NY: {
@@ -29,6 +41,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     fullName: "New York Heights",
     primary: "#0B1F3A",
     primaryDark: "#3C6FA8",
+    badgeBg: "#091c47",
     logoSrc: "/wpbl/ny.png",
   },
   SF: {
@@ -37,6 +50,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     fullName: "San Francisco Firebells",
     primary: "#5B2A8C",
     primaryDark: "#8B5FC4",
+    badgeBg: "#2c1747",
     logoSrc: "/wpbl/sf.png",
   },
   BOS: {
@@ -45,6 +59,7 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     fullName: "Boston Hunters",
     primary: "#0B6B3A",
     primaryDark: "#1FA05A",
+    badgeBg: "#00281e",
     logoSrc: "/wpbl/bos.png",
   },
 };
@@ -64,25 +79,11 @@ export function wpblTeamPrimary(abbr: string): string {
 
 /**
  * Badge / chip fill behind team marks.
- * Always a team color that contrasts with the mark AND reads on the dark board:
- * - Dark primaries (NY/SF/BOS) → primaryDark mid-tone chip
- * - Light/gold primary (LA) → gold primary (charcoal mark needs the light plate)
+ * Uses the same dark team plates as the official WPBL standings circles
+ * (black / navy / purple / forest) so light marks read the same way.
  */
 export function wpblTeamBadgeBg(abbr: string): string {
-  const brand = getWpblTeamBrand(abbr);
-  if (!brand) return FALLBACK_PRIMARY;
-  if (luminance(brand.primary) > 120) return brand.primary;
-  return brand.primaryDark;
-}
-
-function luminance(hex: string): number {
-  const raw = hex.replace("#", "");
-  if (raw.length !== 6) return 0;
-  const r = Number.parseInt(raw.slice(0, 2), 16);
-  const g = Number.parseInt(raw.slice(2, 4), 16);
-  const b = Number.parseInt(raw.slice(4, 6), 16);
-  if ([r, g, b].some((n) => Number.isNaN(n))) return 0;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return getWpblTeamBrand(abbr)?.badgeBg ?? FALLBACK_PRIMARY;
 }
 
 export function wpblTeamLogoSrc(abbr: string): string | null {
