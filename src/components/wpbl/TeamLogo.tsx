@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import {
   getWpblTeamBrand,
-  WPBL_LOGO_CHIP_INSET,
+  WPBL_LOGO_MARK_SIZE,
   wpblTeamBadgeBg,
   wpblTeamLogoSrc,
 } from "@/lib/wpbl-team-brand";
@@ -26,7 +26,7 @@ export type TeamLogoProps = {
 
 /**
  * Team mark on a team-color chip — matched to WPBL standings
- * (dark plate + ~8.7% inset so the mark sits inside a clear safe zone).
+ * (dark plate + mark at 82.6% of the chip so size stays stable in tables).
  */
 export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   const src = wpblTeamLogoSrc(abbr);
@@ -39,10 +39,7 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ${SIZE_CLASS[size]} ${className ?? ""}`.trim()}
-      style={{
-        backgroundColor: wpblTeamBadgeBg(abbr),
-        padding: WPBL_LOGO_CHIP_INSET,
-      }}
+      style={{ backgroundColor: wpblTeamBadgeBg(abbr) }}
       title={brand?.fullName}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fixed local marks; next/image adds no benefit */}
@@ -52,7 +49,8 @@ export function TeamLogo({ abbr, size = "md", className }: TeamLogoProps) {
         width={px}
         height={px}
         decoding="async"
-        className="h-full w-full object-contain"
+        className="object-contain"
+        style={{ width: WPBL_LOGO_MARK_SIZE, height: WPBL_LOGO_MARK_SIZE }}
         onError={() => setFailedSrc(src)}
       />
     </span>

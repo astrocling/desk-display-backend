@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import {
-  WPBL_LOGO_CHIP_INSET,
+  WPBL_LOGO_MARK_SIZE,
   wpblTeamBadgeBg,
   wpblTeamLogoSrc,
 } from "@/lib/wpbl-team-brand";
@@ -78,7 +78,6 @@ export function PlayerHeadshot({
           style={{
             width: badge,
             height: badge,
-            padding: WPBL_LOGO_CHIP_INSET,
             backgroundColor: accent ?? "#fff",
           }}
           title={teamAbbr ?? undefined}
@@ -90,7 +89,8 @@ export function PlayerHeadshot({
             width={badge}
             height={badge}
             decoding="async"
-            className="h-full w-full object-contain"
+            className="object-contain"
+            style={{ width: WPBL_LOGO_MARK_SIZE, height: WPBL_LOGO_MARK_SIZE }}
           />
         </span>
       ) : null}

@@ -20,10 +20,12 @@ export type WpblTeamBrand = {
 const FALLBACK_PRIMARY = "#64748b";
 
 /**
- * Official standings inset: 38px mark inside a 46px circle → ~8.7% padding.
- * Keep in sync with TeamLogo / PlayerHeadshot chip padding.
+ * Official standings mark size: 38px inside a 46px circle → 82.6% of the chip.
+ * Apply as width/height on the <img>, NOT as % padding on the chip — CSS %
+ * padding is relative to the containing block (e.g. a wide table cell), which
+ * crushed standings logos.
  */
-export const WPBL_LOGO_CHIP_INSET = "8.7%";
+export const WPBL_LOGO_MARK_SIZE = "82.6%";
 
 const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
   LA: {
