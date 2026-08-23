@@ -1,82 +1,167 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
-import type {
-  WpblBoxPlayerLine,
-  WpblPlay,
-} from "@/lib/types/wpbl-display";
-import { resolvePlayerIdFromBox } from "@/lib/wpbl-player-match";
-import { filterWpblPlays, formatPlayInning } from "@/lib/wpbl-plays";
+import type { WpblBoxPlayerLine, WpblPlay } from "@/lib/types/wpbl-display";
+import {
+  basesFromPlay,
+  basesStateKey,
+  battingTeamAbbr,
+  formatBasesState,
+  isAdministrativePlay,
+  playTypeLabel,
+} from "@/lib/wpbl-play-display";
+import {
+  filterWpblPlays,
+  formatPlayInning,
+  pitchEventLabel,
+  pitchesFromPlay,
+} from "@/lib/wpbl-plays";
 
+import { BasesStateIcon } from "./BasesStateIcon";
 import {
   linkifyPlayerNames,
   rosterFromBoxLines,
 } from "./linkifyPlayerNames";
-import { PlayerNameLink } from "./PlayerNameLink";
+import { PlayerHeadshot } from "./PlayerHeadshot";
 import { WpblFeedFilter } from "./WpblFeedFilter";
 
 export type PlayByPlayPanelProps = {
   plays: WpblPlay[];
   batting?: WpblBoxPlayerLine[];
   pitching?: WpblBoxPlayerLine[];
+  awayAbbr?: string;
+  homeAbbr?: string;
 };
 
-function PlayRow({
+function batterHeadshot(
+  play: WpblPlay,
+  batting: WpblBoxPlayerLine[],
+  awayAbbr: string,
+  homeAbbr: string,
+): { headshotUrl: string | null; teamAbbr: string | null } {
+  const name = play.batterName?.trim();
+  if (!name) return { headshotUrl: null, teamAbbr: null };
+  const line = batting.find(
+    (p) => p.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+  const teamAbbr =
+    line?.side === "away"
+      ? awayAbbr
+      : line?.side === "home"
+        ? homeAbbr
+        : battingTeamAbbr(play, awayAbbr, homeAbbr);
+  return {
+    headshotUrl: line?.headshotUrl ?? null,
+    teamAbbr,
+  };
+}
+
+function PlayTypePill({ label }: { label: string }) {
+  return <span className="wpbl-play-pill">{label}</span>;
+}
+
+function TimelineNode({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`wpbl-timeline-node ${className ?? ""}`.trim()}>
+      {children}
+    </div>
+  );
+}
+
+function PlayTimelineItem({
   play,
   batting,
-  pitching,
   roster,
+  awayAbbr,
+  homeAbbr,
 }: {
   play: WpblPlay;
   batting: WpblBoxPlayerLine[];
-  pitching: WpblBoxPlayerLine[];
   roster: ReturnType<typeof rosterFromBoxLines>;
+  awayAbbr: string;
+  homeAbbr: string;
 }) {
+  const admin = isAdministrativePlay(play);
+  const label = admin ? null : playTypeLabel(play);
+  const { headshotUrl, teamAbbr } = batterHeadshot(
+    play,
+    batting,
+    awayAbbr,
+    homeAbbr,
+  );
+  const pitches = pitchesFromPlay(play);
+
   return (
-    <li
-      className={`wpbl-feed-row ${
-        play.isScoringPlay ? "wpbl-feed-row--scoring" : ""
-      }`}
-    >
-      <div className="wpbl-feed-meta mb-1">
-        <span>{formatPlayInning(play)}</span>
-        {play.outs != null ? <span>{play.outs} out</span> : null}
-        {play.isScoringPlay && play.runsScored > 0 ? (
-          <span>
-            {play.runsScored} run{play.runsScored === 1 ? "" : "s"}
-          </span>
-        ) : null}
-        {play.batterName ? (
-          <span className="normal-case tracking-normal">
-            AB{" "}
-            <PlayerNameLink
-              playerId={resolvePlayerIdFromBox(
-                batting,
-                pitching,
-                play.batterName,
-              )}
+    <li className="wpbl-timeline-group">
+      <div className="wpbl-timeline-item">
+        <TimelineNode>
+          {!admin && play.batterName ? (
+            <PlayerHeadshot
               name={play.batterName}
+              headshotUrl={headshotUrl}
+              teamAbbr={teamAbbr}
+              size={32}
             />
-          </span>
-        ) : null}
-        {play.pitcherName ? (
-          <span className="normal-case tracking-normal">
-            P{" "}
-            <PlayerNameLink
-              playerId={resolvePlayerIdFromBox(
-                batting,
-                pitching,
-                play.pitcherName,
-              )}
-              name={play.pitcherName}
-            />
-          </span>
-        ) : null}
+          ) : (
+            <span className="wpbl-timeline-dot wpbl-timeline-dot--neutral" />
+          )}
+        </TimelineNode>
+        <div className="wpbl-timeline-content min-w-0 pb-4">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            {label ? <PlayTypePill label={label} /> : null}
+            <span className="wpbl-timeline-meta">
+              {formatPlayInning(play)}
+              {play.outs != null ? ` · ${play.outs} out` : ""}
+              {play.isScoringPlay && play.runsScored > 0
+                ? ` · ${play.runsScored} run${play.runsScored === 1 ? "" : "s"}`
+                : ""}
+            </span>
+          </div>
+          <p className="wpbl-feed-body">
+            {linkifyPlayerNames(play.narrative, roster)}
+          </p>
+        </div>
       </div>
-      <p className="wpbl-feed-body">
-        {linkifyPlayerNames(play.narrative, roster)}
-      </p>
+
+      {pitches.length > 1
+        ? pitches
+            .slice()
+            .reverse()
+            .map((pitch, index) => (
+              <div
+                key={`${play.sequence}-pitch-${pitch.sequence}`}
+                className="wpbl-timeline-item wpbl-timeline-item--pitch"
+              >
+                <TimelineNode>
+                  <span className="wpbl-pitch-index">
+                    {pitches.length - index}
+                  </span>
+                </TimelineNode>
+                <p className="wpbl-timeline-pitch pb-3">
+                  {pitchEventLabel(pitch)}
+                </p>
+              </div>
+            ))
+        : null}
+    </li>
+  );
+}
+
+function BasesTimelineItem({ play }: { play: WpblPlay }) {
+  const bases = basesFromPlay(play);
+  return (
+    <li className="wpbl-timeline-item wpbl-timeline-item--bases">
+      <TimelineNode>
+        <BasesStateIcon bases={bases} size={22} />
+      </TimelineNode>
+      <p className="wpbl-timeline-bases pb-4">{formatBasesState(play)}</p>
     </li>
   );
 }
@@ -85,6 +170,8 @@ export function PlayByPlayPanel({
   plays,
   batting = [],
   pitching = [],
+  awayAbbr = "",
+  homeAbbr = "",
 }: PlayByPlayPanelProps) {
   const [mode, setMode] = useState<"all" | "scoring">("all");
   const visible = useMemo(() => filterWpblPlays(plays, mode), [plays, mode]);
@@ -92,6 +179,31 @@ export function PlayByPlayPanel({
     () => rosterFromBoxLines(batting, pitching),
     [batting, pitching],
   );
+
+  const timelineItems = useMemo(() => {
+    const items: Array<
+      | { kind: "play"; play: WpblPlay }
+      | { kind: "bases"; play: WpblPlay; key: string }
+    > = [];
+
+    let lastBasesKey: string | null = null;
+
+    for (let i = 0; i < visible.length; i += 1) {
+      const play = visible[i]!;
+      items.push({ kind: "play", play });
+
+      const nextPlay = visible[i + 1];
+      if (nextPlay) {
+        const key = basesStateKey(nextPlay);
+        if (key !== lastBasesKey) {
+          items.push({ kind: "bases", play: nextPlay, key });
+          lastBasesKey = key;
+        }
+      }
+    }
+
+    return items;
+  }, [visible]);
 
   if (!plays.length) {
     return (
@@ -122,17 +234,27 @@ export function PlayByPlayPanel({
       {visible.length === 0 ? (
         <p className="text-sm wpbl-muted">No scoring plays yet.</p>
       ) : (
-        <ul className="wpbl-feed-list">
-          {visible.map((play) => (
-            <PlayRow
-              key={play.sequence}
-              play={play}
-              batting={batting}
-              pitching={pitching}
-              roster={roster}
-            />
-          ))}
-        </ul>
+        <div className="wpbl-timeline">
+          <ul className="wpbl-timeline-list">
+            {timelineItems.map((item) =>
+              item.kind === "play" ? (
+                <PlayTimelineItem
+                  key={`play-${item.play.sequence}`}
+                  play={item.play}
+                  batting={batting}
+                  roster={roster}
+                  awayAbbr={awayAbbr}
+                  homeAbbr={homeAbbr}
+                />
+              ) : (
+                <BasesTimelineItem
+                  key={`bases-${item.key}-${item.play.sequence}`}
+                  play={item.play}
+                />
+              ),
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );
