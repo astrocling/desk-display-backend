@@ -420,7 +420,6 @@ export function PlayerDetailClient({
           />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs wpbl-muted">
-              <TeamLogo abbr={player.teamAbbr} size="lg" />
               <span>
                 {player.teamAbbr} {player.teamName}
               </span>
