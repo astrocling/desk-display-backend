@@ -15,6 +15,7 @@ import { PlayerHeadshot } from "./PlayerHeadshot";
 import { teamAccentStyle } from "./teamAccent";
 import { TeamLogo } from "./TeamLogo";
 import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
+import { WpblDetailTabs } from "./WpblDetailTabs";
 
 type SeasonTab = "hitting" | "pitching" | "fielding";
 
@@ -40,9 +41,7 @@ function formatGameDate(iso: string | null): string {
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-[4.5rem]">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
-        {label}
-      </div>
+      <div className="wpbl-section-label text-[10px]">{label}</div>
       <div className="text-xl font-bold tabular-nums tracking-tight text-[var(--wpbl-ink)]">
         {value}
       </div>
@@ -58,25 +57,25 @@ function SeasonTable({
   values: Record<string, string | number | null | undefined>;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-neutral-500">
+    <div className="wpbl-table-wrap border-0 rounded-none">
+      <table>
+        <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="px-2 py-2 font-medium first:pl-4 last:pr-4">
+              <th key={col.key} className="first:pl-4 last:pr-4">
                 {col.label}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          <tr className="border-t border-white/10">
+          <tr>
             {columns.map((col) => {
               const v = values[col.key];
               return (
                 <td
                   key={col.key}
-                  className="px-2 py-3 font-mono tabular-nums text-white first:pl-4 last:pr-4"
+                  className="font-mono tabular-nums text-[var(--wpbl-ink)] first:pl-4 last:pr-4"
                 >
                   {v == null || v === "" ? "—" : String(v)}
                 </td>
@@ -154,9 +153,7 @@ function GameLogTable({
         : entries.filter((e) => e.fielding);
 
   if (filtered.length === 0) {
-    return (
-      <p className="px-4 py-6 text-sm text-neutral-500">No game log rows yet.</p>
-    );
+    return <p className="px-4 py-6 text-sm wpbl-muted">No game log rows yet.</p>;
   }
 
   const cols =
@@ -167,21 +164,21 @@ function GameLogTable({
         : ["po", "a", "e"];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-neutral-500">
+    <div className="wpbl-table-wrap border-0 rounded-none">
+      <table>
+        <thead>
           <tr>
-            <th className="px-4 py-2 font-medium">Date</th>
-            <th className="px-2 py-2 font-medium">Opp</th>
-            <th className="px-2 py-2 font-medium">Res</th>
+            <th className="pl-4">Date</th>
+            <th>Opp</th>
+            <th>Res</th>
             {cols.map((c) => (
-              <th key={c} className="px-2 py-2 text-center font-medium">
+              <th key={c} className="text-center last:pr-4">
                 {c.toUpperCase()}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody>
           {filtered.map((row) => {
             const stats =
               mode === "hitting"
@@ -194,26 +191,33 @@ function GameLogTable({
                 ? `${row.teamRuns}–${row.opponentRuns}`
                 : "—";
             const vs =
-              row.side === "home" ? `vs ${row.opponentAbbr}` : `@ ${row.opponentAbbr}`;
+              row.side === "home"
+                ? `vs ${row.opponentAbbr}`
+                : `@ ${row.opponentAbbr}`;
 
             return (
-              <tr key={row.gameId} className="whitespace-nowrap text-white">
-                <td className="px-4 py-2.5">
+              <tr key={row.gameId} className="whitespace-nowrap">
+                <td className="pl-4">
                   <Link
                     href={`/wpbl/games/${row.gameId}`}
-                    className="text-[var(--wpbl-accent)] hover:underline"
+                    className={WPBL_LINK}
                   >
                     {formatGameDate(row.startIso)}
                   </Link>
                 </td>
-                <td className="px-2 py-2.5 text-neutral-300">{vs}</td>
-                <td className="px-2 py-2.5 font-mono tabular-nums text-neutral-300">
+                <td>
+                  <span className="inline-flex items-center gap-1.5">
+                    <TeamLogo abbr={row.opponentAbbr} size="sm" />
+                    <span className="wpbl-muted">{vs}</span>
+                  </span>
+                </td>
+                <td className="font-mono tabular-nums wpbl-muted">
                   {row.result ? `${row.result} ${score}` : score}
                 </td>
                 {cols.map((c) => (
                   <td
                     key={c}
-                    className="px-2 py-2.5 text-center font-mono tabular-nums"
+                    className="text-center font-mono tabular-nums text-[var(--wpbl-ink)] last:pr-4"
                   >
                     {stats?.[c] == null || stats[c] === ""
                       ? "—"
@@ -228,6 +232,7 @@ function GameLogTable({
     </div>
   );
 }
+
 
 function battingChips(b: WpblPlayerBattingSeason) {
   return (
@@ -414,31 +419,31 @@ export function PlayerDetailClient({
             size={112}
           />
           <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-              <TeamLogo abbr={player.teamAbbr} size="sm" />
+            <div className="flex flex-wrap items-center gap-2 text-xs wpbl-muted">
+              <TeamLogo abbr={player.teamAbbr} size="md" />
               <span>
                 {player.teamAbbr} {player.teamName}
               </span>
               {player.status ? (
-                <span className="rounded bg-white/10 px-1.5 py-0.5 uppercase tracking-wide">
+                <span className="rounded bg-[var(--wpbl-bg-hover)] px-1.5 py-0.5 uppercase tracking-wide text-[var(--wpbl-ink-secondary)]">
                   {player.status}
                 </span>
               ) : null}
             </div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--wpbl-ink)] sm:text-4xl">
               {player.name}
             </h1>
             {metaLine ? (
-              <p className="text-sm text-neutral-400">{metaLine}</p>
+              <p className="text-sm text-[var(--wpbl-ink-secondary)]">{metaLine}</p>
             ) : null}
             {bioBits.length > 0 ? (
-              <p className="text-sm text-neutral-500">{bioBits.join(" · ")}</p>
+              <p className="text-sm wpbl-muted">{bioBits.join(" · ")}</p>
             ) : null}
           </div>
         </div>
 
         {(season.batting || season.pitching) && (
-          <div className="space-y-4 border-t border-white/10 px-4 py-4 sm:px-6">
+          <div className="space-y-4 border-t border-[var(--wpbl-rule)] px-4 py-4 sm:px-6">
             {season.batting ? (
               <div className="flex flex-wrap gap-6">{battingChips(season.batting)}</div>
             ) : null}
@@ -452,34 +457,22 @@ export function PlayerDetailClient({
       </section>
 
       {availableTabs.length > 0 ? (
-        <section className="overflow-hidden rounded-xl border border-neutral-800 bg-black text-white shadow-sm">
-          <div className="flex gap-6 border-b border-white/10 px-4 pt-3">
-            {availableTabs.map((id) => {
-              const label =
-                id === "hitting"
-                  ? "Hitting"
-                  : id === "pitching"
-                    ? "Pitching"
-                    : "Fielding";
-              const selected = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setTab(id)}
-                  className={`relative pb-2.5 text-sm font-semibold transition-colors ${
-                    selected
-                      ? "text-[var(--wpbl-accent)]"
-                      : "text-neutral-500 hover:text-neutral-300"
-                  }`}
-                >
-                  {label}
-                  {selected ? (
-                    <span className="absolute inset-x-0 -bottom-px h-0.5 bg-[var(--wpbl-accent)]" />
-                  ) : null}
-                </button>
-              );
-            })}
+        <section className={WPBL_PANEL}>
+          <div className="px-4 pt-3">
+            <WpblDetailTabs
+              ariaLabel="Season stats"
+              active={activeTab}
+              onChange={setTab}
+              tabs={availableTabs.map((id) => ({
+                id,
+                label:
+                  id === "hitting"
+                    ? "Hitting"
+                    : id === "pitching"
+                      ? "Pitching"
+                      : "Fielding",
+              }))}
+            />
           </div>
 
           <div className="py-1">
@@ -510,18 +503,16 @@ export function PlayerDetailClient({
             ) : null}
           </div>
 
-          <div className="border-t border-white/10">
-            <h2 className="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Game log
-            </h2>
+          <div className="border-t border-[var(--wpbl-rule)]">
+            <h2 className="wpbl-section-label px-4 pt-4">Game log</h2>
             <GameLogTable entries={gameLog} mode={activeTab} />
           </div>
         </section>
       ) : (
-        <p className="text-sm text-slate-500">No season stats yet.</p>
+        <p className="text-sm wpbl-muted">No season stats yet.</p>
       )}
 
-      <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs wpbl-muted">
         <span>Updated {formatUpdatedAt(updatedAt)}</span>
         {season.sourceThrough ? (
           <span>· Through {formatUpdatedAt(season.sourceThrough)}</span>

@@ -46,8 +46,8 @@ describe("wpblTeamBadgeBg", () => {
     expect(wpblTeamBadgeBg("BOS")).toBe("#1FA05A");
   });
 
-  it("keeps mid/light primaries as-is", () => {
-    expect(wpblTeamBadgeBg("LA")).toBe("#AF9067");
+  it("uses a dark plate for light/gold primaries so marks read", () => {
+    expect(wpblTeamBadgeBg("LA")).toBe("#1C1814");
   });
 
   it("falls back for unknown abbr", () => {

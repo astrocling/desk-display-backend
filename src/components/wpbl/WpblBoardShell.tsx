@@ -5,7 +5,11 @@ import Link from "next/link";
 import { formatWpblUpdatedAt } from "./useWpblBoardData";
 
 export function WpblSectionTitle({ children }: { children: string }) {
-  return <h2 className="wpbl-section-label mb-3">{children}</h2>;
+  return (
+    <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--wpbl-ink-secondary)]">
+      {children}
+    </h2>
+  );
 }
 
 export function WpblSectionHeader({

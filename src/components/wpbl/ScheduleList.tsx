@@ -88,8 +88,8 @@ function TeamLine({
   const nickname = getWpblTeamBrand(abbr)?.name ?? name;
 
   return (
-    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-x-2">
-      <TeamLogo abbr={abbr} size="sm" />
+    <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-2">
+      <TeamLogo abbr={abbr} size="md" />
       <div className="min-w-0 overflow-hidden">
         <p
           className={`truncate text-sm tracking-tight ${
@@ -158,7 +158,7 @@ function GameRow({ game }: { game: WpblScheduleGame }) {
           </div>
         </div>
         {game.venue ? (
-          <p className="mt-1.5 truncate pl-[calc(3.25rem+0.625rem+2.25rem)] text-[10px] wpbl-muted">
+          <p className="mt-1.5 truncate pl-[calc(3.25rem+0.625rem+3rem)] text-[10px] wpbl-muted">
             {game.venue}
           </p>
         ) : null}
