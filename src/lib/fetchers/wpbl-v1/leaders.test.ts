@@ -6,11 +6,13 @@ import {
   BATTING_MIN_AB,
   buildWpblLeaders,
   LEADERS_BOARD_STORE_LIMIT,
+  leadersBlobNeedsRebuild,
   mapPlayerStatsToInput,
   normalizeWpblLeadersBlob,
   PITCHING_MIN_OUTS,
   rosterPlayerName,
   WPBL_LEADERS_DATA_NOTES,
+  WPBL_LEADERS_SCHEMA_VERSION,
   type WpblPlayerSeasonInput,
 } from "./leaders";
 
@@ -143,6 +145,7 @@ describe("buildWpblLeaders", () => {
     expect(leaders.qualifiers.battingMinAb).toBe(10);
     expect(leaders.qualifiers.pitchingMinOuts).toBe(9);
     expect(leaders.partial).toBe(false);
+    expect(leaders.schemaVersion).toBe(WPBL_LEADERS_SCHEMA_VERSION);
     expect(leaders.dataNotes).toEqual(WPBL_LEADERS_DATA_NOTES);
   });
 
@@ -197,14 +200,41 @@ describe("buildWpblLeaders", () => {
         rbi: [],
         h: [],
       },
-      pitching: { era: [], so: [], w: [], sv: [] },
+      pitching: {
+        era: [
+          {
+            playerId: "p2",
+            name: "P",
+            teamAbbr: "NY",
+            value: "2.00",
+            sortValue: 2,
+            position: "P",
+            headshotUrl: null,
+          },
+        ],
+        so: [],
+        w: [],
+        sv: [],
+      },
     } as unknown as import("@/lib/types/wpbl-display").WpblLeadersResponse;
+
+    expect(leadersBlobNeedsRebuild(legacy)).toBe(true);
 
     const normalized = normalizeWpblLeadersBlob(legacy);
     expect(normalized.batting.obp).toEqual([]);
     expect(normalized.pitching.ip).toEqual([]);
     expect(normalized.batting.avg).toHaveLength(1);
+    expect(normalized.schemaVersion).toBe(1);
     expect(normalized.dataNotes).toEqual(WPBL_LEADERS_DATA_NOTES);
+  });
+
+  it("does not rebuild current-schema blobs with enriched boards", () => {
+    const leaders = buildWpblLeaders(players);
+    expect(leadersBlobNeedsRebuild({
+      ...leaders,
+      updatedAt: "2026-08-21T12:00:00.000Z",
+      seasonId: "c9sgab9f9yx00z75",
+    })).toBe(false);
   });
 
   it("stores up to 50 entries per board", () => {

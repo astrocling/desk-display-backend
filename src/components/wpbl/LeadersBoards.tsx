@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { WpblLeaderEntry, WpblLeadersResponse } from "@/lib/types/wpbl-display";
 import { formatWpblPosition } from "@/lib/wpbl-position";
@@ -186,6 +186,15 @@ function LeaderRow({ entry, rank }: { entry: WpblLeaderEntry; rank: number }) {
   );
 }
 
+function categoriesWithData(
+  leaders: WpblLeadersResponse,
+  group: StatGroup,
+): CategoryDef[] {
+  return CATEGORIES.filter(
+    (c) => c.group === group && c.getEntries(leaders).length > 0,
+  );
+}
+
 export function LeadersBoards({
   leaders,
   teamFilter,
@@ -195,11 +204,30 @@ export function LeadersBoards({
   const [group, setGroup] = useState<StatGroup>("hitting");
   const [categoryId, setCategoryId] = useState(initialCategoryId);
 
-  const groupCategories = CATEGORIES.filter((c) => c.group === group);
+  const hittingCategories = useMemo(
+    () => categoriesWithData(leaders, "hitting"),
+    [leaders],
+  );
+  const pitchingCategories = useMemo(
+    () => categoriesWithData(leaders, "pitching"),
+    [leaders],
+  );
+  const groupCategories =
+    group === "hitting" ? hittingCategories : pitchingCategories;
+
+  useEffect(() => {
+    if (groupCategories.length === 0) return;
+    if (!groupCategories.some((c) => c.id === categoryId)) {
+      setCategoryId(groupCategories[0]!.id);
+    }
+  }, [groupCategories, categoryId]);
+
   const active =
     groupCategories.find((c) => c.id === categoryId) ?? groupCategories[0];
-  const entries = filterEntries(active.getEntries(leaders), teamFilter, limit);
-  const qualifierNote = active.qualifierNote?.(leaders.qualifiers);
+  const entries = active
+    ? filterEntries(active.getEntries(leaders), teamFilter, limit)
+    : [];
+  const qualifierNote = active?.qualifierNote?.(leaders.qualifiers);
 
   return (
     <div className="wpbl-panel">
@@ -217,7 +245,8 @@ export function LeadersBoards({
               type="button"
               onClick={() => {
                 setGroup(id);
-                const first = CATEGORIES.find((c) => c.group === id);
+                const first =
+                  id === "hitting" ? hittingCategories[0] : pitchingCategories[0];
                 if (first) setCategoryId(first.id);
               }}
               className={selected ? "wpbl-tab wpbl-tab--active" : "wpbl-tab"}
@@ -233,12 +262,16 @@ export function LeadersBoards({
       ) : null}
 
       {entries.length === 0 ? (
-        <p className="px-4 py-8 text-sm wpbl-muted">No leaders yet.</p>
+        <p className="px-4 py-8 text-sm wpbl-muted">
+          {teamFilter === "ALL"
+            ? "No leaders yet."
+            : `No ${active?.label ?? "stat"} leaders for this team.`}
+        </p>
       ) : (
         <ol className="px-1 pt-1">
           {entries.map((entry, i) => (
             <LeaderRow
-              key={`${active.id}-${entry.playerId}-${i}`}
+              key={`${active!.id}-${entry.playerId}-${i}`}
               entry={entry}
               rank={i + 1}
             />
@@ -246,23 +279,25 @@ export function LeadersBoards({
         </ol>
       )}
 
-      <div className="wpbl-panel-inset px-3 py-3">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {groupCategories.map((cat) => {
-            const selected = cat.id === active.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setCategoryId(cat.id)}
-                className={selected ? "wpbl-chip wpbl-chip--active" : "wpbl-chip"}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
+      {groupCategories.length > 0 ? (
+        <div className="wpbl-panel-inset px-3 py-3">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {groupCategories.map((cat) => {
+              const selected = cat.id === active?.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryId(cat.id)}
+                  className={selected ? "wpbl-chip wpbl-chip--active" : "wpbl-chip"}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

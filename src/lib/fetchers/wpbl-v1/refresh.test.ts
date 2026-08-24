@@ -99,6 +99,7 @@ function emptyLeaders(): WpblLeadersResponse {
   return {
     updatedAt: "2026-08-21T12:00:00.000Z",
     seasonId: "c9sgab9f9yx00z75",
+    schemaVersion: 2,
     partial: true,
     qualifiers: { battingMinAb: 10, pitchingMinOuts: 9 },
     dataNotes: [],
