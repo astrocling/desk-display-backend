@@ -6,6 +6,7 @@ import {
   WPBL_LOGO_MARK_SIZE,
   wpblTeamBadgeBg,
   wpblTeamLogoSrc,
+  wpblTeamPrimaryDark,
 } from "@/lib/wpbl-team-brand";
 
 export type PlayerHeadshotProps = {
@@ -26,7 +27,8 @@ export function PlayerHeadshot({
   const [failed, setFailed] = useState(false);
   const showPhoto = Boolean(headshotUrl) && !failed;
   const logoSrc = teamAbbr ? wpblTeamLogoSrc(teamAbbr) : null;
-  const accent = teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null;
+  const ringColor = teamAbbr ? wpblTeamPrimaryDark(teamAbbr) : null;
+  const badgeBg = teamAbbr ? wpblTeamBadgeBg(teamAbbr) : null;
   /** Badge large enough that the mark can dominate the chip. */
   const badge = Math.max(22, Math.round(size * 0.44));
   const ring = Math.max(2, Math.round(size * 0.05));
@@ -48,7 +50,7 @@ export function PlayerHeadshot({
         style={{
           width: size,
           height: size,
-          boxShadow: accent ? `0 0 0 ${ring}px ${accent}` : undefined,
+          boxShadow: ringColor ? `0 0 0 ${ring}px ${ringColor}` : undefined,
         }}
       >
         {showPhoto ? (
@@ -78,7 +80,7 @@ export function PlayerHeadshot({
           style={{
             width: badge,
             height: badge,
-            backgroundColor: accent ?? "#fff",
+            backgroundColor: badgeBg ?? "#fff",
           }}
           title={teamAbbr ?? undefined}
         >

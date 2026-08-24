@@ -33,7 +33,8 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Queens",
     fullName: "Los Angeles Queens",
     primary: "#AF9067",
-    primaryDark: "#AF9067",
+    /** Queens gold — readable ring/accent on dark UI */
+    primaryDark: "#C9A961",
     badgeBg: "#000000",
     logoSrc: "/wpbl/la.png",
   },
@@ -42,7 +43,8 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Heights",
     fullName: "New York Heights",
     primary: "#0B1F3A",
-    primaryDark: "#3C6FA8",
+    /** Heights light blue */
+    primaryDark: "#5B9BD5",
     badgeBg: "#091c47",
     logoSrc: "/wpbl/ny.png",
   },
@@ -51,7 +53,8 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Firebells",
     fullName: "San Francisco Firebells",
     primary: "#5B2A8C",
-    primaryDark: "#8B5FC4",
+    /** Firebells International Orange */
+    primaryDark: "#FF4F00",
     badgeBg: "#2c1747",
     logoSrc: "/wpbl/sf.png",
   },
@@ -60,7 +63,8 @@ const BRANDS: Record<WpblBrandAbbr, WpblTeamBrand> = {
     name: "Hunters",
     fullName: "Boston Hunters",
     primary: "#0B6B3A",
-    primaryDark: "#1FA05A",
+    /** Hunters broadcast orange-gold */
+    primaryDark: "#E8922E",
     badgeBg: "#00281e",
     logoSrc: "/wpbl/bos.png",
   },
@@ -77,6 +81,11 @@ export function getWpblTeamBrand(abbr: string): WpblTeamBrand | null {
 
 export function wpblTeamPrimary(abbr: string): string {
   return getWpblTeamBrand(abbr)?.primary ?? FALLBACK_PRIMARY;
+}
+
+/** Visible accent on dark backgrounds (headshot rings, dark-mode bars). */
+export function wpblTeamPrimaryDark(abbr: string): string {
+  return getWpblTeamBrand(abbr)?.primaryDark ?? FALLBACK_PRIMARY;
 }
 
 /**
