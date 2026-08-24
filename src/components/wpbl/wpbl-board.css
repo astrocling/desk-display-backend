@@ -237,6 +237,19 @@
   color: var(--wpbl-ink);
 }
 
+/* Keep full team-color fill while pressed/hovered — generic :hover overrides the fill otherwise */
+.wpbl-filter-btn.wpbl-team-accent-fill:hover,
+.wpbl-filter-btn.wpbl-team-accent-fill:active {
+  background-color: var(--team-accent);
+  border-color: var(--team-accent);
+}
+
+.dark .wpbl-filter-btn.wpbl-team-accent-fill:hover,
+.dark .wpbl-filter-btn.wpbl-team-accent-fill:active {
+  background-color: var(--team-accent-dark);
+  border-color: var(--team-accent-dark);
+}
+
 .wpbl-filter-btn--active-all {
   border-color: var(--wpbl-ink-secondary);
   background-color: var(--wpbl-bg-hover);
