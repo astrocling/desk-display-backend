@@ -265,17 +265,32 @@ Season batting and pitching leaderboards. Cron refresh; partial upstream failure
   "updatedAt": "2026-08-10T12:00:00.000Z",
   "seasonId": "abc123",
   "partial": false,
-  "qualifiers": { "battingMinAb": 10 },
+  "qualifiers": { "battingMinAb": 10, "pitchingMinOuts": 9 },
+  "dataNotes": [
+    {
+      "field": "batting.plate_appearances",
+      "reason": "Often 0 even when AB/BB/HBP are non-zero; OBP uses AB+BB+HBP+SF, not PA."
+    }
+  ],
   "batting": {
     "avg": [{ "playerId": "p1", "name": "Jane Doe", "teamAbbr": "LA", "value": ".312", "sortValue": 0.312 }],
+    "obp": [],
+    "slg": [],
+    "ops": [],
     "hr": [],
     "rbi": [],
-    "h": []
+    "h": [],
+    "r": [],
+    "doubles": [],
+    "sb": []
   },
   "pitching": {
     "era": [],
+    "whip": [],
+    "ip": [],
     "so": [],
     "w": [],
+    "l": [],
     "sv": []
   }
 }
@@ -284,9 +299,11 @@ Season batting and pitching leaderboards. Cron refresh; partial upstream failure
 | Field | Type | Notes |
 |-------|------|-------|
 | `partial` | boolean | `true` if some player stat fetches failed |
-| `qualifiers.battingMinAb` | number | Minimum AB for AVG board (default **10**) |
-| `batting.avg` / `hr` / `rbi` / `h` | array | Top entries per category |
-| `pitching.era` / `so` / `w` / `sv` | array | Top entries per category |
+| `qualifiers.battingMinAb` | number | Minimum AB for AVG/OBP/SLG/OPS (default **10**) |
+| `qualifiers.pitchingMinOuts` | number | Minimum outs for ERA/WHIP/IP (default **9** ≈ 3 IP) |
+| `dataNotes` | array | Upstream fields we refuse to rank on (`plate_appearances`, `total_bases` often 0) |
+| `batting.avg` / `obp` / `slg` / `ops` / `hr` / `rbi` / `h` / `r` / `doubles` / `sb` | array | Top entries per category |
+| `pitching.era` / `whip` / `ip` / `so` / `w` / `l` / `sv` | array | Top entries per category |
 | `*.value` | string | Display-ready stat string |
 | `updatedAt` | string | ISO timestamp when cache was written |
 

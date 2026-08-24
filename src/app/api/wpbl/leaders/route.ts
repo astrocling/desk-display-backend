@@ -1,4 +1,5 @@
 import { REDIS_KEYS } from "@/lib/config";
+import { normalizeWpblLeadersBlob } from "@/lib/fetchers/wpbl-v1/leaders";
 import {
   buildWpblLeadersBlob,
   buildWpblLeague,
@@ -33,7 +34,10 @@ export async function GET() {
         REDIS_KEYS.wpblLeaders,
       );
       if (cached) {
-        return jsonWithCache(cached, WPBL_API_CACHE_CONTROL);
+        return jsonWithCache(
+          normalizeWpblLeadersBlob(cached),
+          WPBL_API_CACHE_CONTROL,
+        );
       }
     } catch {
       // Fall through to live build when Redis is unset/unreachable.
@@ -43,7 +47,10 @@ export async function GET() {
     const blob = await refreshWpblLeaders(seasonId).catch(() =>
       buildWpblLeadersBlob(seasonId),
     );
-    return jsonWithCache(blob, WPBL_API_CACHE_CONTROL);
+    return jsonWithCache(
+      normalizeWpblLeadersBlob(blob),
+      WPBL_API_CACHE_CONTROL,
+    );
   } catch (error) {
     return wpblApiErrorResponse(error);
   }

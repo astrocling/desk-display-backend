@@ -39,6 +39,12 @@ export interface WpblScheduleGame {
   countsInStandings: boolean;
 }
 
+export interface WpblLeadersDataNote {
+  /** Upstream or derived field we intentionally do not trust as a leader source. */
+  field: string;
+  reason: string;
+}
+
 export interface WpblLeadersResponse {
   updatedAt: string;
   seasonId: string;
@@ -46,19 +52,33 @@ export interface WpblLeadersResponse {
   qualifiers: {
     /** Floor for AVG (and any other rate batting boards). Default **10 AB**. */
     battingMinAb: number;
-    /** Floor for ERA board in outs pitched. Default **9 outs (~3 IP)**. */
+    /** Floor for ERA / WHIP / IP rate boards in outs pitched. Default **9 outs (~3 IP)**. */
     pitchingMinOuts: number;
   };
+  /**
+   * Upstream fields that look wrong or empty in practice — boards that would
+   * depend on them are omitted or computed another way.
+   */
+  dataNotes: WpblLeadersDataNote[];
   batting: {
     avg: WpblLeaderEntry[];
+    obp: WpblLeaderEntry[];
+    slg: WpblLeaderEntry[];
+    ops: WpblLeaderEntry[];
     hr: WpblLeaderEntry[];
     rbi: WpblLeaderEntry[];
     h: WpblLeaderEntry[];
+    r: WpblLeaderEntry[];
+    doubles: WpblLeaderEntry[];
+    sb: WpblLeaderEntry[];
   };
   pitching: {
     era: WpblLeaderEntry[];
+    whip: WpblLeaderEntry[];
+    ip: WpblLeaderEntry[];
     so: WpblLeaderEntry[];
     w: WpblLeaderEntry[];
+    l: WpblLeaderEntry[];
     sv: WpblLeaderEntry[];
   };
 }

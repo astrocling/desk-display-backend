@@ -61,17 +61,17 @@ export function mergeWpblLeagueBlob(
   return merged;
 }
 
+function leadersBoardEntries(
+  blob: WpblLeadersResponse,
+): WpblLeadersResponse["batting"][keyof WpblLeadersResponse["batting"]][] {
+  return [
+    ...Object.values(blob.batting),
+    ...Object.values(blob.pitching),
+  ];
+}
+
 function leadersHasData(blob: WpblLeadersResponse): boolean {
-  return (
-    blob.batting.avg.length > 0 ||
-    blob.batting.hr.length > 0 ||
-    blob.batting.rbi.length > 0 ||
-    blob.batting.h.length > 0 ||
-    blob.pitching.era.length > 0 ||
-    blob.pitching.so.length > 0 ||
-    blob.pitching.w.length > 0 ||
-    blob.pitching.sv.length > 0
-  );
+  return leadersBoardEntries(blob).some((board) => board.length > 0);
 }
 
 export function mergeWpblLeadersBlob(
@@ -265,16 +265,7 @@ export function leaderPlayerIdsToWarm(
   leaders: WpblLeadersResponse,
   perBoard = 10,
 ): string[] {
-  const boards = [
-    leaders.batting.avg,
-    leaders.batting.hr,
-    leaders.batting.rbi,
-    leaders.batting.h,
-    leaders.pitching.era,
-    leaders.pitching.so,
-    leaders.pitching.w,
-    leaders.pitching.sv,
-  ];
+  const boards = leadersBoardEntries(leaders);
   const seen = new Set<string>();
   const ids: string[] = [];
   for (const board of boards) {

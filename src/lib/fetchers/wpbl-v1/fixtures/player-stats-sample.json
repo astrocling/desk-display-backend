@@ -3,42 +3,168 @@
     "playerId": "bpyqct4a85lh306g",
     "name": "Jill Albayati",
     "teamId": "vhubhz8li07tmgq8",
-    "batting": { "at_bats": 27, "hits": 11, "home_runs": 2, "rbi": 8 },
-    "pitching": { "outs_pitched": 30, "era": 1.8, "strikeouts": 10, "wins": 2, "saves": 0 }
+    "batting": {
+      "at_bats": 27,
+      "hits": 11,
+      "doubles": 5,
+      "triples": 0,
+      "home_runs": 2,
+      "rbi": 8,
+      "runs": 9,
+      "walks": 6,
+      "hit_by_pitch": 1,
+      "sacrifice_flies": 0,
+      "stolen_bases": 1
+    },
+    "pitching": {
+      "outs_pitched": 30,
+      "era": 1.8,
+      "strikeouts": 10,
+      "wins": 2,
+      "losses": 0,
+      "saves": 0,
+      "hits_allowed": 11,
+      "walks": 3
+    }
   },
   {
     "playerId": "jc062foc8ijjn7d2",
     "name": "Hinano Beppu",
     "teamId": "vhubhz8li07tmgq8",
-    "batting": { "at_bats": 12, "hits": 4, "home_runs": 0, "rbi": 2 },
-    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+    "batting": {
+      "at_bats": 12,
+      "hits": 4,
+      "doubles": 1,
+      "triples": 0,
+      "home_runs": 0,
+      "rbi": 2,
+      "runs": 3,
+      "walks": 2,
+      "hit_by_pitch": 0,
+      "sacrifice_flies": 0,
+      "stolen_bases": 4
+    },
+    "pitching": {
+      "outs_pitched": 0,
+      "era": 0,
+      "strikeouts": 0,
+      "wins": 0,
+      "losses": 0,
+      "saves": 0,
+      "hits_allowed": 0,
+      "walks": 0
+    }
   },
   {
     "playerId": "p-la-hr",
     "name": "LA Slugger",
     "teamId": "v4gisr4rbgmn67b0",
-    "batting": { "at_bats": 30, "hits": 10, "home_runs": 5, "rbi": 14 },
-    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+    "batting": {
+      "at_bats": 30,
+      "hits": 10,
+      "doubles": 2,
+      "triples": 1,
+      "home_runs": 5,
+      "rbi": 14,
+      "runs": 12,
+      "walks": 4,
+      "hit_by_pitch": 0,
+      "sacrifice_flies": 1,
+      "stolen_bases": 0
+    },
+    "pitching": {
+      "outs_pitched": 0,
+      "era": 0,
+      "strikeouts": 0,
+      "wins": 0,
+      "losses": 0,
+      "saves": 0,
+      "hits_allowed": 0,
+      "walks": 0
+    }
   },
   {
     "playerId": "p-ny-closer",
     "name": "NY Closer",
     "teamId": "fttth861nft1j2s7",
-    "batting": { "at_bats": 0, "hits": 0, "home_runs": 0, "rbi": 0 },
-    "pitching": { "outs_pitched": 18, "era": 2.33, "strikeouts": 12, "wins": 1, "saves": 3 }
+    "batting": {
+      "at_bats": 0,
+      "hits": 0,
+      "doubles": 0,
+      "triples": 0,
+      "home_runs": 0,
+      "rbi": 0,
+      "runs": 0,
+      "walks": 0,
+      "hit_by_pitch": 0,
+      "sacrifice_flies": 0,
+      "stolen_bases": 0
+    },
+    "pitching": {
+      "outs_pitched": 18,
+      "era": 2.33,
+      "strikeouts": 12,
+      "wins": 1,
+      "losses": 1,
+      "saves": 3,
+      "hits_allowed": 5,
+      "walks": 2
+    }
   },
   {
     "playerId": "p-bos-starter",
     "name": "BOS Starter",
     "teamId": "9f08or2mffx81409",
-    "batting": { "at_bats": 5, "hits": 1, "home_runs": 0, "rbi": 0 },
-    "pitching": { "outs_pitched": 45, "era": 3.6, "strikeouts": 22, "wins": 3, "saves": 0 }
+    "batting": {
+      "at_bats": 5,
+      "hits": 1,
+      "doubles": 0,
+      "triples": 0,
+      "home_runs": 0,
+      "rbi": 0,
+      "runs": 0,
+      "walks": 0,
+      "hit_by_pitch": 0,
+      "sacrifice_flies": 0,
+      "stolen_bases": 0
+    },
+    "pitching": {
+      "outs_pitched": 45,
+      "era": 3.6,
+      "strikeouts": 22,
+      "wins": 3,
+      "losses": 2,
+      "saves": 0,
+      "hits_allowed": 18,
+      "walks": 6
+    }
   },
   {
     "playerId": "p-sf-contact",
     "name": "SF Contact",
     "teamId": "vhubhz8li07tmgq8",
-    "batting": { "at_bats": 25, "hits": 12, "home_runs": 1, "rbi": 6 },
-    "pitching": { "outs_pitched": 0, "era": 0, "strikeouts": 0, "wins": 0, "saves": 0 }
+    "batting": {
+      "at_bats": 25,
+      "hits": 12,
+      "doubles": 3,
+      "triples": 0,
+      "home_runs": 1,
+      "rbi": 6,
+      "runs": 8,
+      "walks": 3,
+      "hit_by_pitch": 0,
+      "sacrifice_flies": 0,
+      "stolen_bases": 2
+    },
+    "pitching": {
+      "outs_pitched": 0,
+      "era": 0,
+      "strikeouts": 0,
+      "wins": 0,
+      "losses": 0,
+      "saves": 0,
+      "hits_allowed": 0,
+      "walks": 0
+    }
   }
 ]
