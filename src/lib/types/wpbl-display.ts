@@ -45,9 +45,14 @@ export interface WpblLeadersDataNote {
   reason: string;
 }
 
+/** Bump when leader board keys or build logic change (forces Redis rebuild). */
+export const WPBL_LEADERS_SCHEMA_VERSION = 2;
+
 export interface WpblLeadersResponse {
   updatedAt: string;
   seasonId: string;
+  /** Leader blob shape version; missing on pre-enrichment caches. */
+  schemaVersion?: number;
   partial: boolean; // true if some player fetches failed
   qualifiers: {
     /** Floor for AVG (and any other rate batting boards). Default **10 AB**. */

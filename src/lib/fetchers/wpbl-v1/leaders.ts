@@ -25,6 +25,9 @@ export const PITCHING_MIN_OUTS = 9;
 /** Stored per board in Redis; UI shows fewer after team filter. */
 export const LEADERS_BOARD_STORE_LIMIT = 50;
 
+/** Bump when leader board keys or build logic change (forces Redis rebuild). */
+export const WPBL_LEADERS_SCHEMA_VERSION = 2;
+
 /**
  * Upstream season-stat fields that are unreliable in live WPBL payloads.
  * Do not rank from these; prefer counting fields + computed rates instead.
@@ -104,6 +107,7 @@ export function normalizeWpblLeadersBlob(
 ): WpblLeadersResponse {
   return {
     ...blob,
+    schemaVersion: blob.schemaVersion ?? 1,
     qualifiers: {
       battingMinAb: blob.qualifiers?.battingMinAb ?? BATTING_MIN_AB,
       pitchingMinOuts: blob.qualifiers?.pitchingMinOuts ?? PITCHING_MIN_OUTS,
@@ -112,6 +116,23 @@ export function normalizeWpblLeadersBlob(
     batting: { ...EMPTY_BATTING_BOARDS, ...blob.batting },
     pitching: { ...EMPTY_PITCHING_BOARDS, ...blob.pitching },
   };
+}
+
+/** True when Redis cache predates enriched boards and must be rebuilt. */
+export function leadersBlobNeedsRebuild(blob: WpblLeadersResponse): boolean {
+  if ((blob.schemaVersion ?? 1) < WPBL_LEADERS_SCHEMA_VERSION) {
+    return true;
+  }
+
+  const normalized = normalizeWpblLeadersBlob(blob);
+  // Same qualifiers as AVG/ERA — if legacy boards populated, enriched should be too.
+  if (normalized.batting.avg.length > 0 && normalized.batting.obp.length === 0) {
+    return true;
+  }
+  if (normalized.pitching.era.length > 0 && normalized.pitching.ip.length === 0) {
+    return true;
+  }
+  return false;
 }
 
 interface WpblApiBatting {
@@ -227,6 +248,7 @@ function parseRateSort(value: string | null): number | null {
 
 export function buildWpblLeaders(players: WpblPlayerSeasonInput[]): WpblLeadersBuild {
   return {
+    schemaVersion: WPBL_LEADERS_SCHEMA_VERSION,
     partial: false,
     qualifiers: {
       battingMinAb: BATTING_MIN_AB,

@@ -1,5 +1,8 @@
 import { REDIS_KEYS } from "@/lib/config";
-import { normalizeWpblLeadersBlob } from "@/lib/fetchers/wpbl-v1/leaders";
+import {
+  leadersBlobNeedsRebuild,
+  normalizeWpblLeadersBlob,
+} from "@/lib/fetchers/wpbl-v1/leaders";
 import {
   buildWpblLeadersBlob,
   buildWpblLeague,
@@ -29,18 +32,18 @@ async function resolveSeasonId(): Promise<string> {
 
 export async function GET() {
   try {
+    let cached: WpblLeadersResponse | null = null;
     try {
-      const cached = await getRedis().get<WpblLeadersResponse>(
-        REDIS_KEYS.wpblLeaders,
-      );
-      if (cached) {
-        return jsonWithCache(
-          normalizeWpblLeadersBlob(cached),
-          WPBL_API_CACHE_CONTROL,
-        );
-      }
+      cached = await getRedis().get<WpblLeadersResponse>(REDIS_KEYS.wpblLeaders);
     } catch {
       // Fall through to live build when Redis is unset/unreachable.
+    }
+
+    if (cached && !leadersBlobNeedsRebuild(cached)) {
+      return jsonWithCache(
+        normalizeWpblLeadersBlob(cached),
+        WPBL_API_CACHE_CONTROL,
+      );
     }
 
     const seasonId = await resolveSeasonId();
