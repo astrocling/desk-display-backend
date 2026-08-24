@@ -6,6 +6,7 @@ import {
   wpblTeamBadgeBg,
   wpblTeamLogoSrc,
   wpblTeamPrimary,
+  wpblTeamPrimaryDark,
 } from "./wpbl-team-brand";
 
 describe("getWpblTeamBrand", () => {
@@ -52,15 +53,28 @@ describe("wpblTeamBadgeBg", () => {
   });
 });
 
+describe("wpblTeamPrimaryDark", () => {
+  it("returns visible dark-mode accent for each team", () => {
+    expect(wpblTeamPrimaryDark("LA")).toBe("#C9A961");
+    expect(wpblTeamPrimaryDark("NY")).toBe("#5B9BD5");
+    expect(wpblTeamPrimaryDark("SF")).toBe("#FF4F00");
+    expect(wpblTeamPrimaryDark("BOS")).toBe("#E8922E");
+  });
+
+  it("falls back for unknown abbr", () => {
+    expect(wpblTeamPrimaryDark("??")).toBe("#64748b");
+  });
+});
+
 describe("wpblTeamAccent", () => {
   it("returns CSS vars for known abbrs", () => {
     expect(wpblTeamAccent("NY")).toEqual({
       "--team-accent": "#0B1F3A",
-      "--team-accent-dark": "#3C6FA8",
+      "--team-accent-dark": "#5B9BD5",
     });
     expect(wpblTeamAccent("SF")).toEqual({
       "--team-accent": "#5B2A8C",
-      "--team-accent-dark": "#8B5FC4",
+      "--team-accent-dark": "#FF4F00",
     });
   });
 
