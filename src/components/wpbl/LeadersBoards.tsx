@@ -28,57 +28,119 @@ type CategoryDef = {
   getEntries: (leaders: WpblLeadersResponse) => WpblLeaderEntry[];
 };
 
+function ipQualifierNote(q: WpblLeadersResponse["qualifiers"]): string {
+  return `min ${(q.pitchingMinOuts / 3).toFixed(1).replace(/\.0$/, "")} IP`;
+}
+
 const CATEGORIES: CategoryDef[] = [
   {
     id: "avg",
     label: "AVG",
     group: "hitting",
-    qualifierNote: (q) => `min ${q.battingMinAb} AB for AVG`,
-    getEntries: (l) => l.batting.avg,
+    qualifierNote: (q) => `min ${q.battingMinAb} AB`,
+    getEntries: (l) => l.batting.avg ?? [],
+  },
+  {
+    id: "obp",
+    label: "OBP",
+    group: "hitting",
+    qualifierNote: (q) => `min ${q.battingMinAb} AB`,
+    getEntries: (l) => l.batting.obp ?? [],
+  },
+  {
+    id: "slg",
+    label: "SLG",
+    group: "hitting",
+    qualifierNote: (q) => `min ${q.battingMinAb} AB`,
+    getEntries: (l) => l.batting.slg ?? [],
+  },
+  {
+    id: "ops",
+    label: "OPS",
+    group: "hitting",
+    qualifierNote: (q) => `min ${q.battingMinAb} AB`,
+    getEntries: (l) => l.batting.ops ?? [],
   },
   {
     id: "hr",
     label: "HR",
     group: "hitting",
-    getEntries: (l) => l.batting.hr,
+    getEntries: (l) => l.batting.hr ?? [],
   },
   {
     id: "rbi",
     label: "RBI",
     group: "hitting",
-    getEntries: (l) => l.batting.rbi,
+    getEntries: (l) => l.batting.rbi ?? [],
   },
   {
     id: "h",
     label: "H",
     group: "hitting",
-    getEntries: (l) => l.batting.h,
+    getEntries: (l) => l.batting.h ?? [],
+  },
+  {
+    id: "r",
+    label: "R",
+    group: "hitting",
+    getEntries: (l) => l.batting.r ?? [],
+  },
+  {
+    id: "doubles",
+    label: "2B",
+    group: "hitting",
+    getEntries: (l) => l.batting.doubles ?? [],
+  },
+  {
+    id: "sb",
+    label: "SB",
+    group: "hitting",
+    getEntries: (l) => l.batting.sb ?? [],
   },
   {
     id: "era",
     label: "ERA",
     group: "pitching",
-    qualifierNote: (q) =>
-      `min ${(q.pitchingMinOuts / 3).toFixed(1).replace(/\.0$/, "")} IP for ERA`,
-    getEntries: (l) => l.pitching.era,
+    qualifierNote: ipQualifierNote,
+    getEntries: (l) => l.pitching.era ?? [],
+  },
+  {
+    id: "whip",
+    label: "WHIP",
+    group: "pitching",
+    qualifierNote: ipQualifierNote,
+    getEntries: (l) => l.pitching.whip ?? [],
+  },
+  {
+    id: "ip",
+    label: "IP",
+    group: "pitching",
+    qualifierNote: ipQualifierNote,
+    getEntries: (l) => l.pitching.ip ?? [],
   },
   {
     id: "so",
     label: "SO",
     group: "pitching",
-    getEntries: (l) => l.pitching.so,
+    getEntries: (l) => l.pitching.so ?? [],
   },
   {
     id: "w",
     label: "W",
     group: "pitching",
-    getEntries: (l) => l.pitching.w,
+    getEntries: (l) => l.pitching.w ?? [],
+  },
+  {
+    id: "l",
+    label: "L",
+    group: "pitching",
+    getEntries: (l) => l.pitching.l ?? [],
   },
   {
     id: "sv",
     label: "SV",
     group: "pitching",
-    getEntries: (l) => l.pitching.sv,
+    getEntries: (l) => l.pitching.sv ?? [],
   },
 ];
 
