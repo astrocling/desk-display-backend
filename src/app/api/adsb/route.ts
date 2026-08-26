@@ -1,5 +1,4 @@
-const ADSB_BASE = "https://api.adsb.lol/v2";
-const FETCH_TIMEOUT_MS = 8_000;
+import { fetchAdsbNearby } from "@/lib/fetchers/adsb";
 
 function parseNumber(value: string | null): number | null {
   if (value == null || value.trim() === "") {
@@ -20,8 +19,9 @@ function clampRadiusNm(radiusNm: number): number {
 }
 
 /**
- * Thin browser-facing proxy for adsb.lol (no CORS on upstream).
- * Does not cache — mirrors firmware's direct poll pattern.
+ * Thin browser-facing proxy for community ADS-B APIs (no CORS on upstream).
+ * Tries adsb.lol then opendata.adsb.fi. Does not cache — mirrors firmware's
+ * direct poll pattern.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -41,38 +41,21 @@ export async function GET(request: Request) {
   }
 
   const dist = clampRadiusNm(distRaw ?? 25);
-  const url = `${ADSB_BASE}/lat/${lat}/lon/${lon}/dist/${dist}`;
+  const result = await fetchAdsbNearby(lat, lon, dist);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const upstream = await fetch(url, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!upstream.ok) {
-      return Response.json(
-        { error: `adsb upstream ${upstream.status}` },
-        { status: 502 },
-      );
-    }
-
-    const body = await upstream.text();
-    return new Response(body, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "adsb proxy failed";
-    return Response.json({ error: message }, { status: 502 });
-  } finally {
-    clearTimeout(timeout);
+  if (!result.ok) {
+    return Response.json(
+      { error: result.error, upstream: result.upstream },
+      { status: 502 },
+    );
   }
+
+  return new Response(result.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-ADSB-Upstream": result.upstream,
+    },
+  });
 }

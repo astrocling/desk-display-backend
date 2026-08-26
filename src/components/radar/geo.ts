@@ -40,7 +40,7 @@ export function clamp(n: number, min: number, max: number): number {
 export const MAP_CONTEXT_MAX_MI = 250;
 export const MAP_CONTEXT_MIN_MI = 5;
 
-/** adsb.lol accepts 1–250 nm. */
+/** Community ADS-B v2 lat/lon endpoints accept 1–250 nm. */
 export const ADSB_MAX_NM = 250;
 export const ADSB_MIN_NM = 1;
 

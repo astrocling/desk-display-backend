@@ -126,39 +126,53 @@ function readStoredDisplayMode(): RadarDisplayMode {
   }
 }
 
-/** Dark raster basemap with glyphs so symbol labels can render. */
-const BASEMAP_STYLE = {
-  version: 8 as const,
-  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-  sources: {
-    carto: {
-      type: "raster" as const,
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    },
+/**
+ * Free dark vector basemap (OpenFreeMap). Replaces Carto dark_all raster tiles,
+ * which now watermark without an API key.
+ */
+const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
+
+const AEROWAY_GROUND_PAINT: Record<
+  string,
+  { prop: string; ground: string; normal: string }
+> = {
+  background: {
+    prop: "background-color",
+    ground: "rgb(28,28,32)",
+    normal: "rgb(12,12,12)",
   },
-  layers: [
-    {
-      id: "carto-basemap",
-      type: "raster" as const,
-      source: "carto",
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
+  "aeroway-taxiway": {
+    prop: "line-color",
+    ground: "#5a5a64",
+    normal: "#181818",
+  },
+  "aeroway-runway": {
+    prop: "line-color",
+    ground: "#4a4a54",
+    normal: "#000000",
+  },
+  "aeroway-runway-casing": {
+    prop: "line-color",
+    ground: "rgba(130,130,140,0.95)",
+    normal: "rgba(60,60,60,0.8)",
+  },
+  "aeroway-area": {
+    prop: "fill-color",
+    ground: "#222228",
+    normal: "#000000",
+  },
 };
 
-/** Stay on dark tiles; lift blacks so pavement/taxiways read in ground mode. */
+/** Stay dark; lift aeroway contrast so pavement/taxiways read in ground mode. */
 function applyBasemapForGround(map: MapLibreMap, ground: boolean) {
-  if (!map.getLayer("carto-basemap")) return;
-  map.setPaintProperty("carto-basemap", "raster-brightness-min", ground ? 0.22 : 0);
-  map.setPaintProperty("carto-basemap", "raster-contrast", ground ? 0.12 : 0);
+  for (const [layerId, paint] of Object.entries(AEROWAY_GROUND_PAINT)) {
+    if (!map.getLayer(layerId)) continue;
+    map.setPaintProperty(
+      layerId,
+      paint.prop,
+      ground ? paint.ground : paint.normal,
+    );
+  }
 }
 
 const ADSB_POLL_MS = 10_000;
@@ -278,17 +292,22 @@ function parseSquawk(value: unknown): string {
   return "";
 }
 
-/** adsb.lol reports surface targets as the string "ground" in alt_baro. */
+/** Community ADS-B feeds report surface targets as the string "ground" in alt_baro. */
 function isGroundAlt(value: unknown): boolean {
   return typeof value === "string" && value.trim().toLowerCase() === "ground";
 }
 
 function parseAdsbAircraft(data: unknown): AircraftPoint[] {
-  if (!data || typeof data !== "object" || !("ac" in data)) {
+  if (!data || typeof data !== "object") {
     return [];
   }
-  const ac = (data as { ac: unknown }).ac;
-  if (!Array.isArray(ac)) {
+  const obj = data as { ac?: unknown; aircraft?: unknown };
+  const ac = Array.isArray(obj.ac)
+    ? obj.ac
+    : Array.isArray(obj.aircraft)
+      ? obj.aircraft
+      : null;
+  if (!ac) {
     return [];
   }
 
