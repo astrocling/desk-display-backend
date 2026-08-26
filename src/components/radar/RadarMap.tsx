@@ -127,9 +127,10 @@ function readStoredDisplayMode(): RadarDisplayMode {
 }
 
 /**
- * Basemap strategy (Carto raster `dark_all` now watermarks without a key):
- * - With NEXT_PUBLIC_CARTO_API_KEY → original dark_all raster + key param
- * - Without a key → local OpenFreeMap-based dark style (readable roads/labels)
+ * Basemap strategy (Carto `dark_all` raster watermarks without a key):
+ * - With NEXT_PUBLIC_CARTO_API_KEY → original dark_all raster + key
+ * - Default → Esri World Dark Gray Base + Reference (free raster, no key)
+ *   Note: ArcGIS MapServer tiles use {z}/{y}/{x}, not OSM {z}/{x}/{y}.
  */
 const CARTO_DARK_RASTER_TILES = [
   "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
@@ -137,7 +138,21 @@ const CARTO_DARK_RASTER_TILES = [
   "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
 ] as const;
 
-const RADAR_DARK_STYLE = "/map/radar-dark-style.json";
+const ESRI_DARK_BASE_TILES = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+  "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+] as const;
+
+const ESRI_DARK_REF_TILES = [
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+] as const;
+
+const BASEMAP_RASTER_LAYER_IDS = [
+  "carto-basemap",
+  "esri-basemap",
+  "esri-basemap-ref",
+] as const;
 
 function cartoApiKey(): string | undefined {
   const key = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
@@ -172,32 +187,65 @@ function cartoRasterStyle(key: string) {
   };
 }
 
-function basemapStyle(): string | ReturnType<typeof cartoRasterStyle> {
+/** Free dark canvas: roads on base tiles, place labels on reference tiles. */
+function esriDarkRasterStyle() {
+  return {
+    version: 8 as const,
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+    sources: {
+      "esri-gray": {
+        type: "raster" as const,
+        tiles: [...ESRI_DARK_BASE_TILES],
+        tileSize: 256,
+        maxzoom: 16,
+        attribution:
+          'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — Esri, HERE, Garmin, FAO, NOAA, USGS',
+      },
+      "esri-gray-ref": {
+        type: "raster" as const,
+        tiles: [...ESRI_DARK_REF_TILES],
+        tileSize: 256,
+        maxzoom: 16,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; Esri',
+      },
+    },
+    layers: [
+      {
+        id: "esri-basemap",
+        type: "raster" as const,
+        source: "esri-gray",
+        minzoom: 0,
+        maxzoom: 22,
+      },
+      {
+        id: "esri-basemap-ref",
+        type: "raster" as const,
+        source: "esri-gray-ref",
+        minzoom: 0,
+        maxzoom: 22,
+      },
+    ],
+  };
+}
+
+function basemapStyle():
+  | ReturnType<typeof cartoRasterStyle>
+  | ReturnType<typeof esriDarkRasterStyle> {
   const key = cartoApiKey();
-  return key ? cartoRasterStyle(key) : RADAR_DARK_STYLE;
+  return key ? cartoRasterStyle(key) : esriDarkRasterStyle();
 }
 
 /** Stay on dark tiles; lift blacks so pavement/taxiways read in ground mode. */
 function applyBasemapForGround(map: MapLibreMap, ground: boolean) {
-  if (map.getLayer("carto-basemap")) {
+  for (const layerId of BASEMAP_RASTER_LAYER_IDS) {
+    if (!map.getLayer(layerId)) continue;
     map.setPaintProperty(
-      "carto-basemap",
+      layerId,
       "raster-brightness-min",
       ground ? 0.22 : 0,
     );
-    map.setPaintProperty(
-      "carto-basemap",
-      "raster-contrast",
-      ground ? 0.12 : 0,
-    );
-    return;
-  }
-  if (map.getLayer("background")) {
-    map.setPaintProperty(
-      "background",
-      "background-color",
-      ground ? "#152030" : "#0b1018",
-    );
+    map.setPaintProperty(layerId, "raster-contrast", ground ? 0.12 : 0);
   }
 }
 
@@ -2240,7 +2288,7 @@ export function RadarMap() {
 
   return (
     <div
-      className={`relative h-[100dvh] w-[100vw] overflow-hidden bg-slate-950 text-slate-100${
+      className={`radar-map-root relative h-[100dvh] w-[100vw] overflow-hidden bg-slate-950 text-slate-100${
         scopeActive ? " radar-scope-active" : ""
       }${groundMode ? " radar-ground-active" : ""}`}
     >
