@@ -127,50 +127,76 @@ function readStoredDisplayMode(): RadarDisplayMode {
 }
 
 /**
- * Free dark vector basemap (OpenFreeMap). Replaces Carto dark_all raster tiles,
- * which now watermark without an API key.
+ * Basemap strategy (Carto raster `dark_all` now watermarks without a key):
+ * - With NEXT_PUBLIC_CARTO_API_KEY → original dark_all raster + key param
+ * - Without a key → local OpenFreeMap-based dark style (readable roads/labels)
  */
-const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
+const CARTO_DARK_RASTER_TILES = [
+  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+] as const;
 
-const AEROWAY_GROUND_PAINT: Record<
-  string,
-  { prop: string; ground: string; normal: string }
-> = {
-  background: {
-    prop: "background-color",
-    ground: "rgb(28,28,32)",
-    normal: "rgb(12,12,12)",
-  },
-  "aeroway-taxiway": {
-    prop: "line-color",
-    ground: "#5a5a64",
-    normal: "#181818",
-  },
-  "aeroway-runway": {
-    prop: "line-color",
-    ground: "#4a4a54",
-    normal: "#000000",
-  },
-  "aeroway-runway-casing": {
-    prop: "line-color",
-    ground: "rgba(130,130,140,0.95)",
-    normal: "rgba(60,60,60,0.8)",
-  },
-  "aeroway-area": {
-    prop: "fill-color",
-    ground: "#222228",
-    normal: "#000000",
-  },
-};
+const RADAR_DARK_STYLE = "/map/radar-dark-style.json";
 
-/** Stay dark; lift aeroway contrast so pavement/taxiways read in ground mode. */
+function cartoApiKey(): string | undefined {
+  const key = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim();
+  return key || undefined;
+}
+
+function cartoRasterStyle(key: string) {
+  const tiles = CARTO_DARK_RASTER_TILES.map(
+    (url) => `${url}?key=${encodeURIComponent(key)}`,
+  );
+  return {
+    version: 8 as const,
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+    sources: {
+      carto: {
+        type: "raster" as const,
+        tiles,
+        tileSize: 256,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      },
+    },
+    layers: [
+      {
+        id: "carto-basemap",
+        type: "raster" as const,
+        source: "carto",
+        minzoom: 0,
+        maxzoom: 20,
+      },
+    ],
+  };
+}
+
+function basemapStyle(): string | ReturnType<typeof cartoRasterStyle> {
+  const key = cartoApiKey();
+  return key ? cartoRasterStyle(key) : RADAR_DARK_STYLE;
+}
+
+/** Stay on dark tiles; lift blacks so pavement/taxiways read in ground mode. */
 function applyBasemapForGround(map: MapLibreMap, ground: boolean) {
-  for (const [layerId, paint] of Object.entries(AEROWAY_GROUND_PAINT)) {
-    if (!map.getLayer(layerId)) continue;
+  if (map.getLayer("carto-basemap")) {
     map.setPaintProperty(
-      layerId,
-      paint.prop,
-      ground ? paint.ground : paint.normal,
+      "carto-basemap",
+      "raster-brightness-min",
+      ground ? 0.22 : 0,
+    );
+    map.setPaintProperty(
+      "carto-basemap",
+      "raster-contrast",
+      ground ? 0.12 : 0,
+    );
+    return;
+  }
+  if (map.getLayer("background")) {
+    map.setPaintProperty(
+      "background",
+      "background-color",
+      ground ? "#152030" : "#0b1018",
     );
   }
 }
@@ -1771,7 +1797,7 @@ export function RadarMap() {
     let cancelled = false;
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: BASEMAP_STYLE,
+      style: basemapStyle(),
       center: [homeRef.current.lon, homeRef.current.lat],
       // Zoom 10 is a sensible local default; overlays scale with viewport radius.
       zoom: DEFAULT_MAP_ZOOM,
