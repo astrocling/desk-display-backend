@@ -2321,7 +2321,7 @@ export function RadarMap() {
             placeholder="ICAO"
             maxLength={4}
             aria-label="Airport ICAO code"
-            className="w-20 rounded bg-slate-800 px-2 py-1.5 text-sm uppercase tracking-wider text-slate-100 outline-none ring-emerald-500/40 placeholder:text-slate-500 focus:ring"
+            className="w-20 rounded bg-slate-800 px-2 py-1.5 text-sm uppercase tracking-wider text-slate-100 outline-none ring-emerald-500/40 placeholder:text-slate-400 focus:ring"
           />
           <button
             type="submit"
@@ -2468,7 +2468,7 @@ export function RadarMap() {
             placeholder="squawk / callsign"
             spellCheck={false}
             autoComplete="off"
-            className="w-36 rounded bg-slate-800 px-2 py-1 font-mono text-sm uppercase text-slate-100 outline-none ring-cyan-500/40 placeholder:text-slate-500 focus:ring"
+            className="w-36 rounded bg-slate-800 px-2 py-1 font-mono text-sm uppercase text-slate-100 outline-none ring-cyan-500/40 placeholder:text-slate-400 focus:ring"
           />
           {normalizeIdentQuery(identQuery) ? (
             <button
@@ -2580,7 +2580,7 @@ export function RadarMap() {
                   placeholder="N730CF"
                   maxLength={12}
                   aria-label="Add registration"
-                  className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1.5 font-mono text-sm uppercase text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-500 focus:ring"
+                  className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1.5 font-mono text-sm uppercase text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-400 focus:ring"
                 />
                 <button
                   type="submit"
@@ -2624,7 +2624,7 @@ export function RadarMap() {
                               note: e.target.value,
                             })
                           }
-                          className="w-full rounded bg-slate-900 px-2 py-1 font-mono text-xs uppercase text-slate-100 outline-none ring-sky-500/30 placeholder:text-slate-500 focus:ring"
+                          className="w-full rounded bg-slate-900 px-2 py-1 font-mono text-xs uppercase text-slate-100 outline-none ring-sky-500/30 placeholder:text-slate-400 focus:ring"
                         />
                         <div
                           className="flex items-center gap-1.5"

@@ -138,7 +138,7 @@ export function LayersPanel({
               placeholder="Add designator…"
               maxLength={12}
               aria-label="Add airport designator"
-              className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1.5 font-mono text-sm uppercase text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-500 focus:ring"
+              className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1.5 font-mono text-sm uppercase text-slate-100 outline-none ring-sky-500/40 placeholder:text-slate-400 focus:ring"
             />
             <button
               type="submit"
