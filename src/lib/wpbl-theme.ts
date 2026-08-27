@@ -33,5 +33,5 @@ export function applyDocumentColorScheme(scheme: WpblColorScheme): void {
   document.documentElement.style.colorScheme = scheme;
 }
 
-/** Inline script for root layout — WPBL routes always render dark. */
-export const WPBL_THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname;var wpbl=p==="/wpbl"||p.indexOf("/wpbl/")===0;if(wpbl){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`;
+/** Inline script for root layout — WPBL and radar routes always render dark. */
+export const WPBL_THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname;var dark=p==="/wpbl"||p.indexOf("/wpbl/")===0||p==="/radar"||p.indexOf("/radar/")===0;if(dark){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark";}}catch(e){}})();`;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WPBL_THEME_INIT_SCRIPT,
   isWpblColorScheme,
   parseWpblColorScheme,
   resolveWpblColorScheme,
@@ -13,6 +14,14 @@ describe("wpbl-theme", () => {
     expect(isWpblColorScheme("dark")).toBe(true);
     expect(isWpblColorScheme("system")).toBe(false);
     expect(isWpblColorScheme(null)).toBe(false);
+  });
+
+  it("forces dark chrome on WPBL and radar routes", () => {
+    expect(WPBL_THEME_INIT_SCRIPT).toContain('p==="/wpbl"');
+    expect(WPBL_THEME_INIT_SCRIPT).toContain('p.indexOf("/wpbl/")===0');
+    expect(WPBL_THEME_INIT_SCRIPT).toContain('p==="/radar"');
+    expect(WPBL_THEME_INIT_SCRIPT).toContain('p.indexOf("/radar/")===0');
+    expect(WPBL_THEME_INIT_SCRIPT).toContain('colorScheme="dark"');
   });
 
   it("parses stored session values", () => {

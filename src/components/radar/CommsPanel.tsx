@@ -190,7 +190,7 @@ export function CommsPanel({
         <div className="flex items-center justify-between gap-2">
           <span
             className={`flex items-center gap-1.5 text-[10px] font-semibold tracking-wide ${
-              isPlaying ? "text-[#3D9CF0]" : "text-[#4B5563]"
+              isPlaying ? "text-[#3D9CF0]" : "text-[#6B7280]"
             }`}
           >
             <span
@@ -207,7 +207,7 @@ export function CommsPanel({
               {radio.activeIcao}
             </span>
           ) : (
-            <span className="text-[10px] text-[#4B5563]">no signal</span>
+            <span className="text-[10px] text-[#6B7280]">no signal</span>
           )}
         </div>
         {activeFeeds.length === 1 ? (

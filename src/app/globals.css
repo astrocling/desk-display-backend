@@ -57,6 +57,17 @@ body {
 
 /* Radar fixture — device ATC-lite theming (radar_lvgl / radar_format). */
 
+/*
+ * Radar chrome is always dark. Force light ink + dark color-scheme so
+ * inheriting controls (buttons/inputs without an explicit text-* class)
+ * stay readable even if a Tailwind utility is missed by the scanner,
+ * and so native placeholders/form UA styles match the dark panels.
+ */
+.radar-map-root {
+  color-scheme: dark;
+  color: #f1f5f9; /* slate-100 */
+}
+
 /* Airspace SVG is a canvas-container sibling; keep markers above it. */
 .maplibregl-canvas-container > .maplibregl-marker {
   z-index: 2;
