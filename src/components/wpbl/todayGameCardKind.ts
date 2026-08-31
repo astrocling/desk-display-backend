@@ -9,10 +9,9 @@ export function todayGameCardKind(
   now: Date = new Date(),
 ): TodayGameCardKind {
   if (game.status === "final") return "final-detail";
-  if (
-    game.status === "live" ||
-    wpblGameMayBeLive(game, { scheduleLive: game.status === "live", now })
-  ) {
+
+  const scheduleLive = game.status === "live";
+  if (scheduleLive || wpblGameMayBeLive(game, { scheduleLive, now })) {
     return "live-detail";
   }
   return "day";
