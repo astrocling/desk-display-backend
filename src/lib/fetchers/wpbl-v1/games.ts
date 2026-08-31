@@ -4,7 +4,7 @@ import { fetchWpblJson } from "./client";
 import { mapWpblStatus } from "./status";
 import { teamFromFullName, teamFromId } from "./teams";
 
-interface WpblApiGame {
+export interface WpblApiGame {
   game_id: string;
   season_id: string;
   home_team_id: string;

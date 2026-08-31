@@ -18,6 +18,7 @@ import {
 import { fetchWpblLeaders } from "./leaders";
 import { fetchWpblPlayerDetail } from "./player";
 import { fetchWpblStandings } from "./standings";
+import { fetchMissingFinalApiGames } from "./team-games";
 import { FALLBACK_SEASON_ID } from "./teams";
 
 export { wpblGameKey, wpblPlayerKey };
@@ -172,8 +173,12 @@ async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
 /** Build league snapshot from WPBL /v1 with no Redis dependency. */
 export async function buildWpblLeague(): Promise<WpblLeagueResponse> {
   const payload = await fetchWpblJson<WpblGamesPayload>("/v1/games");
-  const games = mapWpblGames(payload);
   const seasonId = resolveSeasonId(payload) ?? FALLBACK_SEASON_ID;
+  const missingFinals = await fetchMissingFinalApiGames(payload, seasonId);
+  const games = mapWpblGames({
+    ...payload,
+    games: [...payload.games, ...missingFinals],
+  });
   const standings = await fetchWpblStandings(seasonId);
 
   return {
