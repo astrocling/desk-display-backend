@@ -20,6 +20,8 @@ import { WpblSectionTitle } from "./WpblBoardShell";
 export type TodaysGamesSectionProps = {
   games: WpblScheduleGame[];
   standings: WpblStandingRow[];
+  /** Override section heading (default derives from slate). */
+  title?: string;
   /** Kept for parent compatibility; live cards now refresh via websocket. */
   refreshKey: number;
 };
@@ -119,15 +121,16 @@ function FinalGameDetailCard({
 export function TodaysGamesSection({
   games,
   standings,
+  title,
 }: TodaysGamesSectionProps) {
   if (games.length === 0) return null;
 
   const hasLive = todaySlateHasLiveGame(games);
-  const title = hasLive ? "Today · Live" : "Today";
+  const sectionTitle = title ?? (hasLive ? "Today · Live" : "Today");
 
   return (
     <section className="space-y-3">
-      <WpblSectionTitle>{title}</WpblSectionTitle>
+      <WpblSectionTitle>{sectionTitle}</WpblSectionTitle>
       <div className="space-y-4">
         {games.map((game) => {
           const cardKind = todayGameCardKind(game);

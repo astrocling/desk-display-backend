@@ -10,6 +10,7 @@ import {
   partitionScheduleByWeek,
   sundayOfWeekEt,
   todaysSlateGames,
+  yesterdaysFinalGames,
 } from "./scheduleWeek";
 
 function game(
@@ -186,6 +187,37 @@ describe("partitionScheduleByWeek", () => {
       "week-sun",
     ]);
     expect(part.future.map((g) => g.id)).toEqual(["future", "undated"]);
+  });
+});
+
+describe("yesterdaysFinalGames", () => {
+  it("returns finals from the previous ET calendar day", () => {
+    const monMorning = new Date("2026-08-31T14:00:00-04:00");
+    const games = [
+      game({
+        id: "sun-final",
+        status: "final",
+        startIso: "2026-08-30T23:30:00Z",
+        awayRuns: 9,
+        homeRuns: 11,
+      }),
+      game({
+        id: "sat-final",
+        status: "final",
+        startIso: "2026-08-29T23:30:00Z",
+        awayRuns: 6,
+        homeRuns: 10,
+      }),
+      game({
+        id: "sun-sched",
+        status: "scheduled",
+        startIso: "2026-08-30T22:30:00Z",
+      }),
+    ];
+
+    expect(yesterdaysFinalGames(games, monMorning).map((g) => g.id)).toEqual([
+      "sun-final",
+    ]);
   });
 });
 

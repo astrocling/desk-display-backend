@@ -87,6 +87,26 @@ export function todaysSlateGames(
   });
 }
 
+/**
+ * Final games from yesterday (ET) — shown on the home digest the morning after.
+ */
+export function yesterdaysFinalGames(
+  games: WpblScheduleGame[],
+  now: Date = new Date(),
+): WpblScheduleGame[] {
+  const yesterday = addDaysYmd(etYmd(now), -1);
+  return games
+    .filter(
+      (game) =>
+        game.status === "final" && gameStartYmd(game) === yesterday,
+    )
+    .sort((a, b) => {
+      const aMs = a.startIso ? new Date(a.startIso).getTime() : 0;
+      const bMs = b.startIso ? new Date(b.startIso).getTime() : 0;
+      return bMs - aMs || a.id.localeCompare(b.id);
+    });
+}
+
 export type ScheduleWeekPartition = {
   weekStartYmd: string;
   weekEndYmd: string;
