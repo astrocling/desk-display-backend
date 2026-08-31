@@ -6,6 +6,7 @@ import type {
   WpblLeadersResponse,
   WpblLeagueResponse,
 } from "@/lib/types/wpbl-display";
+import { wpblGamesNeedLivePoll } from "@/lib/fetchers/wpbl-v1/refresh";
 
 const POLL_MS = 30_000;
 
@@ -136,17 +137,18 @@ export function useWpblBoardData(options: UseWpblBoardDataOptions = {}) {
     };
   }, [load]);
 
-  const hasLive = league?.games.some((g) => g.status === "live") ?? false;
+  const needsLivePoll =
+    league != null ? wpblGamesNeedLivePoll(league.games) : false;
 
   useEffect(() => {
-    if (!hasLive) return;
+    if (!needsLivePoll) return;
 
     const id = window.setInterval(() => {
       void load();
     }, POLL_MS);
 
     return () => window.clearInterval(id);
-  }, [hasLive, load]);
+  }, [needsLivePoll, load]);
 
   return {
     league,
@@ -154,7 +156,7 @@ export function useWpblBoardData(options: UseWpblBoardDataOptions = {}) {
     leagueError,
     leadersError,
     loading,
-    hasLive,
+    hasLive: needsLivePoll,
     liveRefreshKey,
     updatedAt: league?.updatedAt ?? leaders?.updatedAt,
   };

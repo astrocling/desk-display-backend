@@ -11,7 +11,11 @@ import {
   mergeWpblLeadersBlob,
   mergeWpblLeagueBlob,
   shouldRefreshWpblGame,
+  shouldRefreshWpblLeague,
   shouldRefreshWpblPlayer,
+  wpblGameMayBeLive,
+  wpblGamesNeedLivePoll,
+  WPBL_LEAGUE_LIVE_TTL_MS,
   WPBL_LIVE_TTL_MS,
   WPBL_PLAYER_TTL_MS,
 } from "./refresh";
@@ -205,6 +209,177 @@ describe("shouldRefreshWpblGame", () => {
       },
     });
     expect(shouldRefreshWpblGame(d, now)).toBe(false);
+  });
+
+  it("refreshes scheduled games whose start time has passed", () => {
+    const d = detail({
+      status: "scheduled",
+      updatedAt: now.toISOString(),
+      game: { startIso: "2026-08-21T17:00:00.000Z" },
+      boxscore: {
+        available: true,
+        lineScore: null,
+        batting: [],
+        pitching: [],
+        plays: [],
+      tracking: [],
+      },
+    });
+    expect(shouldRefreshWpblGame(d, now)).toBe(true);
+  });
+});
+
+describe("wpblGameMayBeLive", () => {
+  const now = new Date("2026-08-21T18:00:00Z");
+
+  it("returns true for live status", () => {
+    expect(
+      wpblGameMayBeLive({ status: "live", startIso: null }, { now }),
+    ).toBe(true);
+  });
+
+  it("returns true when schedule marks live before detail catches up", () => {
+    expect(
+      wpblGameMayBeLive(
+        { status: "scheduled", startIso: "2026-08-21T19:00:00.000Z" },
+        { scheduleLive: true, now },
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true when a scheduled start time is due", () => {
+    expect(
+      wpblGameMayBeLive(
+        { status: "scheduled", startIso: "2026-08-21T17:00:00.000Z" },
+        { now },
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for a future scheduled start", () => {
+    expect(
+      wpblGameMayBeLive(
+        { status: "scheduled", startIso: "2026-08-21T19:00:00.000Z" },
+        { now },
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("shouldRefreshWpblLeague", () => {
+  const now = new Date("2026-08-21T18:00:00Z");
+
+  it("skips refresh inside the TTL window", () => {
+    const blob: WpblLeagueResponse = {
+      ...freshLeagueNoStandings,
+      updatedAt: new Date(now.getTime() - WPBL_LEAGUE_LIVE_TTL_MS + 5_000).toISOString(),
+      games: [
+        {
+          id: "live1",
+          status: "live",
+          startIso: "2026-08-21T17:00:00.000Z",
+          whenEt: null,
+          awayAbbr: "LA",
+          homeAbbr: "NY",
+          awayName: "Queens",
+          homeName: "Heights",
+          awayRuns: 1,
+          homeRuns: 2,
+          venue: null,
+          countsInStandings: true,
+        },
+      ],
+    };
+    expect(shouldRefreshWpblLeague(blob, now)).toBe(false);
+  });
+
+  it("refreshes when a live game is stale", () => {
+    const blob: WpblLeagueResponse = {
+      ...freshLeagueNoStandings,
+      updatedAt: new Date(now.getTime() - WPBL_LEAGUE_LIVE_TTL_MS - 1_000).toISOString(),
+      games: [
+        {
+          id: "live1",
+          status: "live",
+          startIso: "2026-08-21T17:00:00.000Z",
+          whenEt: null,
+          awayAbbr: "LA",
+          homeAbbr: "NY",
+          awayName: "Queens",
+          homeName: "Heights",
+          awayRuns: 1,
+          homeRuns: 2,
+          venue: null,
+          countsInStandings: true,
+        },
+      ],
+    };
+    expect(shouldRefreshWpblLeague(blob, now)).toBe(true);
+  });
+
+  it("refreshes when a scheduled start is due and TTL expired", () => {
+    const blob: WpblLeagueResponse = {
+      ...freshLeagueNoStandings,
+      updatedAt: new Date(now.getTime() - WPBL_LEAGUE_LIVE_TTL_MS - 1_000).toISOString(),
+      games: [
+        {
+          id: "g1",
+          status: "scheduled",
+          startIso: "2026-08-21T17:00:00.000Z",
+          whenEt: null,
+          awayAbbr: "LA",
+          homeAbbr: "NY",
+          awayName: "Queens",
+          homeName: "Heights",
+          awayRuns: null,
+          homeRuns: null,
+          venue: null,
+          countsInStandings: true,
+        },
+      ],
+    };
+    expect(shouldRefreshWpblLeague(blob, now)).toBe(true);
+  });
+});
+
+describe("wpblGamesNeedLivePoll", () => {
+  it("detects live and due scheduled games", () => {
+    const now = new Date("2026-08-21T18:00:00Z");
+    expect(
+      wpblGamesNeedLivePoll(
+        [
+          {
+            id: "g1",
+            status: "scheduled",
+            startIso: "2026-08-21T19:00:00.000Z",
+            whenEt: null,
+            awayAbbr: "LA",
+            homeAbbr: "NY",
+            awayName: "Queens",
+            homeName: "Heights",
+            awayRuns: null,
+            homeRuns: null,
+            venue: null,
+            countsInStandings: true,
+          },
+          {
+            id: "g2",
+            status: "scheduled",
+            startIso: "2026-08-21T17:00:00.000Z",
+            whenEt: null,
+            awayAbbr: "SF",
+            homeAbbr: "BOS",
+            awayName: "Firebells",
+            homeName: "Hunters",
+            awayRuns: null,
+            homeRuns: null,
+            venue: null,
+            countsInStandings: true,
+          },
+        ],
+        now,
+      ),
+    ).toBe(true);
   });
 });
 

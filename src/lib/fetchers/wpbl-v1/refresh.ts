@@ -2,9 +2,11 @@ import { REDIS_KEYS, wpblGameKey, wpblPlayerKey } from "@/lib/config";
 import { getRedis } from "@/lib/redis";
 import type {
   WpblGameDetailResponse,
+  WpblGameStatus,
   WpblLeadersResponse,
   WpblLeagueResponse,
   WpblPlayerDetailResponse,
+  WpblScheduleGame,
 } from "@/lib/types/wpbl-display";
 import { fetchWpblGameDetail } from "./boxscore";
 import { fetchWpblJson } from "./client";
@@ -23,6 +25,60 @@ export { wpblGameKey, wpblPlayerKey };
 /** Max age of a live game blob before refresh. */
 export const WPBL_LIVE_TTL_MS = 30_000;
 
+/** Max age of the league blob before a live-capable on-read refresh. */
+export const WPBL_LEAGUE_LIVE_TTL_MS = 30_000;
+
+type WpblGameLiveProbe = {
+  status: WpblGameStatus;
+  startIso: string | null;
+};
+
+/** True when a schedule or detail row may be in progress but status is stale. */
+export function wpblGameMayBeLive(
+  game: WpblGameLiveProbe | null | undefined,
+  options: { scheduleLive?: boolean; now?: Date } = {},
+): boolean {
+  if (!game) return Boolean(options.scheduleLive);
+  if (game.status === "live") return true;
+  if (options.scheduleLive) return true;
+  if (
+    (game.status === "scheduled" || game.status === "other") &&
+    game.startIso
+  ) {
+    const now = options.now ?? new Date();
+    const startMs = Date.parse(game.startIso);
+    return Number.isFinite(startMs) && startMs <= now.getTime();
+  }
+  return false;
+}
+
+/** True when any game on the board may need live polling / refresh. */
+export function wpblGamesNeedLivePoll(
+  games: WpblScheduleGame[],
+  now: Date = new Date(),
+): boolean {
+  return games.some((game) =>
+    wpblGameMayBeLive(game, {
+      scheduleLive: game.status === "live",
+      now,
+    }),
+  );
+}
+
+export function shouldRefreshWpblLeague(
+  blob: WpblLeagueResponse,
+  now: Date = new Date(),
+): boolean {
+  const updatedMs = Date.parse(blob.updatedAt);
+  if (!Number.isFinite(updatedMs)) {
+    return true;
+  }
+  if (now.getTime() - updatedMs < WPBL_LEAGUE_LIVE_TTL_MS) {
+    return false;
+  }
+  return wpblGamesNeedLivePoll(blob.games, now);
+}
+
 /** Max age of a player detail blob before on-read refresh. */
 export const WPBL_PLAYER_TTL_MS = 5 * 60_000;
 
@@ -36,6 +92,10 @@ export function shouldRefreshWpblGame(
       return true;
     }
     return now.getTime() - updatedMs >= WPBL_LIVE_TTL_MS;
+  }
+
+  if (wpblGameMayBeLive(blob.game, { now })) {
+    return true;
   }
 
   if (!blob.boxscore.available) {

@@ -6,6 +6,7 @@ import {
   applyWpblLiveEnvelope,
   type WpblLiveEnvelope,
 } from "@/lib/fetchers/wpbl-v1/live-merge";
+import { wpblGameMayBeLive } from "@/lib/fetchers/wpbl-v1/refresh";
 import type { WpblGameDetailResponse } from "@/lib/types/wpbl-display";
 import {
   connectWpblLiveSocket,
@@ -22,6 +23,8 @@ export type UseWpblLiveGameOptions = {
   enabled?: boolean;
   /** Redis-hot blob from the server so the UI can paint before the first fetch. */
   initialData?: WpblGameDetailResponse | null;
+  /** League schedule marks this game live before the detail blob catches up. */
+  scheduleLive?: boolean;
 };
 
 export type UseWpblLiveGameResult = {
@@ -38,6 +41,7 @@ export function useWpblLiveGame(
   options: UseWpblLiveGameOptions = {},
 ): UseWpblLiveGameResult {
   const enabled = options.enabled ?? true;
+  const scheduleLive = options.scheduleLive ?? false;
   const initialData = options.initialData ?? null;
   const [data, setData] = useState<WpblGameDetailResponse | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
@@ -129,10 +133,13 @@ export function useWpblLiveGame(
     return () => {
       cancelled = true;
     };
-  }, [initialData, load]);
+  }, [gameId, initialData, load]);
 
-  const isLive = data?.game.status === "live";
-  const liveActive = enabled && Boolean(isLive);
+  const liveActive =
+    enabled &&
+    wpblGameMayBeLive(data?.game, {
+      scheduleLive,
+    });
 
   // Official live websocket while the game is in progress.
   useEffect(() => {

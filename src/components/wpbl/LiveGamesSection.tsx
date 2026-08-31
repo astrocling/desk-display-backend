@@ -3,6 +3,7 @@
 import type {
   WpblScheduleGame,
   WpblStandingRow,
+  WpblGameDetailResponse,
 } from "@/lib/types/wpbl-display";
 
 import { DayGameCard } from "./DayGameCard";
@@ -18,15 +19,55 @@ export type TodaysGamesSectionProps = {
   refreshKey: number;
 };
 
+function detailForLiveCard(
+  schedule: WpblScheduleGame,
+  detail: WpblGameDetailResponse,
+): WpblGameDetailResponse {
+  if (detail.game.status === "live") return detail;
+
+  return {
+    ...detail,
+    game: {
+      ...detail.game,
+      status: "live",
+      awayRuns: detail.game.awayRuns ?? schedule.awayRuns,
+      homeRuns: detail.game.homeRuns ?? schedule.homeRuns,
+    },
+  };
+}
+
+function hasLiveCardData(detail: WpblGameDetailResponse): boolean {
+  return (
+    detail.game.status === "live" ||
+    detail.game.situation != null ||
+    detail.game.awayRuns != null ||
+    detail.game.homeRuns != null ||
+    detail.boxscore.available
+  );
+}
+
 function LiveGameDetailCard({
   game,
 }: {
   game: WpblScheduleGame;
 }) {
-  const { data, loading, connection } = useWpblLiveGame(game.id);
+  const { data, loading, connection } = useWpblLiveGame(game.id, {
+    scheduleLive: game.status === "live",
+  });
 
-  if (data && data.game.status === "live") {
-    return <LiveGameCard detail={data} connection={connection} />;
+  if (data && (data.game.status === "live" || game.status === "live")) {
+    const showCard =
+      hasLiveCardData(data) ||
+      game.awayRuns != null ||
+      game.homeRuns != null;
+    if (showCard) {
+      return (
+        <LiveGameCard
+          detail={detailForLiveCard(game, data)}
+          connection={connection}
+        />
+      );
+    }
   }
 
   return (
@@ -37,7 +78,7 @@ function LiveGameDetailCard({
             game.awayRuns != null && game.homeRuns != null
               ? ` · ${game.awayRuns}–${game.homeRuns}`
               : ""
-          } — waiting for box score.`}
+          } — syncing live data.`}
     </div>
   );
 }
