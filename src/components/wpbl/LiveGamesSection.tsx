@@ -1,5 +1,6 @@
 "use client";
 
+import { wpblGameMayBeLive } from "@/lib/fetchers/wpbl-v1/refresh";
 import type {
   WpblScheduleGame,
   WpblStandingRow,
@@ -9,6 +10,10 @@ import type {
 import { DayGameCard } from "./DayGameCard";
 import { FinalGameCard } from "./FinalGameCard";
 import { LiveGameCard } from "./LiveGameCard";
+import {
+  todayGameCardKind,
+  todaySlateHasLiveGame,
+} from "./todayGameCardKind";
 import { useWpblLiveGame } from "./useWpblLiveGame";
 import { WpblSectionTitle } from "./WpblBoardShell";
 
@@ -51,11 +56,14 @@ function LiveGameDetailCard({
 }: {
   game: WpblScheduleGame;
 }) {
-  const { data, loading, connection } = useWpblLiveGame(game.id, {
+  const mayBeLive = wpblGameMayBeLive(game, {
     scheduleLive: game.status === "live",
   });
+  const { data, loading, connection } = useWpblLiveGame(game.id, {
+    scheduleLive: mayBeLive,
+  });
 
-  if (data && (data.game.status === "live" || game.status === "live")) {
+  if (data && (data.game.status === "live" || mayBeLive)) {
     const showCard =
       hasLiveCardData(data) ||
       game.awayRuns != null ||
@@ -114,7 +122,7 @@ export function TodaysGamesSection({
 }: TodaysGamesSectionProps) {
   if (games.length === 0) return null;
 
-  const hasLive = games.some((g) => g.status === "live");
+  const hasLive = todaySlateHasLiveGame(games);
   const title = hasLive ? "Today · Live" : "Today";
 
   return (
@@ -122,11 +130,13 @@ export function TodaysGamesSection({
       <WpblSectionTitle>{title}</WpblSectionTitle>
       <div className="space-y-4">
         {games.map((game) => {
-          if (game.status === "live") {
+          const cardKind = todayGameCardKind(game);
+
+          if (cardKind === "live-detail") {
             return <LiveGameDetailCard key={game.id} game={game} />;
           }
 
-          if (game.status === "final") {
+          if (cardKind === "final-detail") {
             return (
               <FinalGameDetailCard
                 key={game.id}

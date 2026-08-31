@@ -139,6 +139,8 @@ export function useWpblBoardData(options: UseWpblBoardDataOptions = {}) {
 
   const needsLivePoll =
     league != null ? wpblGamesNeedLivePoll(league.games) : false;
+  const hasLiveGame =
+    league?.games.some((game) => game.status === "live") ?? false;
 
   useEffect(() => {
     if (!needsLivePoll) return;
@@ -156,7 +158,7 @@ export function useWpblBoardData(options: UseWpblBoardDataOptions = {}) {
     leagueError,
     leadersError,
     loading,
-    hasLive: needsLivePoll,
+    hasLive: hasLiveGame,
     liveRefreshKey,
     updatedAt: league?.updatedAt ?? leaders?.updatedAt,
   };
