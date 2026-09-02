@@ -28,6 +28,9 @@ export const WPBL_LIVE_TTL_MS = 30_000;
 /** Max age of the league blob before a live-capable on-read refresh. */
 export const WPBL_LEAGUE_LIVE_TTL_MS = 30_000;
 
+/** Refresh idle slates periodically so new schedule rows are not stuck in Redis. */
+export const WPBL_LEAGUE_MAX_AGE_MS = 5 * 60_000;
+
 type WpblGameLiveProbe = {
   status: WpblGameStatus;
   startIso: string | null;
@@ -75,6 +78,9 @@ export function shouldRefreshWpblLeague(
   }
   if (now.getTime() - updatedMs < WPBL_LEAGUE_LIVE_TTL_MS) {
     return false;
+  }
+  if (now.getTime() - updatedMs >= WPBL_LEAGUE_MAX_AGE_MS) {
+    return true;
   }
   return wpblGamesNeedLivePoll(blob.games, now);
 }

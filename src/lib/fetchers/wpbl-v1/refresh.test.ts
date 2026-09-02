@@ -16,6 +16,7 @@ import {
   wpblGameMayBeLive,
   wpblGamesNeedLivePoll,
   WPBL_LEAGUE_LIVE_TTL_MS,
+  WPBL_LEAGUE_MAX_AGE_MS,
   WPBL_LIVE_TTL_MS,
   WPBL_PLAYER_TTL_MS,
 } from "./refresh";
@@ -333,6 +334,32 @@ describe("shouldRefreshWpblLeague", () => {
           homeName: "Heights",
           awayRuns: null,
           homeRuns: null,
+          venue: null,
+          countsInStandings: true,
+        },
+      ],
+    };
+    expect(shouldRefreshWpblLeague(blob, now)).toBe(true);
+  });
+
+  it("refreshes an all-final slate once the max age TTL expires", () => {
+    const blob: WpblLeagueResponse = {
+      ...freshLeagueNoStandings,
+      updatedAt: new Date(
+        now.getTime() - WPBL_LEAGUE_MAX_AGE_MS - 1_000,
+      ).toISOString(),
+      games: [
+        {
+          id: "final1",
+          status: "final",
+          startIso: "2026-08-30T23:30:00.000Z",
+          whenEt: null,
+          awayAbbr: "NY",
+          homeAbbr: "SF",
+          awayName: "Heights",
+          homeName: "Firebells",
+          awayRuns: 9,
+          homeRuns: 11,
           venue: null,
           countsInStandings: true,
         },
