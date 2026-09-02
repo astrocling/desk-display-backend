@@ -126,7 +126,32 @@ export function resolveSeasonId(payload: WpblGamesPayload): string | null {
   return payload.games[0]?.season_id ?? null;
 }
 
+/** WPBL defaults to 50 rows; paginate so late-season games are not truncated. */
+const GAMES_PAGE_SIZE = 50;
+
+export async function fetchWpblGamesPayload(): Promise<WpblGamesPayload> {
+  const allGames: WpblApiGame[] = [];
+  let offset = 0;
+
+  while (true) {
+    const query = new URLSearchParams({
+      limit: String(GAMES_PAGE_SIZE),
+      offset: String(offset),
+    });
+    const page = await fetchWpblJson<WpblGamesPayload>(
+      `/v1/games?${query}`,
+    );
+    const batch = page.games ?? [];
+    if (batch.length === 0) break;
+    allGames.push(...batch);
+    if (batch.length < GAMES_PAGE_SIZE) break;
+    offset += batch.length;
+  }
+
+  return { count: allGames.length, games: allGames };
+}
+
 export async function fetchWpblGames(): Promise<WpblScheduleGame[]> {
-  const payload = await fetchWpblJson<WpblGamesPayload>("/v1/games");
+  const payload = await fetchWpblGamesPayload();
   return mapWpblGames(payload);
 }

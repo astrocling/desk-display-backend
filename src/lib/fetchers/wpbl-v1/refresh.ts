@@ -9,11 +9,10 @@ import type {
   WpblScheduleGame,
 } from "@/lib/types/wpbl-display";
 import { fetchWpblGameDetail } from "./boxscore";
-import { fetchWpblJson } from "./client";
 import {
+  fetchWpblGamesPayload,
   mapWpblGames,
   resolveSeasonId,
-  type WpblGamesPayload,
 } from "./games";
 import { fetchWpblLeaders } from "./leaders";
 import { fetchWpblPlayerDetail } from "./player";
@@ -172,7 +171,7 @@ async function softSetWpblLeaders(blob: WpblLeadersResponse): Promise<void> {
 
 /** Build league snapshot from WPBL /v1 with no Redis dependency. */
 export async function buildWpblLeague(): Promise<WpblLeagueResponse> {
-  const payload = await fetchWpblJson<WpblGamesPayload>("/v1/games");
+  const payload = await fetchWpblGamesPayload();
   const seasonId = resolveSeasonId(payload) ?? FALLBACK_SEASON_ID;
   const missingFinals = await fetchMissingFinalApiGames(payload, seasonId);
   const games = mapWpblGames({

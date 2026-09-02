@@ -12,7 +12,7 @@ import { findPlayerLine } from "@/lib/wpbl-player-match";
 import { normalizePitchEvent } from "@/lib/wpbl-plays";
 import { formatWpblPosition } from "@/lib/wpbl-position";
 import { fetchWpblJson } from "./client";
-import { mapWpblGames, type WpblGamesPayload } from "./games";
+import { fetchWpblGamesPayload, mapWpblGames, type WpblGamesPayload } from "./games";
 import {
   fetchWpblHeadshotMap,
   resolvePlayerHeadshot,
@@ -569,7 +569,7 @@ export async function fetchWpblGameDetail(
   // If the single-game endpoint fails (429/404), recover meta from the full list.
   if (!gameRaw) {
     try {
-      const list = await fetchWpblJson<WpblGamesPayload>("/v1/games");
+      const list = await fetchWpblGamesPayload();
       gameRaw = list.games.find((game) => game.game_id === id) ?? null;
     } catch {
       gameRaw = null;

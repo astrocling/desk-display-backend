@@ -1,13 +1,20 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   collapseDuplicateMatchups,
+  fetchWpblGamesPayload,
   mapWpblGames,
   resolveSeasonId,
 } from "./games";
 import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
+
+vi.mock("./client", () => ({
+  fetchWpblJson: vi.fn(),
+}));
+
+import { fetchWpblJson } from "./client";
 
 const fixture = JSON.parse(
   readFileSync(
@@ -85,5 +92,56 @@ describe("collapseDuplicateMatchups", () => {
 describe("resolveSeasonId", () => {
   it("reads season_id from first game", () => {
     expect(resolveSeasonId(fixture)).toBe("c9sgab9f9yx00z75");
+  });
+});
+
+describe("fetchWpblGamesPayload", () => {
+  beforeEach(() => {
+    vi.mocked(fetchWpblJson).mockReset();
+  });
+
+  it("paginates when the schedule exceeds one API page", async () => {
+    const page0 = {
+      games: Array.from({ length: 50 }, (_, i) => ({
+        game_id: `page0-${i}`,
+        season_id: "c9sgab9f9yx00z75",
+        home_team_id: "fttth861nft1j2s7",
+        away_team_id: "v4gisr4rbgmn67b0",
+        home_team_name: "New York Heights",
+        away_team_name: "Los Angeles Queens",
+        status: "Final",
+        scheduled_start: "2026-08-01T21:00:00Z",
+      })),
+    };
+    const page1 = {
+      games: [
+        {
+          game_id: "sep-game",
+          season_id: "c9sgab9f9yx00z75",
+          home_team_id: "9f08or2mffx81409",
+          away_team_id: "vhubhz8li07tmgq8",
+          home_team_name: "Boston Hunters",
+          away_team_name: "San Francisco Firebells",
+          status: "Not Started",
+          scheduled_start: "2026-09-02T23:30:00Z",
+        },
+      ],
+    };
+    vi.mocked(fetchWpblJson)
+      .mockResolvedValueOnce(page0)
+      .mockResolvedValueOnce(page1);
+
+    const payload = await fetchWpblGamesPayload();
+    expect(payload.games).toHaveLength(51);
+    expect(payload.games[50]?.game_id).toBe("sep-game");
+    expect(fetchWpblJson).toHaveBeenCalledTimes(2);
+    expect(fetchWpblJson).toHaveBeenNthCalledWith(
+      1,
+      "/v1/games?limit=50&offset=0",
+    );
+    expect(fetchWpblJson).toHaveBeenNthCalledWith(
+      2,
+      "/v1/games?limit=50&offset=50",
+    );
   });
 });
