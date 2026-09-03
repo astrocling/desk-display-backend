@@ -555,9 +555,13 @@ export async function fetchWpblGameDetail(
   id: string,
 ): Promise<WpblGameDetailResponse> {
   const [gameResult, boxResult] = await Promise.allSettled([
-    fetchWpblJson<WpblGamesPayload["games"][number]>(`/v1/games/${encodeURIComponent(id)}`),
+    fetchWpblJson<WpblGamesPayload["games"][number]>(
+      `/v1/games/${encodeURIComponent(id)}`,
+      { ttlMs: 0 },
+    ),
     fetchWpblJson<WpblBoxscorePayload>(
       `/v1/games/${encodeURIComponent(id)}/boxscore`,
+      { ttlMs: 0 },
     ),
   ]);
 

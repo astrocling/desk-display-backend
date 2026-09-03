@@ -8,6 +8,7 @@ import {
   applyWpblLiveGameState,
   asWpblBoxscorePayload,
   parseWpblLiveEnvelope,
+  preferFresherGameDetail,
   preserveSeasonRates,
 } from "./live-merge";
 
@@ -272,6 +273,111 @@ describe("applyWpblLiveGameState", () => {
       strikes: 2,
       half: "top",
     });
+  });
+
+  it("ignores zeroed inning/half placeholders from game.state", () => {
+    const next = applyWpblLiveGameState(
+      baseDetail(),
+      {
+        away_score: 8,
+        home_score: 5,
+        inning: 0,
+        half: "",
+        outs: 0,
+      },
+      "In Progress - Bottom of 7th",
+    );
+    expect(next.game.awayRuns).toBe(8);
+    expect(next.game.homeRuns).toBe(5);
+    expect(next.game.inning).toBe("Top 3");
+    expect(next.game.situation).toMatchObject({
+      inningNumber: 3,
+      half: "top",
+    });
+  });
+});
+
+describe("preferFresherGameDetail", () => {
+  it("keeps a later-inning blob over a stale top-of-1st snapshot", () => {
+    const early = baseDetail({
+      game: {
+        ...baseDetail().game,
+        awayRuns: 0,
+        homeRuns: 0,
+        inning: "Top 1",
+        situation: {
+          ...baseDetail().game.situation!,
+          inningNumber: 1,
+          half: "top",
+        },
+      },
+      boxscore: {
+        ...baseDetail().boxscore,
+        lineScore: {
+          maxInning: 1,
+          teams: [],
+        },
+        plays: [],
+      },
+    });
+    const late = baseDetail({
+      updatedAt: "2026-08-22T13:00:00.000Z",
+      game: {
+        ...baseDetail().game,
+        awayRuns: 8,
+        homeRuns: 5,
+        inning: "Bot 7",
+        situation: {
+          ...baseDetail().game.situation!,
+          inningNumber: 7,
+          half: "bottom",
+        },
+      },
+      boxscore: {
+        ...baseDetail().boxscore,
+        lineScore: {
+          maxInning: 7,
+          teams: [],
+        },
+        plays: Array.from({ length: 80 }, (_, i) => ({
+          sequence: i + 1,
+          inning: 7,
+          half: "bottom" as const,
+          outs: 0,
+          batterName: null,
+          pitcherName: null,
+          runnerFirst: null,
+          runnerSecond: null,
+          runnerThird: null,
+          narrative: `Play ${i}`,
+          eventType: "unknown",
+          isHit: false,
+          isScoringPlay: false,
+          runsScored: 0,
+          pitchSequence: null,
+          pitchEvents: [],
+          finalBalls: null,
+          finalStrikes: null,
+          finalFouls: null,
+        })),
+      },
+    });
+
+    expect(preferFresherGameDetail(late, early)).toBe(late);
+    expect(
+      applyWpblLiveBoxscore(late, {
+        game_status: "Live",
+        status: {
+          inning: 1,
+          half: "top",
+          outs: 0,
+          away_runs: 0,
+          home_runs: 0,
+        },
+        teams: [],
+        plays: [],
+      }).game.inning,
+    ).toBe("Bot 7");
   });
 });
 

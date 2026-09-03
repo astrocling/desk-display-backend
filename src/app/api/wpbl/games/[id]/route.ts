@@ -5,6 +5,7 @@ import { normalizeWpblGameDetail } from "@/lib/fetchers/wpbl-v1/normalize-game-d
 import {
   refreshWpblGame,
   shouldRefreshWpblGame,
+  wpblGameMayBeLive,
 } from "@/lib/fetchers/wpbl-v1/refresh";
 import { getRedis } from "@/lib/redis";
 import { scheduleBackground } from "@/lib/schedule-background";
@@ -48,7 +49,7 @@ function gameFetchErrorResponse(error: unknown): Response {
 }
 
 function cacheControlFor(blob: WpblGameDetailResponse): string {
-  return blob.game.status === "live"
+  return blob.game.status === "live" || wpblGameMayBeLive(blob.game)
     ? WPBL_LIVE_API_CACHE_CONTROL
     : WPBL_API_CACHE_CONTROL;
 }
@@ -70,10 +71,12 @@ export async function GET(
 
     const now = new Date();
     const needsRefresh = !blob || shouldRefreshWpblGame(blob, now);
+    const liveCapable = Boolean(blob && wpblGameMayBeLive(blob.game, { now }));
 
-    // SWR: when we have a usable blob, return it and refresh in the background.
-    // Still block on cold miss (no blob) or unavailable boxscore with no prior data.
-    if (blob && needsRefresh && redisOk) {
+    // Finals/scheduled: SWR — return Redis and refresh in the background.
+    // Live (or past-start) games: await upstream so the card cannot sit on a
+    // Top-1 Redis snapshot while the game is in the 7th.
+    if (blob && needsRefresh && redisOk && !liveCapable) {
       scheduleBackground(() => refreshWpblGame(id).then(() => undefined));
       const normalized = normalizeWpblGameDetail(blob);
       return jsonWithCache(normalized, cacheControlFor(normalized));

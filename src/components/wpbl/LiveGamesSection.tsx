@@ -30,15 +30,47 @@ function detailForLiveCard(
   schedule: WpblScheduleGame,
   detail: WpblGameDetailResponse,
 ): WpblGameDetailResponse {
-  if (detail.game.status === "live") return detail;
+  const scheduleRuns =
+    (schedule.awayRuns ?? 0) + (schedule.homeRuns ?? 0);
+  const detailRuns =
+    (detail.game.awayRuns ?? 0) + (detail.game.homeRuns ?? 0);
+  // League schedule often advances score before the detail blob catches up.
+  const useScheduleScore =
+    schedule.awayRuns != null &&
+    schedule.homeRuns != null &&
+    scheduleRuns > detailRuns;
+
+  const awayRuns = useScheduleScore
+    ? schedule.awayRuns
+    : (detail.game.awayRuns ?? schedule.awayRuns);
+  const homeRuns = useScheduleScore
+    ? schedule.homeRuns
+    : (detail.game.homeRuns ?? schedule.homeRuns);
+
+  if (detail.game.status === "live") {
+    if (
+      awayRuns === detail.game.awayRuns &&
+      homeRuns === detail.game.homeRuns
+    ) {
+      return detail;
+    }
+    return {
+      ...detail,
+      game: {
+        ...detail.game,
+        awayRuns,
+        homeRuns,
+      },
+    };
+  }
 
   return {
     ...detail,
     game: {
       ...detail.game,
       status: "live",
-      awayRuns: detail.game.awayRuns ?? schedule.awayRuns,
-      homeRuns: detail.game.homeRuns ?? schedule.homeRuns,
+      awayRuns,
+      homeRuns,
     },
   };
 }

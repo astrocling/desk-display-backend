@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   applyWpblLiveEnvelope,
+  preferFresherGameDetail,
   type WpblLiveEnvelope,
 } from "@/lib/fetchers/wpbl-v1/live-merge";
 import { wpblGameMayBeLive } from "@/lib/fetchers/wpbl-v1/refresh";
@@ -14,9 +15,9 @@ import {
 } from "@/lib/wpbl-live-ws";
 
 /** Poll when the socket is down / unknown. */
-const POLL_DISCONNECTED_MS = 10_000;
-/** Slow safety poll while the live socket is healthy. */
-const POLL_CONNECTED_MS = 45_000;
+const POLL_DISCONNECTED_MS = 8_000;
+/** Safety poll while the live socket is healthy — catch missed WS frames. */
+const POLL_CONNECTED_MS = 15_000;
 
 export type UseWpblLiveGameOptions = {
   /** When false, only the initial HTTP fetch runs (no WS / live poll). */
@@ -95,7 +96,11 @@ export function useWpblLiveGame(
       }
 
       const json = (await res.json()) as WpblGameDetailResponse;
-      setData(json);
+      setData((prior) => {
+        const next = prior ? preferFresherGameDetail(prior, json) : json;
+        dataRef.current = next;
+        return next;
+      });
       setNotFound(false);
       setError(null);
       hasDataRef.current = true;
