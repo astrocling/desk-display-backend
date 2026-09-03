@@ -15,6 +15,7 @@ import {
   resolveSeasonId,
 } from "./games";
 import { fetchWpblLeaders } from "./leaders";
+import { preferFresherGameDetail } from "./live-merge";
 import { fetchWpblPlayerDetail } from "./player";
 import { fetchWpblStandings } from "./standings";
 import { fetchMissingFinalApiGames } from "./team-games";
@@ -273,10 +274,11 @@ export async function refreshWpblGame(
 
   try {
     const detail = await fetchWpblGameDetail(id);
-    const next =
+    const withBox =
       prior?.boxscore.available && !detail.boxscore.available
         ? { ...detail, boxscore: prior.boxscore }
         : detail;
+    const next = prior ? preferFresherGameDetail(prior, withBox) : withBox;
     try {
       await getRedis().set(key, next);
     } catch {

@@ -37,6 +37,57 @@ function parseRuns(value: unknown): number | null {
   return null;
 }
 
+/** Progress signal for choosing between competing live detail blobs. */
+export function wpblGameDetailProgress(
+  detail: WpblGameDetailResponse,
+): number {
+  const inning = detail.game.situation?.inningNumber ?? 0;
+  const halfBonus = detail.game.situation?.half === "bottom" ? 0.5 : 0;
+  const maxLine = detail.boxscore.lineScore?.maxInning ?? 0;
+  const plays = detail.boxscore.plays?.length ?? 0;
+  const runs = (detail.game.awayRuns ?? 0) + (detail.game.homeRuns ?? 0);
+  return inning * 10_000 + halfBonus * 1_000 + maxLine * 100 + plays * 10 + runs;
+}
+
+/**
+ * Prefer the detail blob that has advanced further in the game.
+ * Prevents stale WS snapshots / SWR HTTP polls from rolling the UI back.
+ */
+export function preferFresherGameDetail(
+  a: WpblGameDetailResponse,
+  b: WpblGameDetailResponse,
+): WpblGameDetailResponse {
+  // A Final always wins over an in-progress/scheduled snapshot.
+  if (a.game.status === "final" && b.game.status !== "final") return a;
+  if (b.game.status === "final" && a.game.status !== "final") return b;
+
+  const scoreA = wpblGameDetailProgress(a);
+  const scoreB = wpblGameDetailProgress(b);
+  if (scoreB !== scoreA) return scoreB > scoreA ? b : a;
+  const timeA = Date.parse(a.updatedAt) || 0;
+  const timeB = Date.parse(b.updatedAt) || 0;
+  return timeB >= timeA ? b : a;
+}
+
+function positiveInning(
+  value: number | null | undefined,
+  fallback: number | null | undefined,
+): number | undefined {
+  if (typeof value === "number" && value > 0) return value;
+  if (typeof fallback === "number" && fallback > 0) return fallback;
+  return undefined;
+}
+
+function nonemptyHalf(
+  value: string | null | undefined,
+  fallback: string | null | undefined,
+): string | undefined {
+  const next = value?.trim();
+  if (next) return next;
+  const prior = fallback?.trim();
+  return prior || undefined;
+}
+
 /** Keep season AVG/ERA and headshots enriched on HTTP load across live WS remaps. */
 export function preserveSeasonRates(
   next: WpblBoxPlayerLine[],
@@ -104,7 +155,7 @@ export function applyWpblLiveBoxscore(
   const awayRuns = parseRuns(boxStatus?.away_runs) ?? prior.game.awayRuns;
   const homeRuns = parseRuns(boxStatus?.home_runs) ?? prior.game.homeRuns;
 
-  return {
+  const next: WpblGameDetailResponse = {
     updatedAt: new Date().toISOString(),
     game: {
       ...prior.game,
@@ -116,6 +167,9 @@ export function applyWpblLiveBoxscore(
     },
     boxscore,
   };
+
+  // Stale WS snapshots must not roll a more advanced HTTP/WS state backward.
+  return preferFresherGameDetail(prior, next);
 }
 
 export type WpblLiveGameState = {
@@ -144,12 +198,24 @@ export function applyWpblLiveGameState(
   );
 
   const priorSit = prior.game.situation;
+  // Upstream game.state often leaves inning/half at 0/"" while the boxscore
+  // has the real situation — treat empty/zero as "no update", not top of 1st.
+  const hasPlaceholderInning =
+    typeof state?.inning === "number" && state.inning <= 0;
   const patchStatus: WpblBoxscoreStatus = {
-    inning: state?.inning ?? priorSit?.inningNumber ?? undefined,
-    half: state?.half ?? priorSit?.half ?? undefined,
-    outs: state?.outs ?? priorSit?.outs ?? undefined,
-    balls: state?.balls ?? priorSit?.balls ?? undefined,
-    strikes: state?.strikes ?? priorSit?.strikes ?? undefined,
+    inning: positiveInning(state?.inning, priorSit?.inningNumber),
+    half: nonemptyHalf(state?.half, priorSit?.half),
+    outs: hasPlaceholderInning
+      ? (priorSit?.outs ?? undefined)
+      : typeof state?.outs === "number"
+        ? state.outs
+        : (priorSit?.outs ?? undefined),
+    balls: hasPlaceholderInning
+      ? (priorSit?.balls ?? undefined)
+      : (state?.balls ?? priorSit?.balls ?? undefined),
+    strikes: hasPlaceholderInning
+      ? (priorSit?.strikes ?? undefined)
+      : (state?.strikes ?? priorSit?.strikes ?? undefined),
     batter_name: state?.batter_name ?? priorSit?.batterName ?? undefined,
     pitcher_name: state?.pitcher_name ?? priorSit?.pitcherName ?? undefined,
     first_base: priorSit?.runnerFirst ?? undefined,
@@ -159,7 +225,7 @@ export function applyWpblLiveGameState(
     home_runs: state?.home_score ?? prior.game.homeRuns ?? undefined,
   };
 
-  return {
+  const next: WpblGameDetailResponse = {
     updatedAt: new Date().toISOString(),
     game: {
       ...prior.game,
@@ -184,6 +250,8 @@ export function applyWpblLiveGameState(
     },
     boxscore: prior.boxscore,
   };
+
+  return preferFresherGameDetail(prior, next);
 }
 
 export type WpblLiveEnvelope =
