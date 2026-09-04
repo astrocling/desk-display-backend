@@ -12,7 +12,7 @@ import {
   WpblSectionHeader,
   WpblUpdatedLine,
 } from "./WpblBoardShell";
-import { homeScheduleTeaserGames, todaysSlateGames, yesterdaysFinalGames } from "./scheduleWeek";
+import { homeScheduleTeaserGames, todaysSlateGames } from "./scheduleWeek";
 import { useWpblBoardData } from "./useWpblBoardData";
 
 const HOME_LEADERS_LIMIT = 5;
@@ -35,19 +35,11 @@ export function WpblHomeClient() {
     [league],
   );
 
-  const lastNightGames = useMemo(
-    () => (league ? yesterdaysFinalGames(league.games) : []),
-    [league],
-  );
-
   const teaserGames = useMemo(() => {
     if (!league) return [];
-    const excludeIds = new Set([
-      ...todayGames.map((g) => g.id),
-      ...lastNightGames.map((g) => g.id),
-    ]);
+    const excludeIds = new Set(todayGames.map((g) => g.id));
     return homeScheduleTeaserGames(league.games, { excludeIds });
-  }, [league, todayGames, lastNightGames]);
+  }, [league, todayGames]);
 
   if (loading) return <WpblBoardLoading />;
 
@@ -60,15 +52,6 @@ export function WpblHomeClient() {
   return (
     <div className="mt-6 space-y-8">
       <WpblUpdatedLine updatedAt={updatedAt} hasLive={hasLive} />
-
-      {lastNightGames.length > 0 ? (
-        <TodaysGamesSection
-          title="Last night"
-          games={lastNightGames}
-          standings={league.standings}
-          refreshKey={liveRefreshKey}
-        />
-      ) : null}
 
       <TodaysGamesSection
         games={todayGames}

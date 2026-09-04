@@ -10,7 +10,6 @@ import {
   partitionScheduleByWeek,
   sundayOfWeekEt,
   todaysSlateGames,
-  yesterdaysFinalGames,
 } from "./scheduleWeek";
 
 function game(
@@ -190,39 +189,8 @@ describe("partitionScheduleByWeek", () => {
   });
 });
 
-describe("yesterdaysFinalGames", () => {
-  it("returns finals from the previous ET calendar day", () => {
-    const monMorning = new Date("2026-08-31T14:00:00-04:00");
-    const games = [
-      game({
-        id: "sun-final",
-        status: "final",
-        startIso: "2026-08-30T23:30:00Z",
-        awayRuns: 9,
-        homeRuns: 11,
-      }),
-      game({
-        id: "sat-final",
-        status: "final",
-        startIso: "2026-08-29T23:30:00Z",
-        awayRuns: 6,
-        homeRuns: 10,
-      }),
-      game({
-        id: "sun-sched",
-        status: "scheduled",
-        startIso: "2026-08-30T22:30:00Z",
-      }),
-    ];
-
-    expect(yesterdaysFinalGames(games, monMorning).map((g) => g.id)).toEqual([
-      "sun-final",
-    ]);
-  });
-});
-
 describe("homeScheduleTeaserGames", () => {
-  it("prefers upcoming then pads with recent finals", () => {
+  it("returns upcoming games only, never finals", () => {
     const games = [
       game({
         id: "final-a",
@@ -258,7 +226,20 @@ describe("homeScheduleTeaserGames", () => {
     ];
 
     const teaser = homeScheduleTeaserGames(games, { limit: 3 });
-    expect(teaser.map((g) => g.id)).toEqual(["next-1", "next-2", "final-b"]);
+    expect(teaser.map((g) => g.id)).toEqual(["next-1", "next-2"]);
+  });
+
+  it("returns empty when nothing is upcoming", () => {
+    const games = [
+      game({
+        id: "final-only",
+        status: "final",
+        startIso: "2026-08-19T23:00:00Z",
+        awayRuns: 4,
+        homeRuns: 3,
+      }),
+    ];
+    expect(homeScheduleTeaserGames(games)).toEqual([]);
   });
 
   it("excludes today's slate ids", () => {

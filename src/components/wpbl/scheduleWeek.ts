@@ -87,26 +87,6 @@ export function todaysSlateGames(
   });
 }
 
-/**
- * Final games from yesterday (ET) — shown on the home digest the morning after.
- */
-export function yesterdaysFinalGames(
-  games: WpblScheduleGame[],
-  now: Date = new Date(),
-): WpblScheduleGame[] {
-  const yesterday = addDaysYmd(etYmd(now), -1);
-  return games
-    .filter(
-      (game) =>
-        game.status === "final" && gameStartYmd(game) === yesterday,
-    )
-    .sort((a, b) => {
-      const aMs = a.startIso ? new Date(a.startIso).getTime() : 0;
-      const bMs = b.startIso ? new Date(b.startIso).getTime() : 0;
-      return bMs - aMs || a.id.localeCompare(b.id);
-    });
-}
-
 export type ScheduleWeekPartition = {
   weekStartYmd: string;
   weekEndYmd: string;
@@ -141,8 +121,8 @@ function byStartDesc(a: WpblScheduleGame, b: WpblScheduleGame): number {
 export const HOME_SCHEDULE_TEASER_LIMIT = 5;
 
 /**
- * Compact home schedule rows: next upcoming games, padded with recent finals
- * when the slate is quiet. Optionally skip games already shown on today's slate.
+ * Compact home schedule rows: next upcoming games only.
+ * Optionally skip games already shown on today's slate.
  */
 export function homeScheduleTeaserGames(
   games: WpblScheduleGame[],
@@ -157,30 +137,10 @@ export function homeScheduleTeaserGames(
     ? games.filter((g) => !excludeIds.has(g.id))
     : games;
 
-  const upcoming = rest
+  return rest
     .filter((g) => g.status === "scheduled" || g.status === "other")
-    .sort(byStartAsc);
-
-  const recentFinals = rest
-    .filter((g) => g.status === "final")
-    .sort(byStartDesc);
-
-  const out: WpblScheduleGame[] = [];
-  for (const game of upcoming) {
-    if (out.length >= limit) break;
-    out.push(game);
-  }
-  for (const game of recentFinals) {
-    if (out.length >= limit) break;
-    out.push(game);
-  }
-
-  // Quiet board with only live games excluded: still show something chronological.
-  if (out.length === 0) {
-    return [...rest].sort(byStartAsc).slice(0, limit);
-  }
-
-  return out;
+    .sort(byStartAsc)
+    .slice(0, limit);
 }
 
 /**
