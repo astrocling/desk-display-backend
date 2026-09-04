@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import type { WpblRacesResponse } from "@/lib/types/wpbl-display";
 
 import { AwardWatch } from "./AwardWatch";
-import { RacePicker, RaceStandings } from "./FeaturedRaces";
+import { RaceMatchup, RacePicker, RaceStandings } from "./FeaturedRaces";
 import { LeadersBoards } from "./LeadersBoards";
 import {
   findCategory,
@@ -15,7 +15,6 @@ import {
   type ChartableRaceId,
   type StatGroup,
 } from "./leadersCategories";
-import { PlayerCompare } from "./PlayerCompare";
 import { RaceChart } from "./RaceChart";
 import { TeamFilter, type WpblTeamFilter } from "./TeamFilter";
 import { TeamSeriesCards } from "./TeamSeriesCards";
@@ -27,13 +26,12 @@ import {
 } from "./WpblBoardShell";
 import { useWpblBoardData } from "./useWpblBoardData";
 
-type StatsView = "races" | "leaders" | "awards" | "compare" | "series";
+type StatsView = "races" | "leaders" | "awards" | "series";
 
 const STATS_VIEWS: { id: StatsView; label: string }[] = [
   { id: "races", label: "Races" },
   { id: "leaders", label: "Leaders" },
   { id: "awards", label: "Awards" },
-  { id: "compare", label: "Compare" },
   { id: "series", label: "Series" },
 ];
 
@@ -49,7 +47,6 @@ function parseStatsView(raw: string | null): StatsView {
     raw === "races" ||
     raw === "leaders" ||
     raw === "awards" ||
-    raw === "compare" ||
     raw === "series"
   ) {
     return raw;
@@ -243,6 +240,12 @@ export function WpblStatsClient() {
               </p>
             )}
 
+            <RaceMatchup
+              leaders={leaders}
+              teamFilter={teamFilter}
+              categoryId={categoryId}
+            />
+
             <RaceStandings
               leaders={leaders}
               teamFilter={teamFilter}
@@ -270,10 +273,6 @@ export function WpblStatsClient() {
 
         {leaders && view === "awards" ? (
           <AwardWatch leaders={leaders} />
-        ) : null}
-
-        {leaders && view === "compare" ? (
-          <PlayerCompare leaders={leaders} />
         ) : null}
 
         {view === "series" ? (
