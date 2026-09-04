@@ -5,9 +5,18 @@ import type { WpblPlay } from "@/lib/types/wpbl-display";
 import {
   basesStateKey,
   buildPlayTimeline,
+  countEnteringOutcome,
+  enrichPlayNarrative,
   formatBasesState,
+  formatHalfInningHeader,
+  formatScoreLine,
+  formatSituationalLine,
+  groupPlaysByHalfInning,
   isAdministrativePlay,
+  outsAfterPlay,
+  playSummaryParts,
   playTypeLabel,
+  runningScoresBySequence,
 } from "./wpbl-play-display";
 
 function play(
@@ -198,5 +207,124 @@ describe("formatBasesState", () => {
       runnerSecond: "B",
     });
     expect(basesStateKey(a)).toBe(basesStateKey(b));
+  });
+});
+
+describe("enrichPlayNarrative / playSummaryParts", () => {
+  it("rewrites WPBL copy toward MLB Gameday voice", () => {
+    expect(
+      enrichPlayNarrative(
+        "Ashton Lansdell walked (3-2 BBBKFB); Mo'ne Davis advanced to second.",
+      ),
+    ).toBe("Ashton Lansdell walks. Mo'ne Davis to 2nd.");
+
+    expect(
+      enrichPlayNarrative(
+        "Maggie Fox singled up the middle, 2 RBI (1-0 B); Ashton Lansdell scored, unearned; Mo'ne Davis scored, unearned.",
+      ),
+    ).toBe(
+      "Maggie Fox singles up the middle, 2 RBI. Ashton Lansdell scores. Mo'ne Davis scores.",
+    );
+
+    expect(
+      enrichPlayNarrative("Mo'ne Davis reached first on an error by ss (0-1 F)."),
+    ).toBe("Mo'ne Davis reaches on an error by shortstop.");
+
+    expect(
+      enrichPlayNarrative("London Studer lined out to 3b (0-1 K)."),
+    ).toBe("London Studer lines out to third baseman.");
+  });
+
+  it("appends resulting outs when the play records an out", () => {
+    const summary = playSummaryParts(
+      play({
+        sequence: 1,
+        narrative: "Braden Montgomery struck out swinging (1-2 FFS).",
+        outs: 0,
+        eventType: "strikeout",
+        pitchSequence: "FFS",
+        finalBalls: 0,
+        finalStrikes: 3,
+      }),
+    );
+    expect(summary.body).toBe("Braden Montgomery strikes out swinging.");
+    expect(summary.outsPhrase).toBe("1 out");
+  });
+
+  it("uses MLB called-strike language for looking punchouts", () => {
+    expect(
+      enrichPlayNarrative("Jaida Lee struck out looking (1-2 CFS)."),
+    ).toBe("Jaida Lee called out on strikes.");
+  });
+});
+
+describe("situational count and half-inning grouping", () => {
+  it("formats half-inning headers with ordinals", () => {
+    expect(
+      formatHalfInningHeader(play({ sequence: 1, narrative: "x", half: "top", inning: 3 })),
+    ).toBe("Top 3rd");
+    expect(
+      formatHalfInningHeader(
+        play({ sequence: 1, narrative: "x", half: "bottom", inning: 1 }),
+      ),
+    ).toBe("Bottom 1st");
+  });
+
+  it("groups newest-first plays by half-inning", () => {
+    const groups = groupPlaysByHalfInning([
+      play({ sequence: 10, narrative: "a", inning: 2, half: "top" }),
+      play({ sequence: 9, narrative: "b", inning: 2, half: "top" }),
+      play({ sequence: 8, narrative: "c", inning: 1, half: "bottom" }),
+    ]);
+    expect(groups.map((g) => g.label)).toEqual(["Top 2nd", "Bottom 1st"]);
+    expect(groups[0]!.plays.map((p) => p.sequence)).toEqual([10, 9]);
+  });
+
+  it("computes count entering the outcome pitch", () => {
+    const walk = play({
+      sequence: 1,
+      narrative: "walk",
+      eventType: "walk",
+      pitchSequence: "BBBKFB",
+      finalBalls: 4,
+      finalStrikes: 2,
+    });
+    expect(countEnteringOutcome(walk)).toEqual({ balls: 3, strikes: 2 });
+    expect(formatSituationalLine({ ...walk, outs: 0 })).toBe("3 - 2, 0 Outs");
+  });
+
+  it("tracks running score by sequence", () => {
+    const scores = runningScoresBySequence([
+      play({
+        sequence: 1,
+        narrative: "single",
+        half: "top",
+        isScoringPlay: true,
+        runsScored: 2,
+      }),
+      play({
+        sequence: 2,
+        narrative: "hr",
+        half: "bottom",
+        isScoringPlay: true,
+        runsScored: 1,
+      }),
+    ]);
+    expect(scores.get(1)).toEqual({ away: 2, home: 0 });
+    expect(scores.get(2)).toEqual({ away: 2, home: 1 });
+    expect(formatScoreLine(scores.get(2)!, "CWS", "HOU")).toBe("CWS 2, HOU 1");
+  });
+
+  it("computes outs after a strikeout", () => {
+    expect(
+      outsAfterPlay(
+        play({
+          sequence: 1,
+          narrative: "struck out",
+          eventType: "strikeout",
+          outs: 1,
+        }),
+      ),
+    ).toBe(2);
   });
 });

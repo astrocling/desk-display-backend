@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types/wpbl-display";
 import { WPBL_LINK } from "@/lib/wpbl-board";
 import type { WpblLiveConnection } from "@/lib/wpbl-live-ws";
+import { enrichPlayNarrative, playTypeLabel } from "@/lib/wpbl-play-display";
 import { latestWpblPlay } from "@/lib/wpbl-plays";
 import { BoxTables } from "./BoxTables";
 import { GamedayScoreboard } from "./GamedayScoreboard";
@@ -71,8 +72,8 @@ function FeedBadge({
 
   if (connection === "live") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--wpbl-accent)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--wpbl-accent)]" />
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--wpbl-highlight)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--wpbl-highlight)]" />
         Live feed
       </span>
     );
@@ -113,11 +114,13 @@ function LatestPlayBanner({
 }) {
   const roster = rosterFromBoxLines(batting, pitching);
 
+  const pill = playTypeLabel(play);
+
   return (
     <div
       className={`border-l-2 px-3 py-2 ${
         play.isScoringPlay
-          ? "border-[var(--wpbl-accent)]"
+          ? "border-[var(--wpbl-highlight)]"
           : "border-[var(--wpbl-rule)]"
       }`}
     >
@@ -132,8 +135,11 @@ function LatestPlayBanner({
         </span>
         {play.isScoringPlay ? <span>Scoring</span> : null}
       </p>
-      <p className="wpbl-feed-body">
-        {linkifyPlayerNames(play.narrative, roster)}
+      {pill ? (
+        <span className="wpbl-play-pill mb-1 inline-flex">{pill}</span>
+      ) : null}
+      <p className="wpbl-play-summary">
+        {linkifyPlayerNames(enrichPlayNarrative(play.narrative), roster)}
       </p>
     </div>
   );

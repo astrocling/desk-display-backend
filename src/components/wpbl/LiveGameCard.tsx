@@ -53,7 +53,7 @@ function BasesDiamond({
       <PlayerNameLink
         playerId={resolvePlayerIdFromBox(batting, pitching, full)}
         name={short}
-        className="underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
+        className="underline-offset-2 hover:underline hover:text-[var(--wpbl-highlight)]"
       />
     );
   };
@@ -178,7 +178,7 @@ function KeyPlayer({
           <PlayerNameLink
             playerId={playerId}
             name={name}
-            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-accent)]"
+            className="font-semibold text-inherit underline-offset-2 hover:underline hover:text-[var(--wpbl-highlight)]"
           />
         </p>
         {stats ? <p className="truncate text-xs wpbl-muted">{stats}</p> : null}
@@ -217,7 +217,7 @@ export function LiveGameCard({ detail, connection }: LiveGameCardProps) {
             </span>
             Live
             {connection === "live" ? (
-              <span className="font-medium text-[var(--wpbl-accent)]">
+              <span className="font-medium text-[var(--wpbl-highlight)]">
                 · feed
               </span>
             ) : connection === "reconnecting" || connection === "connecting" ? (

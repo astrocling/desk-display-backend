@@ -522,7 +522,7 @@ export function PlayerDetailClient({
             href={player.profileUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-[var(--wpbl-accent)] hover:underline"
+            className="text-[var(--wpbl-highlight)] hover:underline"
           >
             Official profile
           </a>

@@ -10,6 +10,8 @@ export type WpblFeedFilterProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   ariaLabel: string;
+  /** Underline tabs (default) or MLB-style pill chips. */
+  variant?: "tabs" | "pills";
 };
 
 /** Text underline filter — matches box score / leaders tabs, not pills. */
@@ -18,7 +20,30 @@ export function WpblFeedFilter<T extends string>({
   value,
   onChange,
   ariaLabel,
+  variant = "tabs",
 }: WpblFeedFilterProps<T>) {
+  if (variant === "pills") {
+    return (
+      <div className="wpbl-feed-pills" role="group" aria-label={ariaLabel}>
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              className={
+                selected ? "wpbl-feed-pill wpbl-feed-pill--active" : "wpbl-feed-pill"
+              }
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex gap-4 border-b border-[var(--wpbl-rule)]"
