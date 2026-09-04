@@ -17,6 +17,7 @@ import {
 import { fetchWpblLeaders } from "./leaders";
 import { preferFresherGameDetail } from "./live-merge";
 import { fetchWpblPlayerDetail } from "./player";
+import { applyClinchedSeeds } from "./clinch";
 import { fetchWpblStandings } from "./standings";
 import { fetchMissingFinalApiGames } from "./team-games";
 import { FALLBACK_SEASON_ID } from "./teams";
@@ -185,7 +186,10 @@ export async function buildWpblLeague(): Promise<WpblLeagueResponse> {
     ...payload,
     games: [...payload.games, ...missingFinals],
   });
-  const standings = await fetchWpblStandings(seasonId);
+  const standings = applyClinchedSeeds(
+    await fetchWpblStandings(seasonId),
+    games,
+  );
 
   return {
     updatedAt: new Date().toISOString(),

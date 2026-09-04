@@ -142,6 +142,7 @@ describe("pitch chips + live tracking merge", () => {
         homeRuns: 2,
         venue: null,
         countsInStandings: true,
+        gameType: "regular",
         inning: "Top 4",
         situation: null,
       },

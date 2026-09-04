@@ -21,6 +21,7 @@ describe("normalizeWpblGameDetail", () => {
         homeRuns: 2,
         venue: null,
         countsInStandings: true,
+        gameType: "regular",
         inning: "Top 3",
         situation: {
           inningNumber: 3,
@@ -71,6 +72,7 @@ describe("normalizeWpblGameDetail", () => {
         homeRuns: 2,
         venue: null,
         countsInStandings: true,
+        gameType: "regular",
         inning: null,
         situation: null,
       },

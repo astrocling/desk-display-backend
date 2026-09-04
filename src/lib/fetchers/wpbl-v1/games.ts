@@ -1,5 +1,5 @@
 import { formatWhenEt } from "@/lib/fetchers/mlb";
-import type { WpblScheduleGame } from "@/lib/types/wpbl-display";
+import type { WpblGameType, WpblScheduleGame } from "@/lib/types/wpbl-display";
 import { fetchWpblJson } from "./client";
 import { mapWpblStatus } from "./status";
 import { teamFromFullName, teamFromId } from "./teams";
@@ -15,11 +15,18 @@ export interface WpblApiGame {
   scheduled_start?: string | null;
   venue?: string | null;
   counts_in_standings?: boolean;
+  /** e.g. "regular"; postseason values expected when Presto publishes playoff slate. */
+  game_type?: string | null;
   presto_data?: {
     score?: {
       away?: string | null;
       home?: string | null;
     };
+    eventType?: {
+      isPostSeason?: boolean;
+    };
+    eventTypeCode?: string | null;
+    eventTypeDescription?: string | null;
   };
 }
 
@@ -36,6 +43,23 @@ function parseScore(value: string | null | undefined): number | null {
 
 function resolveTeam(id: string, fullName: string) {
   return teamFromId(id) ?? teamFromFullName(fullName);
+}
+
+export function mapWpblGameType(game: WpblApiGame): WpblGameType {
+  if (game.presto_data?.eventType?.isPostSeason) return "postseason";
+  const raw = (game.game_type ?? game.presto_data?.eventTypeCode ?? "")
+    .trim()
+    .toLowerCase();
+  if (!raw || raw === "regular") return "regular";
+  if (
+    raw.includes("post") ||
+    raw.includes("playoff") ||
+    raw.includes("championship") ||
+    raw.includes("semi")
+  ) {
+    return "postseason";
+  }
+  return "other";
 }
 
 function mapWpblGame(game: WpblApiGame): WpblScheduleGame | null {
@@ -69,6 +93,7 @@ function mapWpblGame(game: WpblApiGame): WpblScheduleGame | null {
     homeRuns,
     venue: game.venue?.trim() ? game.venue : null,
     countsInStandings: game.counts_in_standings ?? true,
+    gameType: mapWpblGameType(game),
   };
 }
 

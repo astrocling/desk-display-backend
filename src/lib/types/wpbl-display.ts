@@ -20,9 +20,18 @@ export interface WpblStandingRow {
   diff: number;
   l10: string | null; // e.g. "5-3"
   streak: string | null; // e.g. "L1"
+  /**
+   * Sole playoff seed locked by remaining regular-season schedule (1–4).
+   * Null when not yet clinched. Upstream stats API has no clinch field —
+   * derived in `applyClinchedSeeds`.
+   */
+  clinchedSeed: number | null;
 }
 
 export type WpblGameStatus = "scheduled" | "live" | "final" | "other";
+
+/** Upstream `game_type` / Presto `isPostSeason` — playoff rows expected once published. */
+export type WpblGameType = "regular" | "postseason" | "other";
 
 export interface WpblScheduleGame {
   id: string;
@@ -37,6 +46,8 @@ export interface WpblScheduleGame {
   homeRuns: number | null;
   venue: string | null;
   countsInStandings: boolean;
+  /** Regular vs postseason when upstream labels it; defaults to regular. */
+  gameType: WpblGameType;
 }
 
 export interface WpblLeadersDataNote {

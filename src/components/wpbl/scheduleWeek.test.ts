@@ -27,6 +27,7 @@ function game(
     homeRuns: null,
     venue: null,
     countsInStandings: true,
+      gameType: "regular",
     ...partial,
   };
 }

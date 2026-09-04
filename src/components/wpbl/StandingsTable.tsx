@@ -16,6 +16,17 @@ const stickyEdge =
   "shadow-[2px_0_4px_-2px_rgba(0,0,0,0.45)]";
 const rowBorder = "border-t border-[var(--wpbl-rule)]";
 
+function ClinchBadge({ seed }: { seed: number }) {
+  return (
+    <span
+      className="inline-block shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-[var(--wpbl-warning)] text-[var(--wpbl-bg)]"
+      title={`Clinched #${seed} seed`}
+    >
+      CL #{seed}
+    </span>
+  );
+}
+
 export function StandingsTable({
   rows,
   variant = "full",
@@ -23,6 +34,8 @@ export function StandingsTable({
   if (rows.length === 0) {
     return <p className="text-sm wpbl-muted">No standings available.</p>;
   }
+
+  const anyClinched = rows.some((row) => row.clinchedSeed != null);
 
   if (variant === "compact") {
     return (
@@ -45,7 +58,14 @@ export function StandingsTable({
                 <td>
                   <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
                 </td>
-                <td className="font-medium">{row.abbr}</td>
+                <td className="font-medium">
+                  <span className="inline-flex items-center gap-1.5">
+                    {row.abbr}
+                    {row.clinchedSeed != null ? (
+                      <ClinchBadge seed={row.clinchedSeed} />
+                    ) : null}
+                  </span>
+                </td>
                 <td className="tabular-nums">
                   {row.w}‑{row.l}
                   {row.t > 0 ? `‑${row.t}` : ""}
@@ -56,6 +76,11 @@ export function StandingsTable({
             ))}
           </tbody>
         </table>
+        {anyClinched ? (
+          <p className="mt-2 text-[11px] wpbl-muted">
+            CL = clinched playoff seed
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -100,8 +125,13 @@ export function StandingsTable({
                   <span className="flex items-center gap-2.5">
                     <TeamLogo key={row.abbr} abbr={row.abbr} size="md" />
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold leading-tight">
-                        {nickname}
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold leading-tight">
+                          {nickname}
+                        </span>
+                        {row.clinchedSeed != null ? (
+                          <ClinchBadge seed={row.clinchedSeed} />
+                        ) : null}
                       </span>
                       <span className="block text-[11px] leading-tight wpbl-muted">
                         {row.abbr}
@@ -132,6 +162,11 @@ export function StandingsTable({
           })}
         </tbody>
       </table>
+      {anyClinched ? (
+        <p className="mt-2 text-[11px] wpbl-muted">
+          CL = clinched playoff seed
+        </p>
+      ) : null}
     </div>
   );
 }

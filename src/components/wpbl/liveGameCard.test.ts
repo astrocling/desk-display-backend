@@ -89,6 +89,7 @@ describe("keyPlayersFromDetail", () => {
         homeRuns: 2,
         venue: null,
         countsInStandings: true,
+        gameType: "regular",
         inning: "Top 6",
         situation: {
           inningNumber: 6,
@@ -169,6 +170,7 @@ describe("keyPlayersFromDetail", () => {
         homeRuns: 2,
         venue: null,
         countsInStandings: true,
+        gameType: "regular",
         inning: "Bot 3",
         situation: {
           inningNumber: 3,

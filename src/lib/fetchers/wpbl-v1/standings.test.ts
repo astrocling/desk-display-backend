@@ -25,6 +25,7 @@ describe("mapTeamStatsToStanding", () => {
       diff: 23,
       l10: "5-3",
       streak: "L1",
+      clinchedSeed: null,
     });
   });
 });
