@@ -570,3 +570,60 @@
   border: 1.5px solid var(--wpbl-rule);
   background-color: var(--wpbl-bg-hover);
 }
+
+/* Stats page — race gaps, chart, compare */
+.wpbl-race-gap {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--wpbl-rule) 80%, transparent);
+}
+
+.wpbl-race-gap__fill {
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--team-accent-dark, var(--wpbl-accent));
+  transition: width 0.35s ease;
+}
+
+.wpbl-race-card--active {
+  border-color: color-mix(in srgb, var(--wpbl-ink-secondary) 55%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--wpbl-ink-secondary) 25%, transparent);
+}
+
+.wpbl-race-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 18rem;
+}
+
+.wpbl-race-chart__grid {
+  stroke: var(--wpbl-rule);
+  stroke-width: 1;
+}
+
+.wpbl-race-chart__axis {
+  fill: var(--wpbl-muted);
+  font-size: 10px;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.wpbl-race-chart__line {
+  opacity: 0.92;
+}
+
+.wpbl-compare-select {
+  border-radius: 0.5rem;
+  border: 1px solid var(--wpbl-rule);
+  background-color: var(--wpbl-bg-elevated);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--wpbl-ink);
+}
+
+.wpbl-compare-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--wpbl-accent) 45%, transparent);
+  outline-offset: 1px;
+}

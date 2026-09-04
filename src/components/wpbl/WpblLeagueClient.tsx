@@ -91,6 +91,7 @@ export function WpblHomeClient() {
             teamFilter="ALL"
             limit={HOME_LEADERS_LIMIT}
             initialCategoryId="hr"
+            compact
           />
         ) : (
           <WpblBoardError
