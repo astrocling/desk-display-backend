@@ -9,8 +9,12 @@
   --wpbl-ink-secondary: #cbd5e1;
   --wpbl-muted: #94a3b8;
   --wpbl-rule: #2a3441;
+  /* Selection / active controls only */
   --wpbl-accent: #22c55e;
   --wpbl-accent-hover: #4ade80;
+  /* Content links + emphasis (not selection) */
+  --wpbl-highlight: #7dd3fc;
+  --wpbl-highlight-hover: #bae6fd;
   --wpbl-live: #f87171;
   --wpbl-warning: #fbbf24;
 
@@ -33,14 +37,14 @@
 }
 
 .wpbl-link {
-  color: var(--wpbl-accent);
+  color: var(--wpbl-highlight);
   font-weight: 500;
   text-underline-offset: 2px;
 }
 
 .wpbl-link:hover {
   text-decoration: underline;
-  color: var(--wpbl-accent-hover);
+  color: var(--wpbl-highlight-hover);
 }
 
 .wpbl-link-subtle {
@@ -50,7 +54,7 @@
 }
 
 .wpbl-link-subtle:hover {
-  color: var(--wpbl-accent);
+  color: var(--wpbl-highlight);
   text-decoration: underline;
 }
 
@@ -184,7 +188,7 @@
   bottom: -1px;
   left: 0;
   height: 2px;
-  background-color: var(--wpbl-ink);
+  background-color: var(--wpbl-accent);
 }
 
 .wpbl-stat-value {
@@ -373,7 +377,7 @@
 }
 
 .wpbl-feed-row--scoring {
-  border-left: 2px solid var(--wpbl-accent);
+  border-left: 2px solid var(--wpbl-highlight);
   padding-left: calc(0.75rem - 2px);
 }
 

@@ -72,8 +72,8 @@ function FeedBadge({
 
   if (connection === "live") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--wpbl-accent)]">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--wpbl-accent)]" />
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--wpbl-highlight)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--wpbl-highlight)]" />
         Live feed
       </span>
     );
@@ -120,7 +120,7 @@ function LatestPlayBanner({
     <div
       className={`border-l-2 px-3 py-2 ${
         play.isScoringPlay
-          ? "border-[var(--wpbl-accent)]"
+          ? "border-[var(--wpbl-highlight)]"
           : "border-[var(--wpbl-rule)]"
       }`}
     >

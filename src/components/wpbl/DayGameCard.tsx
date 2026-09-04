@@ -41,7 +41,7 @@ export function DayGameCard({ game, standings }: DayGameCardProps) {
         <div className="mb-2 flex items-center justify-between gap-2">
           <span
             className={`text-[10px] font-semibold uppercase tracking-wide ${
-              isFinal ? "wpbl-muted" : "text-[var(--wpbl-accent)]"
+              isFinal ? "wpbl-muted" : "text-[var(--wpbl-highlight)]"
             }`}
           >
             {isFinal ? "Final" : "Scheduled"}
