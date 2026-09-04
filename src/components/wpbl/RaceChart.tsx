@@ -5,10 +5,7 @@ import { useMemo } from "react";
 import type { WpblRaceSeries, WpblRacesResponse } from "@/lib/types/wpbl-display";
 import { wpblTeamPrimaryDark } from "@/lib/wpbl-team-brand";
 
-import {
-  CHARTABLE_RACE_IDS,
-  type ChartableRaceId,
-} from "./leadersCategories";
+import type { ChartableRaceId } from "./leadersCategories";
 
 const LABEL: Record<ChartableRaceId, string> = {
   hr: "Home runs",
@@ -20,7 +17,6 @@ const LABEL: Record<ChartableRaceId, string> = {
 export type RaceChartProps = {
   races: WpblRacesResponse | null;
   raceId: ChartableRaceId;
-  onRaceIdChange: (id: ChartableRaceId) => void;
   loading?: boolean;
   error?: string | null;
 };
@@ -30,9 +26,7 @@ type PreparedSeries = WpblRaceSeries & {
   path: string;
 };
 
-function buildPath(
-  points: { x: number; y: number }[],
-): string {
+function buildPath(points: { x: number; y: number }[]): string {
   if (points.length === 0) return "";
   return points
     .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
@@ -42,7 +36,6 @@ function buildPath(
 export function RaceChart({
   races,
   raceId,
-  onRaceIdChange,
   loading,
   error,
 }: RaceChartProps) {
@@ -50,8 +43,8 @@ export function RaceChart({
 
   const chart = useMemo(() => {
     const width = 640;
-    const height = 280;
-    const pad = { top: 16, right: 16, bottom: 36, left: 36 };
+    const height = 240;
+    const pad = { top: 12, right: 12, bottom: 32, left: 32 };
     const innerW = width - pad.left - pad.right;
     const innerH = height - pad.top - pad.bottom;
 
@@ -61,7 +54,16 @@ export function RaceChart({
     const maxVal = Math.max(1, ...series.map((s) => s.total));
 
     if (allDates.length === 0 || series.length === 0) {
-      return { width, height, pad, prepared: [] as PreparedSeries[], allDates, maxVal, innerW, innerH };
+      return {
+        width,
+        height,
+        pad,
+        prepared: [] as PreparedSeries[],
+        allDates,
+        maxVal,
+        innerW,
+        innerH,
+      };
     }
 
     const xAt = (date: string) => {
@@ -88,41 +90,22 @@ export function RaceChart({
   }, [series]);
 
   return (
-    <div className="wpbl-panel">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--wpbl-rule)] px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold text-[var(--wpbl-ink)]">
-            Race over time
-          </p>
-          <p className="mt-0.5 text-[11px] wpbl-muted">
-            Cumulative totals from game logs · top of the board
-          </p>
-        </div>
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none]">
-          {CHARTABLE_RACE_IDS.map((id) => {
-            const selected = id === raceId;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onRaceIdChange(id)}
-                className={
-                  selected ? "wpbl-chip wpbl-chip--active" : "wpbl-chip"
-                }
-              >
-                {id.toUpperCase()}
-              </button>
-            );
-          })}
-        </div>
+    <div className="wpbl-panel" id="wpbl-race-chart">
+      <div className="border-b border-[var(--wpbl-rule)] px-4 py-2.5">
+        <p className="text-sm font-semibold text-[var(--wpbl-ink)]">
+          {LABEL[raceId]} over time
+        </p>
+        <p className="mt-0.5 text-[11px] wpbl-muted">
+          Cumulative from game logs
+        </p>
       </div>
 
       {loading && !races ? (
-        <p className="px-4 py-10 text-sm wpbl-muted">Loading race chart…</p>
+        <p className="px-4 py-8 text-sm wpbl-muted">Loading race chart…</p>
       ) : error && !races ? (
-        <p className="px-4 py-10 text-sm wpbl-muted">{error}</p>
+        <p className="px-4 py-8 text-sm wpbl-muted">{error}</p>
       ) : series.length === 0 ? (
-        <p className="px-4 py-10 text-sm wpbl-muted">
+        <p className="px-4 py-8 text-sm wpbl-muted">
           No {LABEL[raceId]} race data yet — player game logs may still be
           warming.
         </p>
@@ -134,7 +117,7 @@ export function RaceChart({
             role="img"
             aria-label={`${LABEL[raceId]} race chart`}
           >
-            {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            {[0, 0.5, 1].map((t) => {
               const y = chart.pad.top + chart.innerH * (1 - t);
               const label = Math.round(chart.maxVal * t);
               return (
@@ -147,7 +130,7 @@ export function RaceChart({
                     className="wpbl-race-chart__grid"
                   />
                   <text
-                    x={chart.pad.left - 8}
+                    x={chart.pad.left - 6}
                     y={y + 3}
                     textAnchor="end"
                     className="wpbl-race-chart__axis"
@@ -161,14 +144,14 @@ export function RaceChart({
               <>
                 <text
                   x={chart.pad.left}
-                  y={chart.height - 10}
+                  y={chart.height - 8}
                   className="wpbl-race-chart__axis"
                 >
                   {chart.allDates[0]}
                 </text>
                 <text
                   x={chart.width - chart.pad.right}
-                  y={chart.height - 10}
+                  y={chart.height - 8}
                   textAnchor="end"
                   className="wpbl-race-chart__axis"
                 >
@@ -213,7 +196,7 @@ export function RaceChart({
             })}
           </svg>
 
-          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 px-2">
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 px-1">
             {chart.prepared.map((s) => (
               <li
                 key={s.playerId}
@@ -233,7 +216,7 @@ export function RaceChart({
             ))}
           </ul>
           {races?.partial ? (
-            <p className="mt-2 px-2 text-[11px] wpbl-muted">
+            <p className="mt-2 px-1 text-[11px] wpbl-muted">
               Some race lines may be incomplete while player caches warm.
             </p>
           ) : null}

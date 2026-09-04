@@ -142,10 +142,11 @@ export const LEADER_CATEGORIES: CategoryDef[] = [
   },
 ];
 
-/** Featured boards on the stats race dashboard. */
+/** Featured boards on the stats race dashboard (incl. chartable SB). */
 export const FEATURED_RACE_IDS = [
   "hr",
   "rbi",
+  "sb",
   "ops",
   "avg",
   "era",

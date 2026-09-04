@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import type { WpblRacesResponse } from "@/lib/types/wpbl-display";
 
 import { AwardWatch } from "./AwardWatch";
-import { FeaturedRaces } from "./FeaturedRaces";
+import { RacePicker, RaceStandings } from "./FeaturedRaces";
 import { LeadersBoards } from "./LeadersBoards";
 import {
   findCategory,
@@ -19,13 +19,23 @@ import { PlayerCompare } from "./PlayerCompare";
 import { RaceChart } from "./RaceChart";
 import { TeamFilter, type WpblTeamFilter } from "./TeamFilter";
 import { TeamSeriesCards } from "./TeamSeriesCards";
+import { WpblDetailTabs } from "./WpblDetailTabs";
 import {
   WpblBoardError,
   WpblBoardLoading,
-  WpblSectionTitle,
   WpblUpdatedLine,
 } from "./WpblBoardShell";
 import { useWpblBoardData } from "./useWpblBoardData";
+
+type StatsView = "races" | "leaders" | "awards" | "compare" | "series";
+
+const STATS_VIEWS: { id: StatsView; label: string }[] = [
+  { id: "races", label: "Races" },
+  { id: "leaders", label: "Leaders" },
+  { id: "awards", label: "Awards" },
+  { id: "compare", label: "Compare" },
+  { id: "series", label: "Series" },
+];
 
 function parseTeamFilter(raw: string | null): WpblTeamFilter {
   if (raw === "LA" || raw === "NY" || raw === "SF" || raw === "BOS") {
@@ -34,13 +44,29 @@ function parseTeamFilter(raw: string | null): WpblTeamFilter {
   return "ALL";
 }
 
+function parseStatsView(raw: string | null): StatsView {
+  if (
+    raw === "races" ||
+    raw === "leaders" ||
+    raw === "awards" ||
+    raw === "compare" ||
+    raw === "series"
+  ) {
+    return raw;
+  }
+  return "races";
+}
+
 function writeStatsUrl(params: {
+  view: StatsView;
   group: StatGroup;
   cat: string;
   team: WpblTeamFilter;
   race: ChartableRaceId;
 }) {
   const url = new URL(window.location.href);
+  if (params.view === "races") url.searchParams.delete("view");
+  else url.searchParams.set("view", params.view);
   url.searchParams.set("group", params.group);
   url.searchParams.set("cat", params.cat);
   if (params.team === "ALL") url.searchParams.delete("team");
@@ -50,11 +76,23 @@ function writeStatsUrl(params: {
   window.history.replaceState(null, "", url.pathname + url.search);
 }
 
+function scrollRaceFocusToTop() {
+  // Defer until the races panel (and chart) are painted after a view switch.
+  requestAnimationFrame(() => {
+    document
+      .getElementById("wpbl-race-focus")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 export function WpblStatsClient() {
   const searchParams = useSearchParams();
   const { league, leaders, leadersError, loading, hasLive, updatedAt } =
     useWpblBoardData({ includeLeaders: true });
 
+  const [view, setView] = useState<StatsView>(() =>
+    parseStatsView(searchParams.get("view")),
+  );
   const [teamFilter, setTeamFilter] = useState<WpblTeamFilter>(() =>
     parseTeamFilter(searchParams.get("team")),
   );
@@ -76,10 +114,14 @@ export function WpblStatsClient() {
   const [racesError, setRacesError] = useState<string | null>(null);
 
   useEffect(() => {
+    const nextView = parseStatsView(searchParams.get("view"));
     const nextTeam = parseTeamFilter(searchParams.get("team"));
-    const nextGroup = parseStatGroup(searchParams.get("group"));
     const nextCat = searchParams.get("cat");
+    const nextGroup =
+      parseStatGroup(searchParams.get("group")) ??
+      (nextCat ? findCategory(nextCat)?.group : undefined);
     const nextRace = searchParams.get("race");
+    setView(nextView);
     setTeamFilter(nextTeam);
     if (nextGroup) setGroup(nextGroup);
     if (nextCat) setCategoryId(nextCat);
@@ -87,8 +129,14 @@ export function WpblStatsClient() {
   }, [searchParams]);
 
   useEffect(() => {
-    writeStatsUrl({ group, cat: categoryId, team: teamFilter, race: raceId });
-  }, [group, categoryId, teamFilter, raceId]);
+    writeStatsUrl({
+      view,
+      group,
+      cat: categoryId,
+      team: teamFilter,
+      race: raceId,
+    });
+  }, [view, group, categoryId, teamFilter, raceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,85 +174,116 @@ export function WpblStatsClient() {
     };
   }, []);
 
-  const syncCategory = useCallback((nextCat: string) => {
+  const selectRace = useCallback((nextCat: string) => {
     const cat = findCategory(nextCat);
-    if (cat) {
-      setGroup(cat.group);
-      setCategoryId(cat.id);
-      if (isChartableRaceId(cat.id)) setRaceId(cat.id);
+    if (!cat) return;
+    setView("races");
+    setGroup(cat.group);
+    setCategoryId(cat.id);
+    if (isChartableRaceId(cat.id)) setRaceId(cat.id);
+    scrollRaceFocusToTop();
+  }, []);
+
+  const setViewAndFocus = useCallback((next: StatsView) => {
+    setView(next);
+    requestAnimationFrame(() => {
       document
-        .getElementById("wpbl-full-leaders")
+        .getElementById("wpbl-stats-panel")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    });
   }, []);
 
   const games = useMemo(() => league?.games ?? [], [league]);
+  const showChart = isChartableRaceId(categoryId);
+  const chartRaceId: ChartableRaceId = showChart ? categoryId : raceId;
 
   if (loading) return <WpblBoardLoading />;
 
   return (
-    <div className="mt-6 space-y-8">
+    <div className="mt-6 space-y-4">
       <WpblUpdatedLine updatedAt={updatedAt} hasLive={hasLive} />
       <TeamFilter value={teamFilter} onChange={setTeamFilter} />
 
-      {!leaders ? (
-        <WpblBoardError
-          className=""
-          message={leadersError ?? "Leaders unavailable."}
+      <div className="wpbl-stats-tabs sticky top-0 z-20 -mx-4 bg-[var(--wpbl-bg)]/95 px-4 py-2 backdrop-blur-sm">
+        <WpblDetailTabs
+          tabs={STATS_VIEWS}
+          active={view}
+          onChange={setViewAndFocus}
+          ariaLabel="Stats sections"
         />
-      ) : (
-        <>
-          <section>
-            <WpblSectionTitle>Featured races</WpblSectionTitle>
-            <FeaturedRaces
+      </div>
+
+      <div id="wpbl-stats-panel" className="wpbl-stats-panel">
+        {!leaders ? (
+          <WpblBoardError
+            className=""
+            message={leadersError ?? "Leaders unavailable."}
+          />
+        ) : null}
+
+        {leaders && view === "races" ? (
+          <div id="wpbl-race-focus" className="space-y-4">
+            <RacePicker
               leaders={leaders}
               teamFilter={teamFilter}
-              onSelectCategory={syncCategory}
               activeCategoryId={categoryId}
+              onSelectCategory={selectRace}
             />
-          </section>
 
-          <section>
-            <RaceChart
-              races={races}
-              raceId={raceId}
-              onRaceIdChange={setRaceId}
-              loading={racesLoading}
-              error={racesError}
-            />
-          </section>
+            {showChart ? (
+              <RaceChart
+                races={races}
+                raceId={chartRaceId}
+                loading={racesLoading}
+                error={racesError}
+              />
+            ) : (
+              <p className="text-[11px] wpbl-muted">
+                Rate / counting board — chart available for HR, RBI, SB, SO.
+              </p>
+            )}
 
-          <section id="wpbl-full-leaders">
-            <WpblSectionTitle>All leaders</WpblSectionTitle>
-            <LeadersBoards
+            <RaceStandings
               leaders={leaders}
               teamFilter={teamFilter}
-              group={group}
-              onGroupChange={setGroup}
               categoryId={categoryId}
-              onCategoryChange={setCategoryId}
-              showGapBars
             />
-          </section>
+          </div>
+        ) : null}
 
-          <section>
-            <WpblSectionTitle>Award watch</WpblSectionTitle>
-            <AwardWatch leaders={leaders} />
-          </section>
+        {leaders && view === "leaders" ? (
+          <LeadersBoards
+            leaders={leaders}
+            teamFilter={teamFilter}
+            group={group}
+            onGroupChange={setGroup}
+            categoryId={categoryId}
+            onCategoryChange={(id) => {
+              setCategoryId(id);
+              const cat = findCategory(id);
+              if (cat) setGroup(cat.group);
+              if (isChartableRaceId(id)) setRaceId(id);
+            }}
+            showGapBars
+          />
+        ) : null}
 
-          <section>
-            <WpblSectionTitle>Head to head</WpblSectionTitle>
-            <PlayerCompare leaders={leaders} />
-          </section>
-        </>
-      )}
+        {leaders && view === "awards" ? (
+          <AwardWatch leaders={leaders} />
+        ) : null}
 
-      {games.length > 0 ? (
-        <section>
-          <WpblSectionTitle>Team series</WpblSectionTitle>
-          <TeamSeriesCards games={games} />
-        </section>
-      ) : null}
+        {leaders && view === "compare" ? (
+          <PlayerCompare leaders={leaders} />
+        ) : null}
+
+        {view === "series" ? (
+          games.length > 0 ? (
+            <TeamSeriesCards games={games} />
+          ) : (
+            <p className="text-sm wpbl-muted">No completed series yet.</p>
+          )
+        ) : null}
+      </div>
     </div>
   );
 }
