@@ -250,6 +250,12 @@ describe("enrichPlayNarrative / playSummaryParts", () => {
     expect(summary.body).toBe("Braden Montgomery strikes out swinging.");
     expect(summary.outsPhrase).toBe("1 out");
   });
+
+  it("uses MLB called-strike language for looking punchouts", () => {
+    expect(
+      enrichPlayNarrative("Jaida Lee struck out looking (1-2 CFS)."),
+    ).toBe("Jaida Lee called out on strikes.");
+  });
 });
 
 describe("situational count and half-inning grouping", () => {

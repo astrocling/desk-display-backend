@@ -105,7 +105,7 @@ function PitchList({
         onClick={onToggle}
         aria-expanded={false}
       >
-        {pitches.length} pitches
+        Show {pitches.length} pitches
       </button>
     );
   }
@@ -261,7 +261,7 @@ export function PlayByPlayPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <WpblFeedFilter
           ariaLabel="Play filter"
           variant="pills"

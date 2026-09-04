@@ -505,14 +505,16 @@
 
 .wpbl-play-pill {
   display: inline-flex;
+  align-items: center;
   border-radius: 0.375rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0.01em;
-  color: #fff;
-  background-color: #2563eb;
-  border: none;
+  color: #ffffff;
+  background-color: #1d4ed8;
+  border: 1px solid #1d4ed8;
 }
 
 .wpbl-play-advisory-label {
@@ -525,7 +527,7 @@
 .wpbl-play-summary {
   margin: 0;
   font-size: 0.9375rem;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--wpbl-ink);
 }
 
@@ -543,22 +545,33 @@
 
 .wpbl-pitch-block {
   width: 100%;
-  margin-top: 0.125rem;
+  margin-top: 0.25rem;
 }
 
 .wpbl-pitch-toggle {
-  padding: 0;
-  border: none;
-  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.125rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #60a5fa 35%, var(--wpbl-rule));
+  background-color: color-mix(in srgb, #3b82f6 10%, transparent);
   font-size: 0.75rem;
   font-weight: 600;
   color: #93c5fd;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .wpbl-pitch-toggle:hover {
+  border-color: color-mix(in srgb, #93c5fd 50%, var(--wpbl-rule));
+  background-color: color-mix(in srgb, #3b82f6 18%, transparent);
   color: #bfdbfe;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .wpbl-pitch-list {
