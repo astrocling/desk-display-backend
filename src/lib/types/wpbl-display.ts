@@ -337,3 +337,35 @@ export interface WpblPlayerGameLogEntry {
   pitching: Record<string, string | number | null> | null;
   fielding: Record<string, string | number | null> | null;
 }
+
+/** One cumulative point on a counting-stat race chart. */
+export interface WpblRacePoint {
+  /** ISO date (YYYY-MM-DD) of the game. */
+  date: string;
+  gameId: string;
+  /** Cumulative total through this game. */
+  value: number;
+}
+
+export interface WpblRaceSeries {
+  playerId: string;
+  name: string;
+  teamAbbr: string;
+  headshotUrl: string | null;
+  points: WpblRacePoint[];
+  total: number;
+}
+
+/** Cumulative counting-stat races built from warmed player game logs. */
+export interface WpblRacesResponse {
+  updatedAt: string;
+  seasonId: string;
+  /** True when some race players were missing from cache or leaders were partial. */
+  partial: boolean;
+  races: {
+    hr: WpblRaceSeries[];
+    rbi: WpblRaceSeries[];
+    sb: WpblRaceSeries[];
+    so: WpblRaceSeries[];
+  };
+}
