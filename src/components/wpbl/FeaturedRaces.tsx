@@ -81,6 +81,146 @@ export function RacePicker({
   );
 }
 
+export type RaceMatchupProps = {
+  leaders: WpblLeadersResponse;
+  teamFilter: string;
+  categoryId: string;
+};
+
+/** Format #1 lead over #2 from sortValue (counts or rates). */
+export function formatRaceDelta(leaderSort: number, secondSort: number): string {
+  const diff = Math.abs(leaderSort - secondSort);
+  if (diff < 1e-9) return "tied";
+  if (Number.isInteger(leaderSort) && Number.isInteger(secondSort)) {
+    return `+${diff}`;
+  }
+  const decimals = diff < 0.1 ? 3 : 2;
+  const trimmed = diff
+    .toFixed(decimals)
+    .replace(/\.?0+$/, "");
+  return `+${trimmed}`;
+}
+
+/**
+ * Compact #1 vs #2 strip for the active race.
+ * Driven by the selected category + teamFilter (same ranking as RaceStandings).
+ */
+export function RaceMatchup({
+  leaders,
+  teamFilter,
+  categoryId,
+}: RaceMatchupProps) {
+  const cat = findCategory(categoryId);
+  if (!cat) return null;
+
+  const entries = rankAndFilterEntries(
+    cat.getEntries(leaders),
+    teamFilter,
+    2,
+  );
+
+  if (entries.length === 0) return null;
+
+  if (entries.length === 1) {
+    const alone = entries[0];
+    return (
+      <div
+        className="wpbl-race-matchup wpbl-race-matchup--solo"
+        aria-label={`${cat.label} race leader`}
+      >
+        <div
+          className="wpbl-race-matchup__side wpbl-race-matchup__side--lead wpbl-team-accent"
+          style={teamAccentStyle(alone.teamAbbr)}
+        >
+          <span className="wpbl-race-matchup__rank" aria-hidden>
+            1
+          </span>
+          <div className="wpbl-race-matchup__meta min-w-0">
+            <PlayerNameLink
+              playerId={alone.playerId}
+              name={alone.name}
+              className="wpbl-race-matchup__name truncate"
+            />
+            <span className="wpbl-race-matchup__team">{alone.teamAbbr}</span>
+          </div>
+          <span className="wpbl-race-matchup__value tabular-nums">
+            {alone.value}
+          </span>
+        </div>
+        <p className="wpbl-race-matchup__hint wpbl-muted">
+          No #2 under this filter
+        </p>
+      </div>
+    );
+  }
+
+  const [first, second] = entries;
+  const delta = formatRaceDelta(first.sortValue, second.sortValue);
+  const tied = delta === "tied";
+  const label = tied
+    ? `${cat.label} race tied`
+    : `${cat.label} race: ${first.name} leads by ${delta}`;
+
+  return (
+    <div className="wpbl-race-matchup" aria-label={label}>
+      <div
+        className={
+          tied
+            ? "wpbl-race-matchup__side wpbl-team-accent"
+            : "wpbl-race-matchup__side wpbl-race-matchup__side--lead wpbl-team-accent"
+        }
+        style={teamAccentStyle(first.teamAbbr)}
+      >
+        <span className="wpbl-race-matchup__rank" aria-hidden>
+          1
+        </span>
+        <div className="wpbl-race-matchup__meta min-w-0">
+          <PlayerNameLink
+            playerId={first.playerId}
+            name={first.name}
+            className="wpbl-race-matchup__name truncate"
+          />
+          <span className="wpbl-race-matchup__team">{first.teamAbbr}</span>
+        </div>
+        <span className="wpbl-race-matchup__value tabular-nums">
+          {first.value}
+        </span>
+      </div>
+
+      <div
+        className={
+          tied
+            ? "wpbl-race-matchup__delta wpbl-race-matchup__delta--tied"
+            : "wpbl-race-matchup__delta"
+        }
+        aria-hidden
+      >
+        {delta}
+      </div>
+
+      <div
+        className="wpbl-race-matchup__side wpbl-race-matchup__side--trail wpbl-team-accent"
+        style={teamAccentStyle(second.teamAbbr)}
+      >
+        <span className="wpbl-race-matchup__rank" aria-hidden>
+          2
+        </span>
+        <div className="wpbl-race-matchup__meta min-w-0">
+          <PlayerNameLink
+            playerId={second.playerId}
+            name={second.name}
+            className="wpbl-race-matchup__name truncate"
+          />
+          <span className="wpbl-race-matchup__team">{second.teamAbbr}</span>
+        </div>
+        <span className="wpbl-race-matchup__value tabular-nums">
+          {second.value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export type RaceStandingsProps = {
   leaders: WpblLeadersResponse;
   teamFilter: string;
