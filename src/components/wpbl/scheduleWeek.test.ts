@@ -190,7 +190,7 @@ describe("partitionScheduleByWeek", () => {
 });
 
 describe("homeScheduleTeaserGames", () => {
-  it("prefers upcoming then pads with recent finals", () => {
+  it("returns upcoming games only, never finals", () => {
     const games = [
       game({
         id: "final-a",
@@ -226,7 +226,20 @@ describe("homeScheduleTeaserGames", () => {
     ];
 
     const teaser = homeScheduleTeaserGames(games, { limit: 3 });
-    expect(teaser.map((g) => g.id)).toEqual(["next-1", "next-2", "final-b"]);
+    expect(teaser.map((g) => g.id)).toEqual(["next-1", "next-2"]);
+  });
+
+  it("returns empty when nothing is upcoming", () => {
+    const games = [
+      game({
+        id: "final-only",
+        status: "final",
+        startIso: "2026-08-19T23:00:00Z",
+        awayRuns: 4,
+        homeRuns: 3,
+      }),
+    ];
+    expect(homeScheduleTeaserGames(games)).toEqual([]);
   });
 
   it("excludes today's slate ids", () => {
