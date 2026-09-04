@@ -1,5 +1,5 @@
 import type { WpblPlay } from "@/lib/types/wpbl-display";
-
+import { playerNamesMatch } from "@/lib/wpbl-player-match";
 import { shortRunnerLabel } from "@/lib/wpbl-plays";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -141,24 +141,92 @@ export function battingTeamAbbr(
 
 export type PlayTimelineItem =
   | { kind: "play"; play: WpblPlay }
-  | { kind: "bases"; play: WpblPlay; key: string };
+  | { kind: "bases"; play: WpblPlay; key: string }
+  | { kind: "at_bat"; play: WpblPlay; batterName: string };
+
+const RUNNER_PLAY_LABELS = new Set([
+  "Stolen Base",
+  "Caught Stealing",
+  "Pickoff",
+  "Wild Pitch",
+  "Passed Ball",
+  "Balk",
+]);
+
+/** Steal / pickoff / WP / etc. — often narrate a runner while batterName is the batter at the plate. */
+export function isRunnerPlay(play: WpblPlay): boolean {
+  const label = playTypeLabel(play);
+  if (label && RUNNER_PLAY_LABELS.has(label)) return true;
+  const n = play.narrative.toLowerCase();
+  return (
+    /\bfailed pickoff\b/.test(n) ||
+    /\bpickoff\b/.test(n) ||
+    /\bstole\b/.test(n) ||
+    /\bcaught stealing\b/.test(n) ||
+    /\bwild pitch\b/.test(n) ||
+    /\bpassed ball\b/.test(n) ||
+    /\bbalk\b/.test(n)
+  );
+}
+
+/**
+ * Leading player name in a narrative, e.g. "Denae Benites stole second." →
+ * "Denae Benites". Used so runner plays can feature the runner in the rail.
+ */
+export function narrativeLeadName(narrative: string): string | null {
+  const trimmed = narrative.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(
+    /^([A-Za-z][\w'.-]*(?:\s+[A-Za-z][\w'.-]*){0,3})\s+(?:Failed|failed|stole|caught|advanced|scored|out)\b/,
+  );
+  return match?.[1]?.trim() || null;
+}
+
+/**
+ * Who the timeline rail should feature for this play.
+ * Runner plays keep the API batterName as the PA owner, but show the runner
+ * when the narrative is about someone else.
+ */
+export function playFocusName(play: WpblPlay): string | null {
+  const batter = play.batterName?.trim() || null;
+  if (!isRunnerPlay(play)) return batter;
+  const lead = narrativeLeadName(play.narrative);
+  if (lead && (!batter || !playerNamesMatch(lead, batter))) return lead;
+  return lead ?? batter;
+}
 
 /**
  * Newest-first timeline. WPBL play base fields are the situation *before*
  * the play, so we attach each play's own runners under that play — not the
  * next row's (which was shifting base state one at-bat later).
+ *
+ * When the batter changes vs the next-older play, insert an "at bat" marker
+ * so runner events (steal / pickoff) don't look like they happened before
+ * the next batter came up.
  */
 export function buildPlayTimeline(playsNewestFirst: WpblPlay[]): PlayTimelineItem[] {
   const items: PlayTimelineItem[] = [];
   let lastBasesKey: string | null = null;
 
-  for (const play of playsNewestFirst) {
+  for (let i = 0; i < playsNewestFirst.length; i++) {
+    const play = playsNewestFirst[i]!;
     items.push({ kind: "play", play });
 
     const key = basesStateKey(play);
     if (key !== lastBasesKey) {
       items.push({ kind: "bases", play, key });
       lastBasesKey = key;
+    }
+
+    const older = playsNewestFirst[i + 1];
+    const newerBatter = play.batterName?.trim() || null;
+    const olderBatter = older?.batterName?.trim() || null;
+    if (
+      newerBatter &&
+      olderBatter &&
+      !playerNamesMatch(newerBatter, olderBatter)
+    ) {
+      items.push({ kind: "at_bat", play, batterName: newerBatter });
     }
   }
 
