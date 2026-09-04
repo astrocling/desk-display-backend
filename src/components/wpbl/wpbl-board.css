@@ -395,104 +395,174 @@
   color: var(--wpbl-ink-secondary);
 }
 
-/* Play-by-play — MLB-style vertical timeline */
-.wpbl-timeline {
-  max-height: min(28rem, 60vh);
+/* Gameday play-by-play — MLB Summary feed */
+.wpbl-feed-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wpbl-feed-pill {
+  border-radius: 9999px;
+  border: 1px solid var(--wpbl-rule);
+  background-color: transparent;
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--wpbl-ink-secondary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.wpbl-feed-pill:hover {
+  border-color: color-mix(in srgb, var(--wpbl-muted) 55%, transparent);
+  color: var(--wpbl-ink);
+}
+
+.wpbl-feed-pill--active {
+  border-color: var(--wpbl-ink);
+  background-color: var(--wpbl-ink);
+  color: var(--wpbl-bg);
+}
+
+.wpbl-gameday-feed {
+  max-height: min(36rem, 70vh);
   overflow-y: auto;
   border: 1px solid var(--wpbl-rule);
   border-radius: 0.5rem;
   background-color: var(--wpbl-bg-panel);
-  padding: 0.75rem 0.75rem 0;
+  padding: 0.25rem 0.875rem 0.875rem;
 }
 
-.wpbl-timeline-list {
+.wpbl-half-inning + .wpbl-half-inning {
+  margin-top: 0.5rem;
+}
+
+.wpbl-half-inning__label {
+  margin: 1rem 0 0.875rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--wpbl-ink);
+}
+
+.wpbl-half-inning:first-child .wpbl-half-inning__label {
+  margin-top: 0.75rem;
+}
+
+.wpbl-play-list {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.wpbl-timeline-group {
-  list-style: none;
-}
-
-.wpbl-timeline-item {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr);
-  gap: 0.75rem;
-  position: relative;
-}
-
-.wpbl-timeline-item::before {
-  content: "";
-  position: absolute;
-  left: 1.375rem;
-  top: 2.75rem;
-  bottom: 0;
-  width: 1px;
-  background-color: var(--wpbl-rule);
-}
-
-.wpbl-timeline-group:last-child .wpbl-timeline-item:last-child::before,
-.wpbl-timeline-item--bases:last-child::before {
-  display: none;
-}
-
-.wpbl-timeline-node {
-  position: relative;
-  z-index: 1;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.wpbl-play-card {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.wpbl-play-card__avatar {
+  display: flex;
   justify-content: center;
   padding-top: 0.125rem;
 }
 
-.wpbl-timeline-dot {
-  display: block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-top: 0.75rem;
+.wpbl-play-card__advisory {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 9999px;
-  background-color: var(--wpbl-muted);
-}
-
-.wpbl-timeline-dot--neutral {
-  background-color: var(--wpbl-rule);
-  border: 1px solid var(--wpbl-muted);
-}
-
-.wpbl-timeline-content {
-  min-width: 0;
-}
-
-.wpbl-timeline-meta {
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  background-color: var(--wpbl-bg-hover);
   color: var(--wpbl-muted);
+}
+
+.wpbl-play-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+.wpbl-play-situation {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--wpbl-ink-secondary);
 }
 
 .wpbl-play-pill {
   display: inline-flex;
-  border-radius: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #bfdbfe;
-  background-color: color-mix(in srgb, #3b82f6 22%, var(--wpbl-bg-panel));
-  border: 1px solid color-mix(in srgb, #3b82f6 35%, transparent);
+  border-radius: 0.375rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background-color: #2563eb;
+  border: none;
 }
 
-.wpbl-timeline-bases,
-.wpbl-timeline-pitch {
+.wpbl-play-advisory-label {
+  margin: 0;
   font-size: 0.8125rem;
-  line-height: 1.35;
+  font-weight: 600;
   color: var(--wpbl-muted);
 }
 
+.wpbl-play-summary {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--wpbl-ink);
+}
+
+.wpbl-play-summary__outs {
+  font-weight: 700;
+  color: var(--wpbl-ink);
+}
+
+.wpbl-play-score {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--wpbl-ink);
+}
+
+.wpbl-pitch-block {
+  width: 100%;
+  margin-top: 0.125rem;
+}
+
+.wpbl-pitch-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #93c5fd;
+  cursor: pointer;
+}
+
+.wpbl-pitch-toggle:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+
 .wpbl-pitch-list {
-  margin: 0.5rem 0 0;
+  margin: 0.4rem 0 0;
   padding: 0;
   list-style: none;
   display: flex;
@@ -520,8 +590,20 @@
   opacity: 0.7;
 }
 
-.wpbl-timeline-item--pitch .wpbl-timeline-pitch {
-  padding-top: 0.125rem;
+/* Legacy timeline helpers (scoreboard / older surfaces) */
+.wpbl-timeline-meta {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-timeline-bases,
+.wpbl-timeline-pitch {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--wpbl-muted);
 }
 
 .wpbl-pitch-index {
