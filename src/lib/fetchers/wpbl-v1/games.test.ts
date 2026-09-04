@@ -37,6 +37,7 @@ describe("mapWpblGames", () => {
       homeRuns: 8,
       whenEt: null,
       countsInStandings: true,
+      gameType: "regular",
     });
     expect(games[1]).toMatchObject({
       status: "scheduled",
@@ -47,6 +48,44 @@ describe("mapWpblGames", () => {
     });
     expect(games[1].whenEt).toMatch(/PM$/);
     expect(games[1].startIso).toBe("2026-08-22T17:00:00Z");
+    expect(games[0].gameType).toBe("regular");
+  });
+
+  it("maps postseason game_type and Presto isPostSeason", () => {
+    const games = mapWpblGames({
+      count: 2,
+      games: [
+        {
+          game_id: "playoff1",
+          season_id: "c9sgab9f9yx00z75",
+          home_team_id: "vhubhz8li07tmgq8",
+          away_team_id: "9f08or2mffx81409",
+          home_team_name: "San Francisco Firebells",
+          away_team_name: "Boston Hunters",
+          status: "Not Started",
+          scheduled_start: "2026-09-09T23:00:00Z",
+          counts_in_standings: false,
+          game_type: "playoff",
+        },
+        {
+          game_id: "playoff2",
+          season_id: "c9sgab9f9yx00z75",
+          home_team_id: "v4gisr4rbgmn67b0",
+          away_team_id: "fttth861nft1j2s7",
+          home_team_name: "Los Angeles Queens",
+          away_team_name: "New York Heights",
+          status: "Not Started",
+          scheduled_start: "2026-09-10T23:00:00Z",
+          counts_in_standings: false,
+          game_type: "regular",
+          presto_data: { eventType: { isPostSeason: true } },
+        },
+      ],
+    });
+    expect(games.map((g) => g.gameType)).toEqual([
+      "postseason",
+      "postseason",
+    ]);
   });
 });
 
@@ -66,6 +105,7 @@ describe("collapseDuplicateMatchups", () => {
         homeRuns: null,
         venue: null,
         countsInStandings: true,
+      gameType: "regular",
       },
       {
         id: "real",
@@ -80,6 +120,7 @@ describe("collapseDuplicateMatchups", () => {
         homeRuns: 8,
         venue: null,
         countsInStandings: true,
+      gameType: "regular",
       },
     ];
     const collapsed = collapseDuplicateMatchups(games);

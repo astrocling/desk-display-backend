@@ -70,6 +70,7 @@ export function mapTeamStatsToStanding(
     diff: standing.run_differential,
     l10: formatL10(standing.last_ten),
     streak: formatStreak(standing.streak),
+    clinchedSeed: null,
   };
 }
 

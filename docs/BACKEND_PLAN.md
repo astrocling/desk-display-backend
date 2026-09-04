@@ -222,7 +222,8 @@ Full WPBL league board: standings + schedule. Data from WPBL Stats API v1; cache
       "ra": 18,
       "diff": 10,
       "l10": "5-3",
-      "streak": "W2"
+      "streak": "W2",
+      "clinchedSeed": 1
     }
   ],
   "games": [
@@ -238,7 +239,8 @@ Full WPBL league board: standings + schedule. Data from WPBL Stats API v1; cache
       "awayRuns": 2,
       "homeRuns": 4,
       "venue": "Field A",
-      "countsInStandings": true
+      "countsInStandings": true,
+      "gameType": "regular"
     }
   ]
 }
@@ -248,11 +250,21 @@ Full WPBL league board: standings + schedule. Data from WPBL Stats API v1; cache
 |-------|------|-------|
 | `seasonId` | string | Active WPBL season |
 | `standings` | array | Full 4-team table; neutral (no team filter) |
+| `standings[].clinchedSeed` | number \| null | Sole playoff seed (1–4) locked by remaining regular-season schedule; null if still contested. Upstream team stats have **no** clinch field — derived client-side. |
 | `games` | array | Full season schedule; `status` `scheduled`\|`live`\|`final`\|`other` |
 | `games[].countsInStandings` | boolean | Excluded games (e.g. exhibitions) flagged |
+| `games[].gameType` | `regular`\|`postseason`\|`other` | From upstream `game_type` / Presto `eventType.isPostSeason`. Playoff rows not yet published on `/v1/games` as of early Sep 2026 (all `regular`). |
 | `updatedAt` | string | ISO timestamp when cache was written |
 
 **Error** `503`: `{ "error": "WPBL league cache empty" }`
+
+#### WPBL upstream playoff / clinch notes (Sep 2026)
+
+Inspected live `stats.womensprobaseballleague.com` payloads:
+
+- **Team standing** (`GET /v1/teams/{id}/stats`): no `clinch*` / playoff fields. Extra unused keys include `tied`, home/away splits.
+- **Games** (`GET /v1/games`): `game_type` (currently always `"regular"`), `counts_in_standings`, and Presto `eventType.isPostSeason` / `eventTypeCode` / `eventTypeDescription`. No `/v1/playoffs` (404). Postseason slate on the marketing site is not yet mirrored in `/v1/games`.
+- **Our board**: `clinchedSeed` is derived from W-L + remaining regular-season games; `gameType` is mapped so playoff rows can be labeled when the API starts emitting them.
 
 ### `GET /api/wpbl/leaders`
 

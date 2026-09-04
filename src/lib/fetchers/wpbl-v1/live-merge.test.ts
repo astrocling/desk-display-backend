@@ -30,6 +30,7 @@ function baseDetail(
       homeRuns: 2,
       venue: "Field",
       countsInStandings: true,
+      gameType: "regular",
       inning: "Top 3",
       situation: {
         inningNumber: 3,

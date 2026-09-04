@@ -22,7 +22,10 @@ import {
 } from "./refresh";
 
 function detail(
-  partial: Partial<WpblGameDetailResponse> & { status: WpblGameStatus },
+  partial: Omit<Partial<WpblGameDetailResponse>, "game"> & {
+    status: WpblGameStatus;
+    game?: Partial<WpblGameDetailResponse["game"]>;
+  },
 ): WpblGameDetailResponse {
   return {
     updatedAt: partial.updatedAt ?? "2026-08-21T12:00:00.000Z",
@@ -39,6 +42,7 @@ function detail(
       homeRuns: 2,
       venue: null,
       countsInStandings: true,
+      gameType: "regular",
       inning: null,
       situation: null,
       ...(partial.game ?? {}),
@@ -73,6 +77,7 @@ const priorLeague: WpblLeagueResponse = {
       diff: 15,
       l10: "5-2",
       streak: "W2",
+      clinchedSeed: null,
     },
   ],
   games: [],
@@ -96,6 +101,7 @@ const freshLeagueNoStandings: WpblLeagueResponse = {
       homeRuns: null,
       venue: "Field",
       countsInStandings: true,
+      gameType: "regular",
     },
   ],
 };
@@ -288,6 +294,7 @@ describe("shouldRefreshWpblLeague", () => {
           homeRuns: 2,
           venue: null,
           countsInStandings: true,
+      gameType: "regular",
         },
       ],
     };
@@ -312,6 +319,7 @@ describe("shouldRefreshWpblLeague", () => {
           homeRuns: 2,
           venue: null,
           countsInStandings: true,
+      gameType: "regular",
         },
       ],
     };
@@ -336,6 +344,7 @@ describe("shouldRefreshWpblLeague", () => {
           homeRuns: null,
           venue: null,
           countsInStandings: true,
+      gameType: "regular",
         },
       ],
     };
@@ -362,6 +371,7 @@ describe("shouldRefreshWpblLeague", () => {
           homeRuns: 11,
           venue: null,
           countsInStandings: true,
+      gameType: "regular",
         },
       ],
     };
@@ -388,6 +398,7 @@ describe("wpblGamesNeedLivePoll", () => {
             homeRuns: null,
             venue: null,
             countsInStandings: true,
+      gameType: "regular",
           },
           {
             id: "g2",
@@ -402,6 +413,7 @@ describe("wpblGamesNeedLivePoll", () => {
             homeRuns: null,
             venue: null,
             countsInStandings: true,
+      gameType: "regular",
           },
         ],
         now,
