@@ -58,9 +58,11 @@ export function WpblStatsClient() {
   const [teamFilter, setTeamFilter] = useState<WpblTeamFilter>(() =>
     parseTeamFilter(searchParams.get("team")),
   );
-  const [group, setGroup] = useState<StatGroup>(
-    () => parseStatGroup(searchParams.get("group")) ?? "hitting",
-  );
+  const [group, setGroup] = useState<StatGroup>(() => {
+    const fromUrl = parseStatGroup(searchParams.get("group"));
+    const cat = findCategory(searchParams.get("cat") ?? "hr");
+    return fromUrl ?? cat?.group ?? "hitting";
+  });
   const [categoryId, setCategoryId] = useState(
     () => searchParams.get("cat") ?? "hr",
   );
