@@ -16,6 +16,7 @@ import { teamAccentStyle } from "./teamAccent";
 import { TeamLogo } from "./TeamLogo";
 import { WpblBoardError, WpblBoardLoading } from "./WpblBoardShell";
 import { WpblDetailTabs } from "./WpblDetailTabs";
+import { PlayerSpiderProfiles } from "./PlayerSpiderProfiles";
 
 type SeasonTab = "hitting" | "pitching" | "fielding";
 
@@ -454,6 +455,12 @@ export function PlayerDetailClient({
           </div>
         )}
       </section>
+
+      <PlayerSpiderProfiles
+        batting={season.batting}
+        pitching={season.pitching}
+        teamAbbr={player.teamAbbr}
+      />
 
       {availableTabs.length > 0 ? (
         <section className={WPBL_PANEL}>

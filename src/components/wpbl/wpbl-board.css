@@ -805,3 +805,93 @@
   font-size: 0.8125rem;
   font-weight: 700;
 }
+
+/* Player season spider profiles */
+.wpbl-spider__head {
+  margin-bottom: 0.75rem;
+}
+.wpbl-spider__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--wpbl-ink);
+}
+.wpbl-spider__note {
+  margin-top: 0.15rem;
+  font-size: 11px;
+  color: var(--wpbl-muted);
+}
+.wpbl-spider__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+@media (min-width: 420px) {
+  .wpbl-spider__body {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+.wpbl-spider__svg {
+  flex-shrink: 0;
+  overflow: visible;
+}
+.wpbl-spider__ring {
+  fill: none;
+  stroke: var(--wpbl-rule);
+  stroke-width: 1;
+}
+.wpbl-spider__spoke {
+  stroke: var(--wpbl-rule);
+  stroke-width: 1;
+}
+.wpbl-spider__area {
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.wpbl-spider__label {
+  fill: var(--wpbl-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.wpbl-spider__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-width: 9rem;
+}
+.wpbl-spider__legend-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--wpbl-rule) 70%, transparent);
+  font-size: 12px;
+}
+.wpbl-spider__legend-row:last-child {
+  border-bottom: 0;
+}
+.wpbl-spider__legend-stat {
+  font-weight: 600;
+  color: var(--wpbl-ink-secondary);
+}
+.wpbl-spider__legend-value {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--wpbl-ink);
+}
+.wpbl-spider__legend-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--wpbl-ink);
+}
+.wpbl-spider__legend-pct-suffix {
+  margin-left: 0.15rem;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--wpbl-muted);
+}
