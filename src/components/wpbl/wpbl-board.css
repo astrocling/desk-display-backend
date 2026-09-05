@@ -670,7 +670,7 @@
   background-color: var(--wpbl-bg-hover);
 }
 
-/* Stats page — race gaps, chart, compare */
+/* Stats page — race gaps, chart, matchup */
 .wpbl-race-gap {
   height: 3px;
   overflow: hidden;
@@ -713,18 +713,145 @@
   opacity: 0.92;
 }
 
-.wpbl-compare-select {
+.wpbl-race-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.wpbl-race-matchup--solo {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+}
+
+.wpbl-race-matchup__side {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
   border-radius: 0.5rem;
   border: 1px solid var(--wpbl-rule);
-  background-color: var(--wpbl-bg-elevated);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
+  background-color: var(--wpbl-bg-panel);
+  padding: 0.625rem 0.75rem;
+}
+
+.wpbl-race-matchup__side--lead {
+  border-color: color-mix(in srgb, var(--team-accent, var(--wpbl-ink-secondary)) 55%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--team-accent, var(--wpbl-bg-hover)) 12%,
+    var(--wpbl-bg-panel)
+  );
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--team-accent, var(--wpbl-ink-secondary)) 18%, transparent);
+}
+
+.dark .wpbl-race-matchup__side--lead {
+  background-color: color-mix(
+    in srgb,
+    var(--team-accent-dark, var(--wpbl-bg-hover)) 16%,
+    var(--wpbl-bg-panel)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--team-accent-dark, var(--wpbl-ink-secondary)) 50%,
+    transparent
+  );
+}
+
+.wpbl-race-matchup__side--trail {
+  opacity: 0.92;
+}
+
+.wpbl-race-matchup__rank {
+  flex-shrink: 0;
+  width: 0.875rem;
+  text-align: right;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-race-matchup__side--lead .wpbl-race-matchup__rank {
+  color: var(--wpbl-ink-secondary);
+}
+
+.wpbl-race-matchup__meta {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.wpbl-race-matchup__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--wpbl-ink);
+  text-decoration: none;
+}
+
+.wpbl-race-matchup__name:hover {
+  color: var(--wpbl-accent);
+  text-decoration: underline;
+}
+
+.wpbl-race-matchup__team {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-race-matchup__value {
+  flex-shrink: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
   color: var(--wpbl-ink);
 }
 
-.wpbl-compare-select:focus {
-  outline: 2px solid color-mix(in srgb, var(--wpbl-accent) 45%, transparent);
-  outline-offset: 1px;
+.wpbl-race-matchup__delta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--wpbl-ink-secondary);
+}
+
+.wpbl-race-matchup__delta--tied {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wpbl-muted);
+}
+
+.wpbl-race-matchup__hint {
+  margin: 0;
+  padding: 0 0.25rem;
+  font-size: 0.6875rem;
+}
+
+@media (max-width: 420px) {
+  .wpbl-race-matchup:not(.wpbl-race-matchup--solo) {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .wpbl-race-matchup__delta {
+    order: 0;
+    min-height: 1.25rem;
+  }
+
+  .wpbl-race-matchup__side:first-child {
+    order: -1;
+  }
 }
 
 .wpbl-stats-panel {
